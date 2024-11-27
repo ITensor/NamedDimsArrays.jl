@@ -1,6 +1,6 @@
 @eval module $(gensym())
 using Test: @test, @testset
-using NDTensors.NamedDimsArrays:
+using NamedDimsArrays:
   NamedDimsArrays,
   NamedDimsArray,
   align,

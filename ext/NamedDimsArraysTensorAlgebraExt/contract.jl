@@ -1,5 +1,5 @@
 using ..NamedDimsArrays: AbstractNamedDimsArray, dimnames, named, unname
-using ...TensorAlgebra: TensorAlgebra, blockedperms, contract, contract!
+using TensorAlgebra: TensorAlgebra, blockedperms, contract, contract!
 
 function TensorAlgebra.contract!(
   na_dest::AbstractNamedDimsArray,

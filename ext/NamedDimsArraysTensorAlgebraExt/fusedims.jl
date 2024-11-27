@@ -1,5 +1,6 @@
-using ...NDTensors.TensorAlgebra: TensorAlgebra, blockedperm, fusedims, splitdims
-using ...NDTensors.TensorAlgebra.BaseExtensions: BaseExtensions
+using ..NamedDimsArrays: name
+using TensorAlgebra: TensorAlgebra, blockedperm, fusedims, splitdims
+using TensorAlgebra.BaseExtensions: BaseExtensions
 
 function TensorAlgebra.blockedperm(na::AbstractNamedDimsArray, nameddim_blocks::Tuple...)
   # Extract names if named dimensions or axes were passed

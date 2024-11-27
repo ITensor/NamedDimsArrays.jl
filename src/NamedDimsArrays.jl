@@ -1,4 +1,5 @@
 module NamedDimsArrays
+
 include("traits.jl")
 include("name.jl")
 include("randname.jl")
@@ -18,10 +19,10 @@ include("map.jl")
 include("broadcast_shape.jl")
 include("broadcast.jl")
 
-# Extensions
-include("../ext/NamedDimsArraysAdaptExt/src/NamedDimsArraysAdaptExt.jl")
-include(
-  "../ext/NamedDimsArraysSparseArraysBaseExt/src/NamedDimsArraysSparseArraysBaseExt.jl"
-)
-include("../ext/NamedDimsArraysTensorAlgebraExt/src/NamedDimsArraysTensorAlgebraExt.jl")
+# Extensions.
+# TODO: Turn these into actual package extensions.
+include("../ext/NamedDimsArraysAdaptExt/NamedDimsArraysAdaptExt.jl")
+include("../ext/NamedDimsArraysSparseArraysBaseExt/NamedDimsArraysSparseArraysBaseExt.jl")
+include("../ext/NamedDimsArraysTensorAlgebraExt/NamedDimsArraysTensorAlgebraExt.jl")
+
 end

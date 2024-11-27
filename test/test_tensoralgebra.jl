@@ -1,6 +1,6 @@
 @eval module $(gensym())
 using Test: @test, @testset
-using NDTensors.NamedDimsArrays: dimnames, named, unname, isnamed
+using NamedDimsArrays: dimnames, named, unname, isnamed
 @testset "NamedDimsArrays $(@__FILE__) (eltype=$elt)" for elt in (
   Float32, ComplexF32, Float64, ComplexF64
 )

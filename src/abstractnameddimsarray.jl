@@ -1,5 +1,4 @@
-using ..BaseExtensions: BaseExtensions
-using NDTensors.TypeParameterAccessors: TypeParameterAccessors, parenttype
+using TypeParameterAccessors: TypeParameterAccessors, parenttype
 
 # Some of the interface is inspired by:
 # https://github.com/invenia/NamedDims.jl
@@ -70,8 +69,7 @@ rename(a::AbstractNamedDimsArray, names) = named(unname(a), names)
 # `rename` in `NamedPlus.jl`.
 # TODO: Define for `AbstractArray`.
 function replacenames(na::AbstractNamedDimsArray, replacements::Pair...)
-  # `BaseExtension.replace` needed for `Tuple` support on Julia 1.6 and older.
-  return named(unname(na), BaseExtensions.replace(dimnames(na), replacements...))
+  return named(unname(na), replace(dimnames(na), replacements...))
 end
 
 # Either define new names or replace names

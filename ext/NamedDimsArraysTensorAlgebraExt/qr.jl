@@ -1,6 +1,5 @@
-# using ..ITensors: IndexID
 using LinearAlgebra: LinearAlgebra, qr
-using ...NDTensors.NamedDimsArrays: AbstractNamedDimsArray, dimnames, name, randname, unname
+using ..NamedDimsArrays: AbstractNamedDimsArray, dimnames, name, randname, unname
 
 function LinearAlgebra.qr(na::AbstractNamedDimsArray; positive=nothing)
   return qr(na, (dimnames(na, 1),), (dimnames(na, 2),); positive)
