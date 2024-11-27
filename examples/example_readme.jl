@@ -1,7 +1,7 @@
 # # NamedDimsArrays.jl
 
-using NDTensors.NamedDimsArrays: align, dimnames, named, unname
-using NDTensors.TensorAlgebra: TensorAlgebra
+using NamedDimsArrays: align, dimnames, named, unname
+using TensorAlgebra: contract
 
 ## Named dimensions
 i = named(2, "i")
@@ -18,7 +18,7 @@ na2 = randn(j, k)
 @show na1[j => 2, i => 1] == na1[1, 2]
 
 ## Tensor contraction
-na_dest = TensorAlgebra.contract(na1, na2)
+na_dest = contract(na1, na2)
 
 @show issetequal(dimnames(na_dest), ("i", "k"))
 ## `unname` removes the names and returns an `Array`

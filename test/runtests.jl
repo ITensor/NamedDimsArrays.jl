@@ -1,6 +1,7 @@
+@eval module $(gensym())
 using Test: @testset
 
-@testset "NamedDimsArrays" begin
+@testset "NamedDimsArrays.jl" begin
   filenames = filter(readdir(@__DIR__)) do filename
     startswith("test_")(filename) && endswith(".jl")(filename)
   end
@@ -8,4 +9,5 @@ using Test: @testset
     println("Running $(@__DIR__)/$filename")
     @time include(filename)
   end
+end
 end
