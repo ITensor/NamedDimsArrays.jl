@@ -1,4 +1,3 @@
-@eval module $(gensym())
 using Test: @test, @testset
 using NamedDimsArrays: dimnames, named, unname, isnamed
 @testset "NamedDimsArrays $(@__FILE__) (eltype=$elt)" for elt in (
@@ -76,5 +75,4 @@ using NamedDimsArrays: dimnames, named, unname, isnamed
   nc = na .- nb
   @test unname(nc, ("i", "j")) ≈ a - permutedims(b, (2, 1))
   @test eltype(nc) === elt
-end
 end

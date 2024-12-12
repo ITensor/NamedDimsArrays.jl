@@ -13,24 +13,8 @@ SparseArraysBase = "0d5efcca-f356-4864-8770-e1ed8d78f208"
 TensorAlgebra = "68bd88dc-f39d-4e12-b2ca-f046b68fcc6a"
 TypeParameterAccessors = "7e5a90cf-f82e-492e-a09b-e3e26432c138"
 
-[sources]
-BroadcastMapConversion = {url = "https://github.com/ITensor/BroadcastMapConversion.jl"}
-NestedPermutedDimsArrays = {url = "https://github.com/ITensor/NestedPermutedDimsArrays.jl"}
-SparseArraysBase = {url = "https://github.com/ITensor/SparseArraysBase.jl"}
-TensorAlgebra = {url = "https://github.com/ITensor/TensorAlgebra.jl"}
-TypeParameterAccessors = {url = "https://github.com/ITensor/TypeParameterAccessors.jl"}
-
 [compat]
 Adapt = "4.1.1"
-Aqua = "0.8.9"
 LinearAlgebra = "1.10"
 Random = "1.10"
-Test = "1.10"
 julia = "1.10"
-
-[extras]
-Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-
-[targets]
-test = ["Aqua", "Test"]
