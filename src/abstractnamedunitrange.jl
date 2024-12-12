@@ -14,7 +14,8 @@ Base.last(i::AbstractNamedUnitRange) = last(unname(i))
 Base.length(i::AbstractNamedUnitRange) = named(length(unname(i)), name(i))
 
 # TODO: Use `isnamed` trait?
-dimnames(a::Tuple{Vararg{AbstractNamedUnitRange}}) = name.(a)
+dimnames(a::Tuple{AbstractNamedUnitRange,Vararg{AbstractNamedUnitRange}}) = name.(a)
+dimnames(::Tuple{}) = ()
 
 unname(a::Tuple{Vararg{AbstractNamedUnitRange}}) = unname.(a)
 unname(a::Tuple{Vararg{AbstractNamedUnitRange}}, names) = unname(align(a, names))
