@@ -29,7 +29,7 @@ end
 
 # Permute into a certain order.
 # align(a, (:j, :k, :i))
-function align(a::Tuple{Vararg{AbstractNamedUnitRange}}, names)
+function align(a::Tuple{AbstractNamedUnitRange,Vararg{AbstractNamedUnitRange}}, names)
   perm = get_name_perm(a, names)
   return map(j -> a[j], perm)
 end

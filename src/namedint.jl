@@ -16,7 +16,7 @@ named(i::Integer, name) = NamedInt(i, name)
 # TODO: Use `isnamed` trait?
 dimnames(a::Tuple{Vararg{AbstractNamedInt}}) = name.(a)
 
-function get_name_perm(a::Tuple{Vararg{AbstractNamedInt}}, names::Tuple)
+function get_name_perm(a::Tuple{AbstractNamedInt,Vararg{AbstractNamedInt}}, names::Tuple)
   return getperm(dimnames(a), names)
 end
 
