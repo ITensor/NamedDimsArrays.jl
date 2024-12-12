@@ -31,6 +31,12 @@ function Base.promote_rule(type1::Type{<:AbstractNamedInt}, type2::Type{<:Intege
   return promote_type(unname(type1), type2)
 end
 (type::Type{<:Integer})(i::AbstractNamedInt) = type(unname(i))
+
+# ambiguity fix
+for T in (:Bool, :BigInt, :Integer)
+  @eval Base.$T(i::AbstractNamedInt) = $T(unname(i))
+end
+
 # TODO: Use conversion from `AbstractNamedInt` to `AbstractNamedUnitRange`
 # instead of general `named`.
 function Base.oftype(i1::AbstractNamedInt, i2::Integer)
