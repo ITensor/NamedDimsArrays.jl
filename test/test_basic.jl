@@ -32,15 +32,15 @@ using NamedDimsArrays:
     @test axes(na) == (1:3, 1:4)
     @test namedaxes(na) == (named(1:3, "i"), named(1:4, "j"))
     @test randn(named(3, "i"), named(4, "j")) isa NamedDimsArray
-    @test na["i"=>1, "j"=>2] == a[1, 2]
-    @test na["j"=>2, "i"=>1] == a[1, 2]
-    na["j"=>2, "i"=>1] = 12
+    @test na["i" => 1, "j" => 2] == a[1, 2]
+    @test na["j" => 2, "i" => 1] == a[1, 2]
+    na["j" => 2, "i" => 1] = 12
     @test na[1, 2] == 12
-    @test na[j=>1, i=>2] == a[2, 1]
-    @test na[aj=>1, ai=>2] == a[2, 1]
-    na[j=>1, i=>2] = 21
+    @test na[j => 1, i => 2] == a[2, 1]
+    @test na[aj => 1, ai => 2] == a[2, 1]
+    na[j => 1, i => 2] = 21
     @test na[2, 1] == 21
-    na[aj=>1, ai=>2] = 2211
+    na[aj => 1, ai => 2] = 2211
     @test na[2, 1] == 2211
     na′ = align(na, ("j", "i"))
     @test a == permutedims(unname(na′), (2, 1))
