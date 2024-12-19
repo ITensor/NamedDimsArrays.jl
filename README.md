@@ -9,20 +9,24 @@
 
 ## Installation instructions
 
+This package resides in the `ITensor/ITensorRegistry` local registry.
+In order to install, simply add that registry through your package manager.
+This step is only required once.
 ```julia
 julia> using Pkg: Pkg
 
-julia> Pkg.add(url="https://github.com/ITensor/BroadcastMapConversion.jl")
+julia> Pkg.Registry.add(url="https://github.com/ITensor/ITensorRegistry")
+```
+or:
+```julia
+julia> Pkg.Registry.add(url="git@github.com:ITensor/ITensorRegistry.git")
+```
+if you want to use SSH credentials, which can make it so you don't have to enter your Github ursername and password when registering packages.
 
-julia> Pkg.add(url="https://github.com/ITensor/NestedPermutedDimsArrays.jl")
+Then, the package can be added as usual through the package manager:
 
-julia> Pkg.add(url="https://github.com/ITensor/TypeParameterAccessors.jl")
-
-julia> Pkg.add(url="https://github.com/ITensor/SparseArraysBase.jl")
-
-julia> Pkg.add(url="https://github.com/ITensor/TensorAlgebra.jl")
-
-julia> Pkg.add(url="https://github.com/ITensor/NamedDimsArrays.jl")
+```julia
+julia> Pkg.add("NamedDimsArrays")
 ```
 
 ## Examples
