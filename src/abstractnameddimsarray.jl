@@ -296,7 +296,7 @@ using Base.Broadcast:
   check_broadcast_shape,
   combine_axes,
   combine_eltypes
-using BroadcastMapConversion: map_function, map_args
+using BroadcastMapConversion: Mapped, mapped
 
 abstract type AbstractNamedDimsArrayStyle{N} <: AbstractArrayStyle{N} end
 
@@ -360,22 +360,24 @@ function Base.promote_shape(
   return ax1
 end
 
+# Dename and lazily permute the arguments using the reference
+# dimension names.
+# TODO: Make a version that gets the dimnames from `m`.
+function denamed(m::Mapped, dimnames)
+  return mapped(m.f, map(arg -> denamed(arg, dimnames), m.args)...)
+end
+
 function Base.similar(bc::Broadcasted{<:AbstractNamedDimsArrayStyle}, elt::Type, ax::Tuple)
-  # m = Mapped(bc)
-  # m′ = mapped(f, map(arg -> denamed(arg, name.(ax)), args)...)
-  # return similar(m, elt, ax)
-  # return nameddims(similar(m′, elt, dename.(ax)), name.(ax))
-  f, args = map_function(bc), map_args(bc)
-  bc′ = broadcasted(f, map(arg -> denamed(arg, name.(ax)), args)...)
-  return nameddims(similar(bc′, elt, dename.(ax)), name.(ax))
+  m = mapped(bc)
+  m′ = denamed(m, name.(ax))
+  return nameddims(similar(m′, elt, dename.(ax)), name.(ax))
 end
 
 function Base.copyto!(
   dest::AbstractArray{<:Any,N}, bc::Broadcasted{<:AbstractNamedDimsArrayStyle{N}}
 ) where {N}
-  # copyto!(dest, Mapped(bc))
-  map!(map_function(bc), dest, map_args(bc)...)
-  return dest
+  m = mapped(bc)
+  return copyto!(dest, m)
 end
 
 function Base.map!(f, a_dest::AbstractNamedDimsArray, a_srcs::AbstractNamedDimsArray...)
