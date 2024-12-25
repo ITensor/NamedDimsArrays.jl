@@ -1,7 +1,5 @@
-- `*`/`contract`
-- `qr`, `svd`, `eigen` (including tensor versions)
+- `svd`, `eigen` (including tensor versions)
 - `reshape`, `vec`
-- `fusedims`, `splitdims`
 - `swapdimnames`
 - `mapdimnames(f, a::AbstractNamedDimsArray)` (rename `replacedimnames(f, a)` to `mapdimnames(f, a)`, or have both?)
 - `cat` (define `CatName` as a combination of the input names?).
@@ -18,6 +16,3 @@
   - `adjoint` could make use of a lazy `ConjArray`.
 - `tr` based on `MappedName(old_name, new_name)`.
 - `prime` based on `MappedName(name, PrimedName(name))` (should it alias to `'`?).
-
-BroadcastMapConversion
-- Rewrite in terms of `mapped(bc::Broadcasted) = Mapped(bc::Broadcasted) = Mapped(map_function(bc), map_args(bc))`
