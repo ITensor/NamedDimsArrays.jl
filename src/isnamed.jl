@@ -7,7 +7,9 @@ isnamed(::Type) = false
 name(x) = x
 
 @traitdef IsNamed{X}
-@traitimpl IsNamed{X} < -isnamed(X)
+#! format: off
+@traitimpl IsNamed{X} <- isnamed(X)
+#! format: on
 
-@traitfn unname(x::X) where {X; IsNamed{X}} = unname(dename(x))
+@traitfn unname(x::X) where {X; IsNamed{X}} = dename(x)
 @traitfn unname(x::X) where {X; !IsNamed{X}} = x

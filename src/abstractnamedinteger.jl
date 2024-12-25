@@ -37,10 +37,13 @@ function Base.hash(i::AbstractNamedInteger, h::UInt)
 end
 
 abstract type AbstractName end
+name(n::AbstractName) = throw(MethodError(name, Tuple{typeof(n)}))
+Base.getindex(n::AbstractName, I) = named(I, name(n))
 
 struct Name{Value} <: AbstractName
   value::Value
 end
+name(n::Name) = n.value
 
 # vcat that works with combinations of tuples
 # and vectors.

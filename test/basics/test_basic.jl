@@ -1,8 +1,10 @@
-using Test: @test, @testset
+using Test: @test, @test_throws, @testset
 using NamedDimsArrays:
   NamedDimsArrays,
   AbstractNamedDimsArray,
   AbstractNamedDimsMatrix,
+  Name,
+  NameMismatch,
   NamedCartesianIndex,
   NamedCartesianIndices,
   NamedDimsArray,
@@ -21,7 +23,8 @@ using NamedDimsArrays:
   nameddims,
   replacedimnames,
   setdimnames,
-  unname
+  unname,
+  unnamed
 
 @testset "NamedDimsArrays.jl" begin
   @testset "Basic functionality" begin
@@ -29,14 +32,28 @@ using NamedDimsArrays:
     a = randn(elt, 3, 4)
     @test !isnamed(a)
     na = nameddims(a, ("i", "j"))
-    @test na isa NamedDimsMatrix{elt}
+    @test na isa NamedDimsMatrix{elt,Matrix{elt}}
     @test na isa AbstractNamedDimsMatrix{elt}
     @test na isa NamedDimsArray{elt}
     @test na isa AbstractNamedDimsArray{elt}
-    i, j = size(na)
+    for na′ in (nameddims(na, ("j", "i")), NamedDimsArray(na, ("j", "i")))
+      @test na′ isa NamedDimsMatrix{elt,<:PermutedDimsArray}
+      @test dimnames(na′) == ("j", "i")
+      @test na′ == na
+    end
+    @test_throws NameMismatch nameddims(na, ("j", "k"))
+    @test_throws NameMismatch NamedDimsArray(na, ("j", "k"))
+    @test_throws MethodError dename(a)
+    @test_throws MethodError dename(a, ("i", "j"))
+    @test_throws MethodError denamed(a, ("i", "j"))
+    @test_throws MethodError unname(a, ("i", "j"))
+    @test_throws MethodError unnamed(a, ("i", "j"))
+    @test unname(a) == a
+    @test dename(na) == a
+    si, sj = size(na)
     ai, aj = axes(na)
-    @test name(i) == "i"
-    @test name(j) == "j"
+    @test name(si) == "i"
+    @test name(sj) == "j"
     @test name(ai) == "i"
     @test name(aj) == "j"
     @test isnamed(na)
@@ -47,15 +64,57 @@ using NamedDimsArrays:
     @test dim(na, "j") == 2
     @test dims(na, ("j", "i")) == (2, 1)
     @test na[1, 1] == a[1, 1]
+
+    # getindex syntax
+    i = Name("i")
+    j = Name("j")
+    @test a[i, j] == na
+    @test @view(a[i, j]) == na
+    @test na[j[1], i[2]] == a[2, 1]
+    @test dimnames(na[j, i]) == ("j", "i")
+    @test na[j, i] == na
+    @test @view(na[j, i]) == na
+    @test i[axes(a, 1)] == ai
+    @test j[axes(a, 2)] == aj
+    @test axes(na, i) == ai
+    @test axes(na, j) == aj
+    @test size(na, i) == si
+    @test size(na, j) == sj
+
+    # aliasing
+    a′ = randn(2, 2)
+    a′ij = @view a′[i, j]
+    a′ij[i[1], j[2]] = 12
+    @test a′ij[i[1], j[2]] == 12
+    @test a′[1, 2] == 12
+    a′ji = @view a′ij[j, i]
+    a′ji[i[2], j[1]] = 21
+    @test a′ji[i[2], j[1]] == 21
+    @test a′ij[i[2], j[1]] == 21
+    @test a′[2, 1] == 21
+
+    a′ = randn(2, 2)
+    a′ij = a′[i, j]
+    a′ij[i[1], j[2]] = 12
+    @test a′ij[i[1], j[2]] == 12
+    @test a′[1, 2] ≠ 12
+    a′ji = a′ij[j, i]
+    a′ji[i[2], j[1]] = 21
+    @test a′ji[i[2], j[1]] == 21
+    @test a′ij[i[2], j[1]] ≠ 21
+    @test a′[2, 1] ≠ 21
+
     a′ = dename(na)
     @test a′ isa Matrix{elt}
     @test a′ == a
-    a′ = dename(na, ("j", "i"))
-    @test a′ isa Matrix{elt}
-    @test a′ == a'
-    a′ = denamed(na, ("j", "i"))
-    @test a′ isa PermutedDimsArray{elt}
-    @test a′ == a'
+    for a′ in (dename(na, ("j", "i")), unname(na, ("j", "i")))
+      @test a′ isa Matrix{elt}
+      @test a′ == a'
+    end
+    for a′ in (denamed(na, ("j", "i")), unnamed(na, ("j", "i")))
+      @test a′ isa PermutedDimsArray{elt}
+      @test a′ == a'
+    end
     nb = setdimnames(na, ("k", "j"))
     @test dimnames(nb) == ("k", "j")
     @test dename(nb) == a

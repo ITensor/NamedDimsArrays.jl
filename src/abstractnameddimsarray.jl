@@ -36,17 +36,32 @@ function denamed(a::AbstractNamedDimsArray, dimnames)
   return dename(aligneddims(a, dimnames))
 end
 
+unname(a::AbstractArray, dimnames) = dename(a, dimnames)
+unnamed(a::AbstractArray, dimnames) = denamed(a, dimnames)
+
 isnamed(::Type{<:AbstractNamedDimsArray}) = true
 
 # Can overload this to get custom named dims array wrapper
 # depending on the dimension name types, for example
 # output an `ITensor` if the dimension names are `IndexName`s.
-function nameddims(a::AbstractArray, dims)
+@traitfn function nameddims(a::AbstractArray::!(IsNamed), dims)
   dimnames = name.(dims)
   # TODO: Check the shape of `dename.(dims)` matches the shape of `a`.
   # `mapreduce(typeof, promote_type, xs) == Base.promote_typeof(xs...)`.
   return nameddimstype(eltype(dimnames))(a, dimnames)
 end
+@traitfn function nameddims(a::AbstractArray::IsNamed, dims)
+  return aligneddims(a, dims)
+end
+
+function Base.view(a::AbstractArray, dimnames::AbstractName...)
+  return nameddims(a, dimnames)
+end
+function Base.getindex(a::AbstractArray, dimnames::AbstractName...)
+  return copy(@view(a[dimnames...]))
+end
+
+Base.copy(a::AbstractNamedDimsArray) = nameddims(copy(dename(a)), dimnames(a))
 
 # Can overload this to get custom named dims array wrapper
 # depending on the dimension name types, for example
@@ -55,6 +70,9 @@ nameddimstype(dimnametype::Type) = NamedDimsArray
 
 Base.axes(a::AbstractNamedDimsArray) = map(named, axes(dename(a)), dimnames(a))
 Base.size(a::AbstractNamedDimsArray) = map(named, size(dename(a)), dimnames(a))
+
+Base.axes(a::AbstractArray, dimname::AbstractName) = axes(a, dim(a, dimname))
+Base.size(a::AbstractArray, dimname::AbstractName) = size(a, dim(a, dimname))
 
 setdimnames(a::AbstractNamedDimsArray, dimnames) = nameddims(dename(a), name.(dimnames))
 function replacedimnames(f, a::AbstractNamedDimsArray)
@@ -136,6 +154,23 @@ function Base.eachindex(::NamedIndexCartesian, a1::AbstractArray, a_rest::Abstra
     throw(NameMismatch("Dimension name mismatch $(dimnames.((a1, a_rest...)))."))
   # TODO: Check the shapes match.
   return NamedCartesianIndices(axes(a1))
+end
+
+# Base version ignores dimension names.
+# TODO: Use `mapreduce(isequal, &&, a1, a2)`?
+function Base.isequal(a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray)
+  return all(eachindex(a1, a2)) do I
+    isequal(a1[I], a2[I])
+  end
+end
+
+# Base version ignores dimension names.
+# TODO: Use `mapreduce(==, &&, a1, a2)`?
+# TODO: Handle `missing` values properly.
+function Base.:(==)(a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray)
+  return all(eachindex(a1, a2)) do I
+    a1[I] == a2[I]
+  end
 end
 
 # TODO: Move to `utils.jl` file.
@@ -223,8 +258,11 @@ end
 
 function aligneddims(a::AbstractArray, dims)
   # TODO: Check this permutation is correct (it may be the inverse of what we want).
-  perm = getperm(dimnames(a), name.(dims))
-  return nameddims(PermutedDimsArray(dename(a), perm), name.(dims))
+  new_dimnames = name.(dims)
+  perm = getperm(dimnames(a), new_dimnames)
+  !isperm(perm) &&
+    throw(NameMismatch("Dimension name mismatch $(dimnames(a)), $(new_dimnames)."))
+  return nameddims(PermutedDimsArray(dename(a), perm), new_dimnames)
 end
 
 using Random: Random, AbstractRNG

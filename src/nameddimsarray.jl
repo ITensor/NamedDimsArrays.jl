@@ -13,6 +13,10 @@ const NamedDimsMatrix{T,Parent<:AbstractMatrix{T},DimNames} = NamedDimsArray{
   T,2,Parent,DimNames
 }
 
+function NamedDimsArray(a::AbstractNamedDimsArray, dimnames)
+  return NamedDimsArray(denamed(a, dimnames), dimnames)
+end
+
 # Minimal interface.
 dimnames(a::NamedDimsArray) = a.dimnames
 Base.parent(a::NamedDimsArray) = a.parent
