@@ -368,14 +368,14 @@ function denamed(m::Mapped, dimnames)
 end
 
 function Base.similar(bc::Broadcasted{<:AbstractNamedDimsArrayStyle}, elt::Type, ax::Tuple)
-  m′ = denamed(mapped(bc), name.(ax))
+  m′ = denamed(Mapped(bc), name.(ax))
   return nameddims(similar(m′, elt, dename.(ax)), name.(ax))
 end
 
 function Base.copyto!(
   dest::AbstractArray{<:Any,N}, bc::Broadcasted{<:AbstractNamedDimsArrayStyle{N}}
 ) where {N}
-  return copyto!(dest, mapped(bc))
+  return copyto!(dest, Mapped(bc))
 end
 
 function Base.map!(f, a_dest::AbstractNamedDimsArray, a_srcs::AbstractNamedDimsArray...)
