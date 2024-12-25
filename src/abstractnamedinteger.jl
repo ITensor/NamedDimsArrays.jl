@@ -65,6 +65,14 @@ function Base.:*(i1::AbstractNamedInteger, i2::AbstractNamedInteger)
 end
 Base.:-(i::AbstractNamedInteger) = setvalue(i, -dename(i))
 
+## TODO: Support this, we need to define `NamedFloat`, `NamedReal`, `NamedNumber`, etc.
+## This is used in `LinearAlgebra.norm`, for now we just overload that directly.
+## Here, named numbers are treated as unitful, so multiplying them
+## with unnamed numbers means the result inherits the name.
+## function Base.:*(i1::AbstractNamedInteger, i2::Number)
+##   return named(dename(i1) * i2, name(i1))
+## end
+
 # For the sake of generic code, the name is ignored.
 # Used in `AbstractArray` `Base.show`.
 # TODO: See if we can delete this.

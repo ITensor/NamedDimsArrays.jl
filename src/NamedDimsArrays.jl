@@ -7,6 +7,8 @@ include("namedinteger.jl")
 include("abstractnamedunitrange.jl")
 include("namedunitrange.jl")
 include("abstractnameddimsarray.jl")
+include("adapt.jl")
+include("tensoralgebra.jl")
 include("nameddimsarray.jl")
 
 end

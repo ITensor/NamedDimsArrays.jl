@@ -13,23 +13,13 @@
 ```julia
 julia> using Pkg: Pkg
 
-julia> Pkg.add(url="https://github.com/ITensor/BroadcastMapConversion.jl")
-
-julia> Pkg.add(url="https://github.com/ITensor/NestedPermutedDimsArrays.jl")
-
-julia> Pkg.add(url="https://github.com/ITensor/TypeParameterAccessors.jl")
-
-julia> Pkg.add(url="https://github.com/ITensor/SparseArraysBase.jl")
-
-julia> Pkg.add(url="https://github.com/ITensor/TensorAlgebra.jl")
-
-julia> Pkg.add(url="https://github.com/ITensor/NamedDimsArrays.jl")
+julia> Pkg.add("NamedDimsArrays")
 ```
 =#
 
 # ## Examples
 
-using NamedDimsArrays: align, dimnames, named, unname
+using NamedDimsArrays: aligndims, dename, dimnames, named
 using TensorAlgebra: contract
 
 ## Named dimensions
@@ -50,9 +40,9 @@ na2 = randn(j, k)
 na_dest = contract(na1, na2)
 
 @show issetequal(dimnames(na_dest), ("i", "k"))
-## `unname` removes the names and returns an `Array`
-@show unname(na_dest, (i, k)) ≈ unname(na1) * unname(na2)
+## `dename` removes the names and returns an `Array`
+@show dename(na_dest, (i, k)) ≈ dename(na1) * dename(na2)
 
 ## Permute dimensions (like `ITensors.permute`)
-na1 = align(na1, (j, i))
+na1 = aligndims(na1, (j, i))
 @show na1[i => 1, j => 2] == na1[2, 1]

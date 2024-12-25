@@ -361,14 +361,19 @@ function Base.promote_shape(
 end
 
 function Base.similar(bc::Broadcasted{<:AbstractNamedDimsArrayStyle}, elt::Type, ax::Tuple)
+  # m = Mapped(bc)
+  # m′ = mapped(f, map(arg -> denamed(arg, name.(ax)), args)...)
+  # return similar(m, elt, ax)
+  # return nameddims(similar(m′, elt, dename.(ax)), name.(ax))
   f, args = map_function(bc), map_args(bc)
-  bc_denamed = broadcasted(f, map(arg -> denamed(arg, name.(ax)), args)...)
-  return nameddims(similar(bc_denamed, elt, dename.(ax)), name.(ax))
+  bc′ = broadcasted(f, map(arg -> denamed(arg, name.(ax)), args)...)
+  return nameddims(similar(bc′, elt, dename.(ax)), name.(ax))
 end
 
 function Base.copyto!(
   dest::AbstractArray{<:Any,N}, bc::Broadcasted{<:AbstractNamedDimsArrayStyle{N}}
 ) where {N}
+  # copyto!(dest, Mapped(bc))
   map!(map_function(bc), dest, map_args(bc)...)
   return dest
 end
@@ -382,12 +387,17 @@ function Base.map!(f, a_dest::AbstractNamedDimsArray, a_srcs::AbstractNamedDimsA
 end
 
 function Base.map(f, a_srcs::AbstractNamedDimsArray...)
+  # copy(mapped(f, a_srcs...))
   return f.(a_srcs...)
 end
 
-using Adapt: Adapt, adapt
-function Adapt.adapt_structure(to, a::AbstractNamedDimsArray)
-  return nameddims(adapt(to, dename(a)), dimnames(a))
+function Base.mapreduce(f, op, a::AbstractNamedDimsArray; kwargs...)
+  return mapreduce(f, op, dename(a); kwargs...)
+end
+
+using LinearAlgebra: LinearAlgebra, norm
+function LinearAlgebra.norm(a::AbstractNamedDimsArray; kwargs...)
+  return norm(dename(a); kwargs...)
 end
 
 # Printing.
