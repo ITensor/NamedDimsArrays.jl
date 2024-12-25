@@ -100,15 +100,18 @@ function LinearAlgebra.qr(
   @assert isnothing(positive) || !positive
   # TODO: This should be `TensorAlgebra.qr` rather than overloading `LinearAlgebra.qr`.
   # TODO: Don't require wrapping in `Tuple`.
-  q, r = qr(unname(a), Tuple(dimnames(a)), Tuple(name.(dimnames_codomain)), Tuple(name.(dimnames_domain)))
+  q, r = qr(
+    unname(a),
+    Tuple(dimnames(a)),
+    Tuple(name.(dimnames_codomain)),
+    Tuple(name.(dimnames_domain)),
+  )
   name_qr = randname(dimnames(a)[1])
   dimnames_q = (name.(dimnames_codomain)..., name_qr)
   dimnames_r = (name_qr, name.(dimnames_domain)...)
   return nameddims(q, dimnames_q), nameddims(r, dimnames_r)
 end
 
-function LinearAlgebra.qr(
-  a::AbstractNamedDimsArray, dimnames_codomain; kwargs...
-)
+function LinearAlgebra.qr(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
   return qr(a, dimnames_codomain, setdiff(dimnames(a), name.(dimnames_codomain)); kwargs...)
 end
