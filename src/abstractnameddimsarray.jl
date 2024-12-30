@@ -14,7 +14,7 @@ abstract type AbstractNamedDimsArray{T,N} <: AbstractArray{T,N} end
 const AbstractNamedDimsVector{T} = AbstractNamedDimsArray{T,1}
 const AbstractNamedDimsMatrix{T} = AbstractNamedDimsArray{T,2}
 
-Derive.interface(::Type{<:AbstractNamedDimsArray}) = AbstractNamedDimsArrayInterface()
+Derive.interface(::Type{<:AbstractNamedDimsArray}) = NamedDimsArrayInterface()
 
 # Output the dimension names.
 dimnames(a::AbstractArray) = throw(MethodError(dimnames, Tuple{typeof(a)}))
@@ -25,6 +25,59 @@ dimnames(a::AbstractArray, dim::Int) = dimnames(a)[dim]
 
 dim(a::AbstractArray, n) = findfirst(==(name(n)), dimnames(a))
 dims(a::AbstractArray, ns) = map(n -> dim(a, n), ns)
+
+# TODO: Generalize to `AbstractNamedVector`.
+dimname_isequal(x) = Base.Fix1(dimname_isequal, x)
+dimname_isequal(x, y) = isequal(x, y)
+
+dimname_isequal(r1::AbstractNamedUnitRange, r2::AbstractNamedUnitRange) = isequal(r1, r2)
+
+dimname_isequal(r1::AbstractNamedUnitRange, r2) = name(r1) == r2
+dimname_isequal(r1, r2::AbstractNamedUnitRange) = r1 == name(r2)
+
+dimname_isequal(r1::AbstractNamedInteger, r2) = name(r1) == r2
+dimname_isequal(r1, r2::AbstractNamedInteger) = r1 == name(r2)
+
+function dimname_isequal(r1::AbstractNamedUnitRange, r2::AbstractNamedInteger)
+  return isequal(r1, Base.oneto(r2))
+end
+function dimname_isequal(r1::AbstractNamedInteger, r2::AbstractNamedUnitRange)
+  return isequal(Base.oneto(r1), r2)
+end
+
+dimname_isequal(r1::Name, r2) = dimname_isequal(name(r1), r2)
+dimname_isequal(r1, r2::Name) = dimname_isequal(r1, name(r2))
+
+function to_dimnames(a::AbstractArray, dims)
+  return to_dimnames(a, axes(a), dims)
+end
+function to_dimnames(a::AbstractArray, axes, dims)
+  return map((axis, dim) -> to_dimname(a, axis, dim), axes, dims)
+end
+# TODO: Generalize to `AbstractNamedVector`.
+function to_dimname(a::AbstractArray, axis, dim::AbstractNamedUnitRange)
+  # TODO: Check `axis == dim`?
+  return name(dim)
+end
+function to_dimname(a::AbstractArray, axis, dim::AbstractNamedInteger)
+  # TODO: Check `axis == Base.oneto(dim)`?
+  return name(dim)
+end
+function to_dimname(a::AbstractArray, axis, dim::Name)
+  return name(dim)
+end
+function to_dimname(a::AbstractArray, axis, dim)
+  return dim
+end
+
+function to_dimnames(a::AbstractNamedDimsArray, axes, dims)
+  perm = getperm(name.(axes), dims; isequal=dimname_isequal)
+  all(!isnothing, perm) || throw(NameMismatch("Dimension name mismatch $(name.(axes)), $dims."))
+  # Align the old names with the new names.
+  # TODO: Check if `invperm` is correct here.
+  axes_perm = map(p -> axes[p], invperm(perm))
+  return map((axis, dim) -> to_dimname(a, axis, dim), axes_perm, dims)
+end
 
 # Unwrapping the names (`NamedDimsArrays.jl` interface).
 # TODO: Use `IsNamed` trait?
@@ -45,20 +98,32 @@ isnamed(::Type{<:AbstractNamedDimsArray}) = true
 # depending on the dimension name types, for example
 # output an `ITensor` if the dimension names are `IndexName`s.
 @traitfn function nameddims(a::AbstractArray::!(IsNamed), dims)
-  dimnames = name.(dims)
+  dimnames = to_dimnames(a, dims)
   # TODO: Check the shape of `dename.(dims)` matches the shape of `a`.
   # `mapreduce(typeof, promote_type, xs) == Base.promote_typeof(xs...)`.
   return nameddimstype(eltype(dimnames))(a, dimnames)
 end
 @traitfn function nameddims(a::AbstractArray::IsNamed, dims)
-  return aligneddims(a, dims)
+  return aligneddims(a, to_dimnames(a, dims))
 end
 
-function Base.view(a::AbstractArray, dimnames::AbstractName...)
-  return nameddims(a, dimnames)
+function Base.view(a::AbstractArray, dimname1::AbstractName, dimname_rest::AbstractName...)
+  return nameddims(a, (dimname1, dimname_rest...))
 end
-function Base.getindex(a::AbstractArray, dimnames::AbstractName...)
-  return copy(@view(a[dimnames...]))
+function Base.getindex(
+  a::AbstractArray, dimname1::AbstractName, dimname_rest::AbstractName...
+)
+  return copy(@view(a[dimname1, dimname_rest...]))
+end
+
+# Fix ambiguity error.
+function Base.view(a::AbstractNamedDimsArray, dimname1::AbstractName, dimname_rest::AbstractName...)
+  return nameddims(a, (dimname1, dimname_rest...))
+end
+function Base.getindex(
+  a::AbstractNamedDimsArray, dimname1::AbstractName, dimname_rest::AbstractName...
+)
+  return copy(@view(a[dimname1, dimname_rest...]))
 end
 
 Base.copy(a::AbstractNamedDimsArray) = nameddims(copy(dename(a)), dimnames(a))
@@ -71,10 +136,29 @@ nameddimstype(dimnametype::Type) = NamedDimsArray
 Base.axes(a::AbstractNamedDimsArray) = map(named, axes(dename(a)), dimnames(a))
 Base.size(a::AbstractNamedDimsArray) = map(named, size(dename(a)), dimnames(a))
 
-Base.axes(a::AbstractArray, dimname::AbstractName) = axes(a, dim(a, dimname))
-Base.size(a::AbstractArray, dimname::AbstractName) = size(a, dim(a, dimname))
+# Circumvent issue when ndims isn't known at compile time.
+function Base.axes(a::AbstractNamedDimsArray, d)
+  return d <= ndims(a) ? axes(a)[d] : OneTo(1)
+end
 
-setdimnames(a::AbstractNamedDimsArray, dimnames) = nameddims(dename(a), name.(dimnames))
+# Circumvent issue when ndims isn't known at compile time.
+function Base.size(a::AbstractNamedDimsArray, d)
+  return d <= ndims(a) ? size(a)[d] : OneTo(1)
+end
+
+# Circumvent issue when ndims isn't known at compile time.
+Base.ndims(a::AbstractNamedDimsArray) = ndims(dename(a))
+
+# Circumvent issue when eltype isn't known at compile time.
+Base.eltype(a::AbstractNamedDimsArray) = eltype(dename(a))
+
+Base.axes(a::AbstractNamedDimsArray, dimname::AbstractName) = axes(a, dim(a, dimname))
+Base.size(a::AbstractNamedDimsArray, dimname::AbstractName) = size(a, dim(a, dimname))
+
+function setdimnames(a::AbstractNamedDimsArray, dimnames)
+  ## return nameddims(dename(a), to_dimnames(a, dimnames))
+  return nameddims(dename(a), dimnames)
+end
 function replacedimnames(f, a::AbstractNamedDimsArray)
   return setdimnames(a, replace(f, dimnames(a)))
 end
@@ -175,90 +259,110 @@ end
 
 # TODO: Move to `utils.jl` file.
 # TODO: Use `Base.indexin`?
-function getperm(x, y)
+function getperm(x, y; isequal=isequal)
   return map(yᵢ -> findfirst(isequal(yᵢ), x), y)
 end
 
 # Indexing.
-function Base.getindex(a::AbstractNamedDimsArray{<:Any,N}, I::Vararg{Int,N}) where {N}
-  return getindex(dename(a), I...)
+
+# Like `const ViewIndex = Union{Real,AbstractArray}`.
+# TODO: Generalize to `AbstractNamedArray` for non-contiguous ranges.
+const NamedViewIndex = Union{AbstractNamedInteger,AbstractNamedUnitRange}
+
+function Base.getindex(a::AbstractNamedDimsArray, I1::Int, I_rest::Int...)
+  return getindex(dename(a), I1, I_rest...)
 end
-function Base.getindex(
-  a::AbstractArray{<:Any,N}, I::Vararg{AbstractNamedInteger,N}
-) where {N}
-  return getindex(a, to_indices(a, I)...)
-end
-function Base.getindex(
-  a::AbstractNamedDimsArray{<:Any,N}, I::NamedCartesianIndex{N}
-) where {N}
+function Base.getindex(a::AbstractNamedDimsArray, I::CartesianIndex)
   return getindex(a, to_indices(a, (I,))...)
 end
 function Base.getindex(
-  a::AbstractNamedDimsArray{<:Any,N}, I::Vararg{Pair{<:Any,Int},N}
-) where {N}
-  return getindex(a, to_indices(a, I)...)
+  a::AbstractNamedDimsArray, I1::NamedViewIndex, I_rest::NamedViewIndex...
+)
+  return getindex(a, to_indices(a, (I1, I_rest...))...)
 end
+function Base.getindex(a::AbstractNamedDimsArray, I::NamedCartesianIndex)
+  return getindex(a, to_indices(a, (I,))...)
+end
+function Base.getindex(a::AbstractNamedDimsArray, I1::Pair, I_rest::Pair...)
+  return getindex(a, to_indices(a, (I1, I_rest...))...)
+end
+function Base.getindex(a::AbstractNamedDimsArray)
+  return getindex(dename(a))
+end
+# Linear indexing.
 function Base.getindex(a::AbstractNamedDimsArray, I::Int)
   return getindex(dename(a), I)
 end
-function Base.setindex!(
-  a::AbstractNamedDimsArray{<:Any,N}, value, I::Vararg{Int,N}
-) where {N}
-  setindex!(dename(a), value, I...)
+function Base.setindex!(a::AbstractNamedDimsArray, value, I1::Int, I_rest::Int...)
+  setindex!(dename(a), value, I1, I_rest...)
   return a
 end
 function Base.setindex!(
-  a::AbstractArray{<:Any,N}, value, I::Vararg{AbstractNamedInteger,N}
-) where {N}
-  setindex!(a, value, to_indices(a, I)...)
+  a::AbstractNamedDimsArray, value, I1::NamedViewIndex, I_rest::NamedViewIndex...
+)
+  setindex!(a, value, to_indices(a, (I1, I_rest...))...)
   return a
 end
-function Base.setindex!(
-  a::AbstractNamedDimsArray{<:Any,N}, value, I::NamedCartesianIndex{N}
-) where {N}
+function Base.setindex!(a::AbstractNamedDimsArray, value, I::NamedCartesianIndex)
   setindex!(a, value, to_indices(a, (I,))...)
   return a
 end
-function Base.setindex!(
-  a::AbstractNamedDimsArray{<:Any,N}, value, I::Vararg{Pair{<:Any,Int},N}
-) where {N}
-  setindex!(a, value, to_indices(a, I)...)
+function Base.setindex!(a::AbstractNamedDimsArray, value, I1::Pair, I_rest::Pair...)
+  setindex!(a, value, to_indices(a, (I1, I_rest...))...)
   return a
 end
+function Base.setindex!(a::AbstractNamedDimsArray, value)
+  setindex!(dename(a), value)
+  return a
+end
+# Linear indexing.
 function Base.setindex!(a::AbstractNamedDimsArray, value, I::Int)
   setindex!(dename(a), value, I)
   return a
 end
 # Handles permutation of indices to align dimension names.
 function Base.to_indices(
-  a::AbstractArray{<:Any,N}, I::Tuple{Vararg{AbstractNamedInteger,N}}
-) where {N}
+  a::AbstractNamedDimsArray, I::Tuple{NamedViewIndex,Vararg{NamedViewIndex}}
+)
   # TODO: Check this permutation is correct (it may be the inverse of what we want).
-  # We unwrap the names twice in case named axes were passed as indices.
-  return dename.(map(i -> I[i], getperm(dimnames(a), name.(name.(I)))))
+  return dename.(map(i -> I[i], getperm(dimnames(a), name.(I); isequal=dimname_isequal)))
 end
-function Base.to_indices(
-  a::AbstractArray{<:Any,N}, I::Tuple{NamedCartesianIndex{N}}
-) where {N}
+function Base.to_indices(a::AbstractNamedDimsArray, I::Tuple{NamedCartesianIndex})
   return to_indices(a, Tuple(only(I)))
 end
 # Support indexing with pairs `a[:i => 1, :j => 2]`.
-function Base.to_index(a::AbstractNamedDimsArray, i::Pair{<:Any,Int})
-  return named(last(i), first(i))
+function Base.to_indices(a::AbstractNamedDimsArray, I::Tuple{Pair,Vararg{Pair}})
+  return to_indices(a, named.(last.(I), first.(I)))
 end
-function Base.isassigned(a::AbstractNamedDimsArray{<:Any,N}, I::Vararg{Int,N}) where {N}
+function Base.isassigned(a::AbstractNamedDimsArray, I::Vararg{Int})
   return isassigned(parent(a), I...)
 end
 
+# Slicing
+
+using ArrayLayouts: ArrayLayouts
+using Derive: @derive
+
+@derive (T=AbstractNamedDimsArray,) begin
+  Base.getindex(::T, ::Any...)
+  Base.setindex!(::T, ::Any, ::Any...)
+end
+
+function Base.view(a::AbstractNamedDimsArray, I...)
+  I′ = to_indices(a, I)
+  return nameddims(view(parent(a), I′...), map((n, i) -> n[i], dimnames(a), I′))
+end
+
 function aligndims(a::AbstractArray, dims)
+  new_dimnames = to_dimnames(a, dims)
   # TODO: Check this permutation is correct (it may be the inverse of what we want).
-  perm = getperm(dimnames(a), name.(dims))
-  return nameddims(permutedims(dename(a), perm), name.(dims))
+  perm = getperm(dimnames(a), new_dimnames)
+  return nameddims(permutedims(dename(a), perm), new_dimnames)
 end
 
 function aligneddims(a::AbstractArray, dims)
   # TODO: Check this permutation is correct (it may be the inverse of what we want).
-  new_dimnames = name.(dims)
+  new_dimnames = to_dimnames(a, dims)
   perm = getperm(dimnames(a), new_dimnames)
   !isperm(perm) &&
     throw(NameMismatch("Dimension name mismatch $(dimnames(a)), $(new_dimnames)."))
@@ -267,63 +371,83 @@ end
 
 using Random: Random, AbstractRNG
 
+# TODO: Come up with a better name for this.
+_rand(args...) = Base.rand(args...)
+function _rand(
+  rng::AbstractRNG, elt::Type, dims::Tuple{Base.OneTo{Int},Vararg{Base.OneTo{Int}}}
+)
+  return Base.rand(rng, elt, length.(dims))
+end
+
+# TODO: Come up with a better name for this.
+_randn(args...) = Base.randn(args...)
+function _randn(
+  rng::AbstractRNG, elt::Type, dims::Tuple{Base.OneTo{Int},Vararg{Base.OneTo{Int}}}
+)
+  return Base.randn(rng, elt, length.(dims))
+end
+
 # Convenient constructors
 default_eltype() = Float64
-for f in [:rand, :randn]
+for (f, f′) in [(:rand, :_rand), (:randn, :_randn)]
   @eval begin
+    function Base.$f(
+      rng::AbstractRNG,
+      elt::Type{<:Number},
+      dims::Tuple{AbstractNamedUnitRange,Vararg{AbstractNamedUnitRange}},
+    )
+      a = $f′(rng, elt, unname.(dims))
+      return nameddims(a, dims)
+    end
     function Base.$f(
       rng::AbstractRNG,
       elt::Type{<:Number},
       dims::Tuple{AbstractNamedInteger,Vararg{AbstractNamedInteger}},
     )
-      a = $f(rng, elt, unname.(dims))
-      return nameddims(a, name.(dims))
+      return $f(rng, elt, Base.oneto.(dims))
     end
-    function Base.$f(
-      rng::AbstractRNG,
-      elt::Type{<:Number},
-      dim1::AbstractNamedInteger,
-      dims::Vararg{AbstractNamedInteger},
-    )
-      return $f(rng, elt, (dim1, dims...))
+  end
+  for dimtype in [:AbstractNamedInteger, :AbstractNamedUnitRange]
+    @eval begin
+      function Base.$f(
+        rng::AbstractRNG, elt::Type{<:Number}, dim1::$dimtype, dims::Vararg{$dimtype}
+      )
+        return $f(rng, elt, (dim1, dims...))
+      end
+      Base.$f(elt::Type{<:Number}, dims::Tuple{$dimtype,Vararg{$dimtype}}) =
+        $f(Random.default_rng(), elt, dims)
+      Base.$f(elt::Type{<:Number}, dim1::$dimtype, dims::Vararg{$dimtype}) =
+        $f(elt, (dim1, dims...))
+      Base.$f(dims::Tuple{$dimtype,Vararg{$dimtype}}) = $f(default_eltype(), dims)
+      Base.$f(dim1::$dimtype, dims::Vararg{$dimtype}) = $f((dim1, dims...))
     end
-    Base.$f(
-      elt::Type{<:Number}, dims::Tuple{AbstractNamedInteger,Vararg{AbstractNamedInteger}}
-    ) = $f(Random.default_rng(), elt, dims)
-    Base.$f(
-      elt::Type{<:Number}, dim1::AbstractNamedInteger, dims::Vararg{AbstractNamedInteger}
-    ) = $f(elt, (dim1, dims...))
-    Base.$f(dims::Tuple{AbstractNamedInteger,Vararg{AbstractNamedInteger}}) =
-      $f(default_eltype(), dims)
-    Base.$f(dim1::AbstractNamedInteger, dims::Vararg{AbstractNamedInteger}) =
-      $f((dim1, dims...))
   end
 end
 for f in [:zeros, :ones]
-  @eval begin
-    function Base.$f(
-      elt::Type{<:Number}, dims::Tuple{AbstractNamedInteger,Vararg{AbstractNamedInteger}}
-    )
-      a = $f(elt, unname.(dims))
-      return nameddims(a, name.(dims))
+  for dimtype in [:AbstractNamedInteger, :AbstractNamedUnitRange]
+    @eval begin
+      function Base.$f(elt::Type{<:Number}, dims::Tuple{$dimtype,Vararg{$dimtype}})
+        a = $f(elt, unname.(dims))
+        return nameddims(a, to_dimnames(a, dims))
+      end
+      function Base.$f(elt::Type{<:Number}, dim1::$dimtype, dims::Vararg{$dimtype})
+        return $f(elt, (dim1, dims...))
+      end
+      Base.$f(dims::Tuple{$dimtype,Vararg{$dimtype}}) = $f(default_eltype(), dims)
+      Base.$f(dim1::$dimtype, dims::Vararg{$dimtype}) = $f((dim1, dims...))
     end
-    function Base.$f(
-      elt::Type{<:Number}, dim1::AbstractNamedInteger, dims::Vararg{AbstractNamedInteger}
-    )
-      return $f(elt, (dim1, dims...))
-    end
-    Base.$f(dims::Tuple{AbstractNamedInteger,Vararg{AbstractNamedInteger}}) =
-      $f(default_eltype(), dims)
-    Base.$f(dim1::AbstractNamedInteger, dims::Vararg{AbstractNamedInteger}) =
-      $f((dim1, dims...))
   end
 end
-function Base.fill(value, dims::Tuple{AbstractNamedInteger,Vararg{AbstractNamedInteger}})
-  a = fill(value, unname.(dims))
-  return nameddims(a, name.(dims))
-end
-function Base.fill(value, dim1::AbstractNamedInteger, dims::Vararg{AbstractNamedInteger})
-  return fill(value, (dim1, dims...))
+for dimtype in [:AbstractNamedInteger, :AbstractNamedUnitRange]
+  @eval begin
+    function Base.fill(value, dims::Tuple{$dimtype,Vararg{$dimtype}})
+      a = fill(value, unname.(dims))
+      return nameddims(a, to_dimnames(a, dims))
+    end
+    function Base.fill(value, dim1::$dimtype, dims::Vararg{$dimtype})
+      return fill(value, (dim1, dims...))
+    end
+  end
 end
 
 using Base.Broadcast:
@@ -332,8 +456,7 @@ using Base.Broadcast:
   broadcast_shape,
   broadcasted,
   check_broadcast_shape,
-  combine_axes,
-  combine_eltypes
+  combine_axes
 using BroadcastMapConversion: Mapped, mapped
 
 abstract type AbstractNamedDimsArrayStyle{N} <: AbstractArrayStyle{N} end
@@ -374,7 +497,7 @@ function Base.promote_shape(
   ax1::Tuple{AbstractNamedUnitRange,Vararg{AbstractNamedUnitRange,N}},
   ax2::Tuple{AbstractNamedUnitRange,Vararg{AbstractNamedUnitRange,N}},
 ) where {N}
-  perm = getperm(name.(ax1), name.(ax2))
+  perm = getperm(ax1, ax2)
   ax2_aligned = map(i -> ax2[i], perm)
   ax_promoted = promote_shape(dename.(ax1), dename.(ax2_aligned))
   return named.(ax_promoted, name.(ax1))
@@ -385,7 +508,7 @@ function Broadcast.check_broadcast_shape(
   ax1::Tuple{AbstractNamedUnitRange,Vararg{AbstractNamedUnitRange,N}},
   ax2::Tuple{AbstractNamedUnitRange,Vararg{AbstractNamedUnitRange,N}},
 ) where {N}
-  perm = getperm(name.(ax1), name.(ax2))
+  perm = getperm(ax1, ax2)
   ax2_aligned = map(i -> ax2[i], perm)
   check_broadcast_shape(dename.(ax1), dename.(ax2_aligned))
   return nothing
@@ -406,8 +529,8 @@ function denamed(m::Mapped, dimnames)
 end
 
 function Base.similar(bc::Broadcasted{<:AbstractNamedDimsArrayStyle}, elt::Type, ax::Tuple)
-  m′ = denamed(Mapped(bc), name.(ax))
-  return nameddims(similar(m′, elt, dename.(ax)), name.(ax))
+  m′ = denamed(Mapped(bc), ax)
+  return nameddims(similar(m′, elt, dename.(ax)), ax)
 end
 
 function Base.copyto!(

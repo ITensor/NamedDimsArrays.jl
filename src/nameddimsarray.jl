@@ -1,9 +1,17 @@
 using TypeParameterAccessors: TypeParameterAccessors, parenttype
 
+# dimnames should be a named slice.
 struct NamedDimsArray{T,N,Parent<:AbstractArray{T,N},DimNames} <:
        AbstractNamedDimsArray{T,N}
   parent::Parent
   dimnames::DimNames
+  function NamedDimsArray(parent::AbstractArray, dims)
+    ## dimnames = to_dimnames(parent, dims)
+    dimnames = dims
+    return new{eltype(parent),ndims(parent),typeof(parent),typeof(dimnames)}(
+      parent, dimnames
+    )
+  end
 end
 
 const NamedDimsVector{T,Parent<:AbstractVector{T},DimNames} = NamedDimsArray{
@@ -13,8 +21,12 @@ const NamedDimsMatrix{T,Parent<:AbstractMatrix{T},DimNames} = NamedDimsArray{
   T,2,Parent,DimNames
 }
 
-function NamedDimsArray(a::AbstractNamedDimsArray, dimnames)
+function NamedDimsArray(a::AbstractNamedDimsArray, dims)
+  dimnames = to_dimnames(a, dims)
   return NamedDimsArray(denamed(a, dimnames), dimnames)
+end
+function NamedDimsArray(a::AbstractNamedDimsArray)
+  return NamedDimsArray(dename(a), dimnames(a))
 end
 
 # Minimal interface.

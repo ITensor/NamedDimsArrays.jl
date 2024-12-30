@@ -37,8 +37,9 @@ julia> Pkg.add("NamedDimsArrays")
 
 # ## Examples
 
-using NamedDimsArrays: aligndims, dename, dimnames, named
+using NamedDimsArrays: aligndims, unname, dimnames, named
 using TensorAlgebra: contract
+using Test: @test
 
 ## Named dimensions
 i = named(2, "i")
@@ -46,21 +47,23 @@ j = named(2, "j")
 k = named(2, "k")
 
 ## Arrays with named dimensions
-na1 = randn(i, j)
-na2 = randn(j, k)
+a1 = randn(i, j)
+a2 = randn(j, k)
 
-@show dimnames(na1) == ("i", "j")
+@test dimnames(a1) == ("i", "j")
+@test axes(a1) == (named(1:2, "i"), named(1:2, "j"))
+@test size(a1) == (named(2, "i"), named(2, "j"))
 
 ## Indexing
-@show na1[j => 2, i => 1] == na1[1, 2]
+@test a1[j => 2, i => 1] == a1[1, 2]
 
 ## Tensor contraction
-na_dest = contract(na1, na2)
+a_dest = contract(a1, a2)
 
-@show issetequal(dimnames(na_dest), ("i", "k"))
-## `dename` removes the names and returns an `Array`
-@show dename(na_dest, (i, k)) ≈ dename(na1) * dename(na2)
+@test issetequal(dimnames(a_dest), ("i", "k"))
+## `unname` removes the names and returns an `Array`
+@test unname(a_dest, (i, k)) ≈ unname(a1, (i, j)) * unname(a2, (j, k))
 
 ## Permute dimensions (like `ITensors.permute`)
-na1 = aligndims(na1, (j, i))
-@show na1[i => 1, j => 2] == na1[2, 1]
+a1′ = aligndims(a1, (j, i))
+@test a1′[i => 1, j => 2] == a1[i => 1, j => 2]

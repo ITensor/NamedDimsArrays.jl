@@ -47,6 +47,8 @@ Base.step(r::AbstractNamedUnitRange) = named(step(dename(r)), name(r))
 Base.getindex(r::AbstractNamedUnitRange, i::Int) = named(getindex(dename(r), i), name(r))
 Base.isempty(r::AbstractNamedUnitRange) = isempty(dename(r))
 
+Base.oneto(length::AbstractNamedInteger) = named(Base.OneTo(dename(length)), name(length))
+namedoneto(length::Integer, name) = Base.oneto(named(length, name))
 Base.iterate(r::AbstractNamedUnitRange) = isempty(r) ? nothing : (first(r), first(r))
 function Base.iterate(r::AbstractNamedUnitRange, i)
   i == last(r) && return nothing
@@ -58,3 +60,10 @@ function Base.show(io::IO, r::AbstractNamedUnitRange)
   print(io, "named(", dename(r), ", ", repr(name(r)), ")")
   return nothing
 end
+
+struct NamedColon{Name} <: Function
+  name::Name
+end
+dename(c::NamedColon) = Colon()
+name(c::NamedColon) = c.name
+named(::Colon, name) = NamedColon(name)

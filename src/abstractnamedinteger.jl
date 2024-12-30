@@ -37,7 +37,8 @@ function Base.hash(i::AbstractNamedInteger, h::UInt)
 end
 
 abstract type AbstractName end
-name(n::AbstractName) = throw(MethodError(name, Tuple{typeof(n)}))
+# TODO: Decide if this is a good definition, probably not.
+# name(n::AbstractName) = throw(MethodError(name, Tuple{typeof(n)}))
 Base.getindex(n::AbstractName, I) = named(I, name(n))
 
 struct Name{Value} <: AbstractName

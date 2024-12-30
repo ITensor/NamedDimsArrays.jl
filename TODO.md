@@ -1,6 +1,7 @@
 - `svd`, `eigen` (including tensor versions)
-- `reshape`, `vec`
-- `swapdimnames`
+- `reshape`, `vec`, including fused dimension names.
+- Dimension name set logic, i.e. `setdiffdimnames(a::AbstractNamedDimsArray, b::AbstractNamedDimsArray)`, etc.
+- `swapdimnames` (written in terms of `mapdimnames`/`replacedimnames`).
 - `mapdimnames(f, a::AbstractNamedDimsArray)` (rename `replacedimnames(f, a)` to `mapdimnames(f, a)`, or have both?)
 - `cat` (define `CatName` as a combination of the input names?).
 - `canonize`/`flatten_array_wrappers` (https://github.com/mcabbott/NamedPlus.jl/blob/v0.0.5/src/permute.jl#L207)
@@ -14,6 +15,8 @@
     `tr`, `eigen`, etc. Operators are generally `namedmap(named(randn(2, 2), i, i'), i => i')`.
 - `prime(:i) = PrimedName(:i)`, `prime(:i, 2) = PrimedName(:i, 2)`, `prime(prime(:i)) = PrimedName(:i, 2)`,
   `Name(:i)' = prime(:i)`, etc.
+    - Also `prime(f, a::AbstractNamedDimsArray)` where `f` is a filter function to determine
+      which dimensions to filter.
 - `transpose`/`adjoint` based on `swapdimnames` and `MappedName(old_name, new_name)`.
   - `adjoint` could make use of a lazy `ConjArray`.
   - `transpose(a, dimname1 => dimname1′, dimname2 => dimname2′)` like `https://github.com/mcabbott/NamedPlus.jl`.
@@ -23,4 +26,5 @@
 - Slicing: `nameddims(a, "i", "j")[1:2, 1:2] = nameddims(a[1:2, 1:2], Name(named(1:2, "i")), Name(named(1:2, "j")))`, i.e.
   the parent gets sliced and the new dimensions names are the named slice.
   - Should `NamedDimsArray` store the named axes rather than just the dimension names?
-  - Should `NamedDimsArray` have special axes types so that `axes(nameddims(a, "i", "j")) == axes(nameddims(a', "j", "i"))`?
+  - Should `NamedDimsArray` have special axes types so that `axes(nameddims(a, "i", "j")) == axes(nameddims(a', "j", "i"))`,
+    i.e. equality is based on `issetequal` and not dependent on the ordering of the dimensions?
