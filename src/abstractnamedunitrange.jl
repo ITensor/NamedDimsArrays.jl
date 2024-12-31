@@ -36,10 +36,7 @@ function Base.hash(r::AbstractNamedUnitRange, h::UInt)
   return hash(name(r), h)
 end
 
-named_getindex(a::AbstractArray, I...) = named(getindex(dename(a), I...), name(a))
-
 # Unit range funcionality.
-# TODO: Also customize `Base.getindex` to preserve the name.
 Base.first(r::AbstractNamedUnitRange) = named(first(dename(r)), name(r))
 Base.last(r::AbstractNamedUnitRange) = named(last(dename(r)), name(r))
 Base.length(r::AbstractNamedUnitRange) = named(length(dename(r)), name(r))
@@ -49,6 +46,13 @@ Base.step(r::AbstractNamedUnitRange) = named(step(dename(r)), name(r))
 Base.getindex(r::AbstractNamedUnitRange, I::Int) = named_getindex(r, I)
 # Fix ambiguity error.
 function Base.getindex(r::AbstractNamedUnitRange, I::AbstractUnitRange{<:Integer})
+  return named_getindex(r, I)
+end
+# Fix ambiguity error.
+function Base.getindex(r::AbstractNamedUnitRange, I::Colon)
+  return named_getindex(r, I)
+end
+function Base.getindex(r::AbstractNamedUnitRange, I)
   return named_getindex(r, I)
 end
 Base.isempty(r::AbstractNamedUnitRange) = isempty(dename(r))

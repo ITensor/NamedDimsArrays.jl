@@ -30,9 +30,15 @@ function dim(a::AbstractArray, n)
 end
 dims(a::AbstractArray, ns) = map(n -> dim(a, n), ns)
 
-# TODO: Generalize to `AbstractNamedVector`.
 dimname_isequal(x) = Base.Fix1(dimname_isequal, x)
 dimname_isequal(x, y) = isequal(x, y)
+
+dimname_isequal(r1::AbstractNamedArray, r2::AbstractNamedArray) = isequal(r1, r2)
+dimname_isequal(r1::AbstractNamedArray, r2) = name(r1) == r2
+dimname_isequal(r1, r2::AbstractNamedArray) = r1 == name(r2)
+
+dimname_isequal(r1::AbstractNamedArray, r2::Name) = name(r1) == name(r2)
+dimname_isequal(r1::Name, r2::AbstractNamedArray) = name(r1) == name(r2)
 
 dimname_isequal(r1::AbstractNamedUnitRange, r2::AbstractNamedUnitRange) = isequal(r1, r2)
 dimname_isequal(r1::AbstractNamedUnitRange, r2) = name(r1) == r2
@@ -47,7 +53,10 @@ end
 function to_dimnames(a::AbstractArray, axes, dims)
   return map((axis, dim) -> to_dimname(a, axis, dim), axes, dims)
 end
-# TODO: Generalize to `AbstractNamedArray`.
+function to_dimname(a::AbstractArray, axis, dim::AbstractNamedArray)
+  # TODO: Check `axis` and `dim` have the same shape?
+  return dim
+end
 function to_dimname(a::AbstractArray, axis, dim::AbstractNamedUnitRange)
   # TODO: Check `axis` and `dim` have the same shape?
   return dim
@@ -70,6 +79,9 @@ function to_dimname(a::AbstractNamedDimsArray, dimname)
   return to_dimname(a, axes(a, dim), dimname)
 end
 
+function to_dimname(a::AbstractNamedDimsArray, axis, dim::AbstractNamedArray)
+  return dim
+end
 function to_dimname(a::AbstractNamedDimsArray, axis, dim::AbstractNamedUnitRange)
   return dim
 end
@@ -362,8 +374,7 @@ end
 # Slicing
 
 # Like `const ViewIndex = Union{Real,AbstractArray}`.
-# TODO: Generalize to `AbstractNamedArray` for non-contiguous ranges.
-const NamedViewIndex = Union{AbstractNamedInteger,AbstractNamedUnitRange}
+const NamedViewIndex = Union{AbstractNamedInteger,AbstractNamedUnitRange,AbstractNamedArray}
 
 function Base.view(a::AbstractArray, I1::NamedViewIndex, I_rest::NamedViewIndex...)
   I = (I1, I_rest...)
