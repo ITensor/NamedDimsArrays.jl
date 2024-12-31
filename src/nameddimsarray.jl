@@ -1,14 +1,14 @@
 using TypeParameterAccessors: TypeParameterAccessors, parenttype
 
-# dimnames should be a named slice.
+# nameddimsindices should be a named slice.
 struct NamedDimsArray{T,N,Parent<:AbstractArray{T,N},DimNames} <:
        AbstractNamedDimsArray{T,N}
   parent::Parent
-  dimnames::DimNames
+  nameddimsindices::DimNames
   function NamedDimsArray(parent::AbstractArray, dims)
-    dimnames = to_dimnames(parent, dims)
-    return new{eltype(parent),ndims(parent),typeof(parent),typeof(dimnames)}(
-      parent, dimnames
+    nameddimsindices = to_nameddimsindices(parent, dims)
+    return new{eltype(parent),ndims(parent),typeof(parent),typeof(nameddimsindices)}(
+      parent, nameddimsindices
     )
   end
 end
@@ -21,16 +21,16 @@ const NamedDimsMatrix{T,Parent<:AbstractMatrix{T},DimNames} = NamedDimsArray{
 }
 
 # TODO: Delete this, and just wrap the input naively.
-function NamedDimsArray(a::AbstractNamedDimsArray, dimnames)
+function NamedDimsArray(a::AbstractNamedDimsArray, nameddimsindices)
   return error("Already named.")
 end
 
 function NamedDimsArray(a::AbstractNamedDimsArray)
-  return NamedDimsArray(dename(a), dimnames(a))
+  return NamedDimsArray(dename(a), nameddimsindices(a))
 end
 
 # Minimal interface.
-dimnames(a::NamedDimsArray) = a.dimnames
+nameddimsindices(a::NamedDimsArray) = a.nameddimsindices
 Base.parent(a::NamedDimsArray) = a.parent
 
 function TypeParameterAccessors.position(

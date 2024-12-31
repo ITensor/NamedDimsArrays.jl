@@ -11,11 +11,11 @@ function TensorAlgebra.contract!(
 )
   contract!(
     dename(a_dest),
-    dimnames(a_dest),
+    nameddimsindices(a_dest),
     dename(a1),
-    dimnames(a1),
+    nameddimsindices(a1),
     dename(a2),
-    dimnames(a2),
+    nameddimsindices(a2),
     α,
     β,
   )
@@ -25,8 +25,10 @@ end
 function TensorAlgebra.contract(
   a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray, α::Number=true
 )
-  a_dest, dimnames_dest = contract(dename(a1), dimnames(a1), dename(a2), dimnames(a2), α)
-  return nameddims(a_dest, dimnames_dest)
+  a_dest, nameddimsindices_dest = contract(
+    dename(a1), nameddimsindices(a1), dename(a2), nameddimsindices(a2), α
+  )
+  return nameddims(a_dest, nameddimsindices_dest)
 end
 
 function Base.:*(a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray)
@@ -45,10 +47,10 @@ function LinearAlgebra.mul!(
 end
 
 function TensorAlgebra.blockedperm(na::AbstractNamedDimsArray, nameddim_blocks::Tuple...)
-  dimname_blocks = map(group -> to_dimnames(na, group), nameddim_blocks)
-  dimnames_a = dimnames(na)
+  dimname_blocks = map(group -> to_nameddimsindices(na, group), nameddim_blocks)
+  nameddimsindices_a = nameddimsindices(na)
   perms = map(dimname_blocks) do dimname_block
-    return BaseExtensions.indexin(dimname_block, dimnames_a)
+    return BaseExtensions.indexin(dimname_block, nameddimsindices_a)
   end
   return blockedperm(perms...)
 end
@@ -59,33 +61,37 @@ end
 # fusedims(a, (i, k) => "a", (j, l) => "b")
 # TODO: Rewrite in terms of `fusedims(a, .., (1, 3))` interface.
 function TensorAlgebra.fusedims(na::AbstractNamedDimsArray, fusions::Pair...)
-  dimnames_fuse = map(group -> to_dimnames(na, group), first.(fusions))
-  dimnames_fused = last.(fusions)
-  if sum(length, dimnames_fuse) < ndims(na)
+  nameddimsindices_fuse = map(group -> to_nameddimsindices(na, group), first.(fusions))
+  nameddimsindices_fused = last.(fusions)
+  if sum(length, nameddimsindices_fuse) < ndims(na)
     # Not all names are specified
-    dimnames_unspecified = setdiff(dimnames(na), dimnames_fuse...)
-    dimnames_fuse = vcat(tuple.(dimnames_unspecified), collect(dimnames_fuse))
-    dimnames_fused = vcat(dimnames_unspecified, collect(dimnames_fused))
+    nameddimsindices_unspecified = setdiff(nameddimsindices(na), nameddimsindices_fuse...)
+    nameddimsindices_fuse = vcat(
+      tuple.(nameddimsindices_unspecified), collect(nameddimsindices_fuse)
+    )
+    nameddimsindices_fused = vcat(
+      nameddimsindices_unspecified, collect(nameddimsindices_fused)
+    )
   end
-  perm = blockedperm(na, dimnames_fuse...)
+  perm = blockedperm(na, nameddimsindices_fuse...)
   a_fused = fusedims(unname(na), perm)
-  return nameddims(a_fused, dimnames_fused)
+  return nameddims(a_fused, nameddimsindices_fused)
 end
 
 function TensorAlgebra.splitdims(na::AbstractNamedDimsArray, splitters::Pair...)
-  splitters = to_dimnames(na, first.(splitters)) .=> last.(splitters)
+  splitters = to_nameddimsindices(na, first.(splitters)) .=> last.(splitters)
   split_namedlengths = last.(splitters)
   splitters_unnamed = map(splitters) do splitter
     fused_name, split_namedlengths = splitter
-    fused_dim = findfirst(isequal(fused_name), dimnames(na))
+    fused_dim = findfirst(isequal(fused_name), nameddimsindices(na))
     split_lengths = unname.(split_namedlengths)
     return fused_dim => split_lengths
   end
   a_split = splitdims(unname(na), splitters_unnamed...)
-  names_split = Any[tuple.(dimnames(na))...]
+  names_split = Any[tuple.(nameddimsindices(na))...]
   for splitter in splitters
     fused_name, split_namedlengths = splitter
-    fused_dim = findfirst(isequal(fused_name), dimnames(na))
+    fused_dim = findfirst(isequal(fused_name), nameddimsindices(na))
     split_names = name.(split_namedlengths)
     names_split[fused_dim] = split_names
   end
@@ -94,25 +100,31 @@ function TensorAlgebra.splitdims(na::AbstractNamedDimsArray, splitters::Pair...)
 end
 
 function LinearAlgebra.qr(
-  a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; positive=nothing
+  a::AbstractNamedDimsArray,
+  nameddimsindices_codomain,
+  nameddimsindices_domain;
+  positive=nothing,
 )
   @assert isnothing(positive) || !positive
   # TODO: This should be `TensorAlgebra.qr` rather than overloading `LinearAlgebra.qr`.
   # TODO: Don't require wrapping in `Tuple`.
   q, r = qr(
     unname(a),
-    Tuple(dimnames(a)),
-    Tuple(to_dimnames(a, dimnames_codomain)),
-    Tuple(to_dimnames(a, dimnames_domain)),
+    Tuple(nameddimsindices(a)),
+    Tuple(to_nameddimsindices(a, nameddimsindices_codomain)),
+    Tuple(to_nameddimsindices(a, nameddimsindices_domain)),
   )
-  name_qr = randname(dimnames(a)[1])
-  dimnames_q = (to_dimnames(a, dimnames_codomain)..., name_qr)
-  dimnames_r = (name_qr, to_dimnames(a, dimnames_domain)...)
-  return nameddims(q, dimnames_q), nameddims(r, dimnames_r)
+  name_qr = randname(nameddimsindices(a)[1])
+  nameddimsindices_q = (to_nameddimsindices(a, nameddimsindices_codomain)..., name_qr)
+  nameddimsindices_r = (name_qr, to_nameddimsindices(a, nameddimsindices_domain)...)
+  return nameddims(q, nameddimsindices_q), nameddims(r, nameddimsindices_r)
 end
 
-function LinearAlgebra.qr(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
+function LinearAlgebra.qr(a::AbstractNamedDimsArray, nameddimsindices_codomain; kwargs...)
   return qr(
-    a, dimnames_codomain, setdiff(dimnames(a), to_dimnames(a, dimnames_codomain)); kwargs...
+    a,
+    nameddimsindices_codomain,
+    setdiff(nameddimsindices(a), to_nameddimsindices(a, nameddimsindices_codomain));
+    kwargs...,
   )
 end

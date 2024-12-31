@@ -32,7 +32,7 @@ julia> Pkg.add("NamedDimsArrays")
 ## Examples
 
 ````julia
-using NamedDimsArrays: aligndims, unname, dimnames, named, namedoneto
+using NamedDimsArrays: aligndims, unname, nameddimsindices, named, namedoneto
 using TensorAlgebra: contract
 using Test: @test
 
@@ -45,7 +45,7 @@ k = namedoneto(2, "k")
 a1 = randn(i, j)
 a2 = randn(j, k)
 
-@test dimnames(a1) == (i, j)
+@test nameddimsindices(a1) == (i, j)
 @test axes(a1) == (named(1:2, i), named(1:2, j))
 @test size(a1) == (named(2, i), named(2, j))
 
@@ -56,7 +56,7 @@ a2 = randn(j, k)
 # Tensor contraction
 a_dest = contract(a1, a2)
 
-@test issetequal(dimnames(a_dest), (i, k))
+@test issetequal(nameddimsindices(a_dest), (i, k))
 # `unname` removes the names and returns an `Array`
 @test unname(a_dest, (i, k)) ≈ unname(a1, (i, j)) * unname(a2, (j, k))
 
@@ -72,16 +72,16 @@ b1 = a1[i => 1:2, j => 1:1]
 b2 = a2[j => 1:1, k => 1:2]
 @test b2 == a2[j[1:1], k[1:2]]
 
-@test dimnames(b1) == (i[1:2], j[1:1])
-@test dimnames(b2) == (j[1:1], k[1:2])
+@test nameddimsindices(b1) == (i[1:2], j[1:1])
+@test nameddimsindices(b2) == (j[1:1], k[1:2])
 
 b_dest = contract(b1, b2)
 
-@test issetequal(dimnames(b_dest), (i, k))
+@test issetequal(nameddimsindices(b_dest), (i, k))
 
 # Non-contiguous slicing
 c1 = a1[i[[2, 1]], j[[2, 1]]]
-@test dimnames(c1) == (i[[2, 1]], j[[2, 1]])
+@test nameddimsindices(c1) == (i[[2, 1]], j[[2, 1]])
 @test unname(c1, (i[[2, 1]], j[[2, 1]])) == unname(a1, (i, j))[[2, 1], [2, 1]]
 @test c1[i[2], j[1]] == a1[i[2], j[1]]
 @test c1[2, 1] == a1[1, 2]
