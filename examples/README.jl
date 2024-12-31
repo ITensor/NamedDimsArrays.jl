@@ -86,6 +86,7 @@ b_dest = contract(b1, b2)
 
 ## Non-contiguous slicing
 c1 = a1[i[[2, 1]], j[[2, 1]]]
+@test dimnames(c1) == (i[[2, 1]], j[[2, 1]])
 @test unname(c1, (i[[2, 1]], j[[2, 1]])) == unname(a1, (i, j))[[2, 1], [2, 1]]
 @test c1[i[2], j[1]] == a1[i[2], j[1]]
 @test c1[2, 1] == a1[1, 2]

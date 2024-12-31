@@ -65,6 +65,7 @@ a1′ = aligndims(a1, (j, i))
 @test a1′[i => 1, j => 2] == a1[i => 1, j => 2]
 @test a1′[i[1], j[2]] == a1[i[1], j[2]]
 
+# Contiguous slicing
 b1 = a1[i => 1:2, j => 1:1]
 @test b1 == a1[i[1:2], j[1:1]]
 
@@ -77,6 +78,13 @@ b2 = a2[j => 1:1, k => 1:2]
 b_dest = contract(b1, b2)
 
 @test issetequal(dimnames(b_dest), (i, k))
+
+# Non-contiguous slicing
+c1 = a1[i[[2, 1]], j[[2, 1]]]
+@test dimnames(c1) == (i[[2, 1]], j[[2, 1]])
+@test unname(c1, (i[[2, 1]], j[[2, 1]])) == unname(a1, (i, j))[[2, 1], [2, 1]]
+@test c1[i[2], j[1]] == a1[i[2], j[1]]
+@test c1[2, 1] == a1[1, 2]
 ````
 
 ---
