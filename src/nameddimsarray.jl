@@ -6,8 +6,7 @@ struct NamedDimsArray{T,N,Parent<:AbstractArray{T,N},DimNames} <:
   parent::Parent
   dimnames::DimNames
   function NamedDimsArray(parent::AbstractArray, dims)
-    ## dimnames = to_dimnames(parent, dims)
-    dimnames = dims
+    dimnames = to_dimnames(parent, dims)
     return new{eltype(parent),ndims(parent),typeof(parent),typeof(dimnames)}(
       parent, dimnames
     )
@@ -21,10 +20,11 @@ const NamedDimsMatrix{T,Parent<:AbstractMatrix{T},DimNames} = NamedDimsArray{
   T,2,Parent,DimNames
 }
 
-function NamedDimsArray(a::AbstractNamedDimsArray, dims)
-  dimnames = to_dimnames(a, dims)
-  return NamedDimsArray(denamed(a, dimnames), dimnames)
+# TODO: Delete this, and just wrap the input naively.
+function NamedDimsArray(a::AbstractNamedDimsArray, dimnames)
+  return error("Already named.")
 end
+
 function NamedDimsArray(a::AbstractNamedDimsArray)
   return NamedDimsArray(dename(a), dimnames(a))
 end

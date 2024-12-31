@@ -21,6 +21,7 @@ using NamedDimsArrays:
   name,
   named,
   nameddims,
+  namedoneto,
   replacedimnames,
   setdimnames,
   unname,
@@ -36,13 +37,6 @@ using NamedDimsArrays:
     @test na isa AbstractNamedDimsMatrix{elt}
     @test na isa NamedDimsArray{elt}
     @test na isa AbstractNamedDimsArray{elt}
-    for na′ in (nameddims(na, ("j", "i")), NamedDimsArray(na, ("j", "i")))
-      @test na′ isa NamedDimsMatrix{elt,<:PermutedDimsArray}
-      @test dimnames(na′) == ("j", "i")
-      @test na′ == na
-    end
-    @test_throws NameMismatch nameddims(na, ("j", "k"))
-    @test_throws NameMismatch NamedDimsArray(na, ("j", "k"))
     @test_throws MethodError dename(a)
     @test_throws MethodError dename(a, ("i", "j"))
     @test_throws MethodError denamed(a, ("i", "j"))
@@ -52,14 +46,16 @@ using NamedDimsArrays:
     @test dename(na) == a
     si, sj = size(na)
     ai, aj = axes(na)
-    @test name(si) == "i"
-    @test name(sj) == "j"
-    @test name(ai) == "i"
-    @test name(aj) == "j"
+    i = namedoneto(3, "i")
+    j = namedoneto(4, "j")
+    @test name(si) == i
+    @test name(sj) == j
+    @test name(ai) == i
+    @test name(aj) == j
     @test isnamed(na)
-    @test dimnames(na) == ("i", "j")
-    @test dimnames(na, 1) == "i"
-    @test dimnames(na, 2) == "j"
+    @test dimnames(na) == (i, j)
+    @test dimnames(na, 1) == i
+    @test dimnames(na, 2) == j
     @test dim(na, "i") == 1
     @test dim(na, "j") == 2
     @test dims(na, ("j", "i")) == (2, 1)
@@ -71,11 +67,11 @@ using NamedDimsArrays:
     @test a[i, j] == na
     @test @view(a[i, j]) == na
     @test na[j[1], i[2]] == a[2, 1]
-    @test dimnames(na[j, i]) == ("j", "i")
+    @test dimnames(na[j, i]) == (named(1:3, "i"), named(1:4, "j"))
     @test na[j, i] == na
     @test @view(na[j, i]) == na
-    @test i[axes(a, 1)] == ai
-    @test j[axes(a, 2)] == aj
+    @test i[axes(a, 1)] == named(1:3, "i")
+    @test j[axes(a, 2)] == named(1:4, "j")
     @test axes(na, i) == ai
     @test axes(na, j) == aj
     @test size(na, i) == si
@@ -116,34 +112,31 @@ using NamedDimsArrays:
       @test a′ == a'
     end
     nb = setdimnames(na, ("k", "j"))
-    @test dimnames(nb) == ("k", "j")
+    @test dimnames(nb) == (named(1:3, "k"), named(1:4, "j"))
     @test dename(nb) == a
     nb = replacedimnames(na, "i" => "k")
-    @test dimnames(nb) == ("k", "j")
+    @test dimnames(nb) == (named(1:3, "k"), named(1:4, "j"))
     @test dename(nb) == a
-    nb = replacedimnames(na, named(3, "i") => named(3, "k"))
-    @test dimnames(nb) == ("k", "j")
+    nb = replacedimnames(na, named(1:3, "i") => named(1:3, "k"))
+    @test dimnames(nb) == (named(1:3, "k"), named(1:4, "j"))
     @test dename(nb) == a
-    nb = replacedimnames(n -> n == "i" ? "k" : n, na)
-    @test dimnames(nb) == ("k", "j")
+    nb = replacedimnames(n -> n == named(1:3, "i") ? named(1:3, "k") : n, na)
+    @test dimnames(nb) == (named(1:3, "k"), named(1:4, "j"))
     @test dename(nb) == a
     nb = setdimnames(na, named(3, "i") => named(3, "k"))
     na[1, 1] = 11
     @test na[1, 1] == 11
-    @test size(na) == (named(3, "i"), named(4, "j"))
-    @test length(na) == named(12, fusednames("i", "j"))
-    @test axes(na) == (named(1:3, "i"), named(1:4, "j"))
+    @test size(na) == (named(3, named(1:3, "i")), named(4, named(1:4, "j")))
+    @test length(na) == named(12, fusednames(named(1:3, "i"), named(1:4, "j")))
+    @test axes(na) == (named(1:3, named(1:3, "i")), named(1:4, named(1:4, "j")))
     @test randn(named.((3, 4), ("i", "j"))) isa NamedDimsArray
     @test na["i" => 1, "j" => 2] == a[1, 2]
     @test na["j" => 2, "i" => 1] == a[1, 2]
     na["j" => 2, "i" => 1] = 12
     @test na[1, 2] == 12
     @test na[j => 1, i => 2] == a[2, 1]
-    @test na[aj => 1, ai => 2] == a[2, 1]
     na[j => 1, i => 2] = 21
     @test na[2, 1] == 21
-    na[aj => 1, ai => 2] = 2211
-    @test na[2, 1] == 2211
     na′ = aligndims(na, ("j", "i"))
     @test unname(na′) isa Matrix{elt}
     @test a == permutedims(unname(na′), (2, 1))
@@ -156,19 +149,13 @@ using NamedDimsArrays:
     na′ = aligneddims(na, (j, i))
     @test unname(na′) isa PermutedDimsArray{elt}
     @test a == permutedims(unname(na′), (2, 1))
-    na′ = aligndims(na, (aj, ai))
-    @test unname(na′) isa Matrix{elt}
-    @test a == permutedims(unname(na′), (2, 1))
-    na′ = aligneddims(na, (aj, ai))
-    @test unname(na′) isa PermutedDimsArray{elt}
-    @test a == permutedims(unname(na′), (2, 1))
 
     na = nameddims(randn(elt, 2, 3), (:i, :j))
     nb = nameddims(randn(elt, 3, 2), (:j, :i))
     nc = zeros(elt, named.((2, 3), (:i, :j)))
     Is = eachindex(na, nb)
     @test Is isa NamedCartesianIndices{2}
-    @test issetequal(dimnames(Is), (:i, :j))
+    @test issetequal(dimnames(Is), (named(1:2, :i), named(1:3, :j)))
     for I in Is
       @test I isa NamedCartesianIndex{2}
       @test issetequal(name.(Tuple(I)), (:i, :j))
@@ -201,26 +188,26 @@ using NamedDimsArrays:
     for na in (zeros(elt, i, j), zeros(elt, (i, j)))
       @test eltype(na) === elt
       @test na isa NamedDimsArray
-      @test dimnames(na) == ("i", "j")
+      @test dimnames(na) == Base.oneto.((i, j))
       @test iszero(na)
     end
     for na in (fill(value, i, j), fill(value, (i, j)))
       @test eltype(na) === elt
       @test na isa NamedDimsArray
-      @test dimnames(na) == ("i", "j")
+      @test dimnames(na) == Base.oneto.((i, j))
       @test all(isequal(value), na)
     end
     for na in (rand(elt, i, j), rand(elt, (i, j)))
       @test eltype(na) === elt
       @test na isa NamedDimsArray
-      @test dimnames(na) == ("i", "j")
+      @test dimnames(na) == Base.oneto.((i, j))
       @test !iszero(na)
       @test all(x -> real(x) > 0, na)
     end
     for na in (randn(elt, i, j), randn(elt, (i, j)))
       @test eltype(na) === elt
       @test na isa NamedDimsArray
-      @test dimnames(na) == ("i", "j")
+      @test dimnames(na) == Base.oneto.((i, j))
       @test !iszero(na)
     end
   end
@@ -230,20 +217,20 @@ using NamedDimsArrays:
     for na in (zeros(i, j), zeros((i, j)))
       @test eltype(na) === default_elt
       @test na isa NamedDimsArray
-      @test dimnames(na) == ("i", "j")
+      @test dimnames(na) == Base.oneto.((i, j))
       @test iszero(na)
     end
     for na in (rand(i, j), rand((i, j)))
       @test eltype(na) === default_elt
       @test na isa NamedDimsArray
-      @test dimnames(na) == ("i", "j")
+      @test dimnames(na) == Base.oneto.((i, j))
       @test !iszero(na)
       @test all(x -> real(x) > 0, na)
     end
     for na in (randn(i, j), randn((i, j)))
       @test eltype(na) === default_elt
       @test na isa NamedDimsArray
-      @test dimnames(na) == ("i", "j")
+      @test dimnames(na) == Base.oneto.((i, j))
       @test !iszero(na)
     end
   end

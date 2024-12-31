@@ -61,6 +61,10 @@ fusednames(name1::FusedNames, name2::FusedNames) = FusedNames(generic_vcat(name1
 fusednames(name1, name2::FusedNames) = fusednames(FusedNames((name1,)), name2)
 fusednames(name1::FusedNames, name2) = fusednames(name1, FusedNames((name2,)))
 
+function Base.:(==)(n1::FusedNames, n2::FusedNames)
+  return mapreduce(==, &, n1.names, n2.names)
+end
+
 # Integer interface
 # TODO: Should this make a random name, or require defining a way
 # to combine names?
@@ -90,10 +94,16 @@ function Base.string(i::AbstractNamedInteger; kwargs...)
   return "named($(string(dename(i); kwargs...)), $(repr(name(i))))"
 end
 
+Base.Int(i::AbstractNamedInteger) = Int(dename(i))
+
 struct NameMismatch <: Exception
   message::String
 end
 NameMismatch() = NameMismatch("")
+
+function randname(rng::AbstractRNG, i::AbstractNamedInteger)
+  return named(dename(i), randname(name(i)))
+end
 
 # Used in bounds checking when indexing with named dimensions.
 function Base.:<(i1::AbstractNamedInteger, i2::AbstractNamedInteger)

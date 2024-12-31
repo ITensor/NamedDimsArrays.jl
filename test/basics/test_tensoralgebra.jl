@@ -1,13 +1,13 @@
 using LinearAlgebra: qr
-using NamedDimsArrays: named, dename
+using NamedDimsArrays: namedoneto, dename
 using TensorAlgebra: TensorAlgebra, contract, fusedims, splitdims
 using Test: @test, @testset, @test_broken
 elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
 @testset "TensorAlgebra (eltype=$(elt))" for elt in elts
   @testset "contract" begin
-    i = named(2, "i")
-    j = named(2, "j")
-    k = named(2, "k")
+    i = namedoneto(2, "i")
+    j = namedoneto(2, "j")
+    k = namedoneto(2, "k")
     na1 = randn(elt, i, j)
     na2 = randn(elt, j, k)
     na_dest = contract(na1, na2)
@@ -15,20 +15,24 @@ elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
     @test dename(na_dest, (i, k)) ≈ dename(na1) * dename(na2)
   end
   @testset "fusedims" begin
-    i, j, k, l = named.((2, 3, 4, 5), ("i", "j", "k", "l"))
+    i, j, k, l = namedoneto.((2, 3, 4, 5), ("i", "j", "k", "l"))
     na = randn(elt, i, j, k, l)
     na_fused = fusedims(na, (k, i) => "a", (j, l) => "b")
     # Fuse all dimensions.
-    @test dename(na_fused, ("a", "b")) ≈
-      reshape(dename(na, (k, i, j, l)), (dename(k) * dename(i), dename(j) * dename(l)))
+    @test dename(na_fused, ("a", "b")) ≈ reshape(
+      dename(na, (k, i, j, l)),
+      (dename(length(k)) * dename(length(i)), dename(length(j)) * dename(length(l))),
+    )
     na_fused = fusedims(na, (k, i) => "a")
     # Fuse a subset of dimensions.
-    @test dename(na_fused, ("a", "j", "l")) ≈
-      reshape(dename(na, (k, i, j, l)), (dename(k) * dename(i), dename(j), dename(l)))
+    @test dename(na_fused, ("a", "j", "l")) ≈ reshape(
+      dename(na, (k, i, j, l)),
+      (dename(length(k)) * dename(length(i)), dename(length(j)), dename(length(l))),
+    )
   end
   @testset "splitdims" begin
-    a, b = named.((6, 20), ("a", "b"))
-    i, j, k, l = named.((2, 3, 4, 5), ("i", "j", "k", "l"))
+    a, b = namedoneto.((6, 20), ("a", "b"))
+    i, j, k, l = namedoneto.((2, 3, 4, 5), ("i", "j", "k", "l"))
     na = randn(elt, a, b)
     # Split all dimensions.
     na_split = splitdims(na, "a" => (k, i), "b" => (j, l))
@@ -41,7 +45,7 @@ elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
   end
   @testset "qr" begin
     dims = (2, 2, 2, 2)
-    i, j, k, l = named.(dims, ("i", "j", "k", "l"))
+    i, j, k, l = namedoneto.(dims, ("i", "j", "k", "l"))
 
     na = randn(elt, i, j)
     # TODO: Should this be allowed?

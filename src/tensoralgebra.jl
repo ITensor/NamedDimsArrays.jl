@@ -45,8 +45,7 @@ function LinearAlgebra.mul!(
 end
 
 function TensorAlgebra.blockedperm(na::AbstractNamedDimsArray, nameddim_blocks::Tuple...)
-  # Extract names if named dimensions or axes were passed
-  dimname_blocks = map(group -> name.(group), nameddim_blocks)
+  dimname_blocks = map(group -> to_dimnames(na, group), nameddim_blocks)
   dimnames_a = dimnames(na)
   perms = map(dimname_blocks) do dimname_block
     return BaseExtensions.indexin(dimname_block, dimnames_a)
@@ -60,8 +59,8 @@ end
 # fusedims(a, (i, k) => "a", (j, l) => "b")
 # TODO: Rewrite in terms of `fusedims(a, .., (1, 3))` interface.
 function TensorAlgebra.fusedims(na::AbstractNamedDimsArray, fusions::Pair...)
-  dimnames_fuse = map(group -> name.(group), first.(fusions))
-  dimnames_fused = map(name, last.(fusions))
+  dimnames_fuse = map(group -> to_dimnames(na, group), first.(fusions))
+  dimnames_fused = last.(fusions)
   if sum(length, dimnames_fuse) < ndims(na)
     # Not all names are specified
     dimnames_unspecified = setdiff(dimnames(na), dimnames_fuse...)
@@ -74,7 +73,7 @@ function TensorAlgebra.fusedims(na::AbstractNamedDimsArray, fusions::Pair...)
 end
 
 function TensorAlgebra.splitdims(na::AbstractNamedDimsArray, splitters::Pair...)
-  fused_names = map(name, first.(splitters))
+  splitters = to_dimnames(na, first.(splitters)) .=> last.(splitters)
   split_namedlengths = last.(splitters)
   splitters_unnamed = map(splitters) do splitter
     fused_name, split_namedlengths = splitter
@@ -103,15 +102,17 @@ function LinearAlgebra.qr(
   q, r = qr(
     unname(a),
     Tuple(dimnames(a)),
-    Tuple(name.(dimnames_codomain)),
-    Tuple(name.(dimnames_domain)),
+    Tuple(to_dimnames(a, dimnames_codomain)),
+    Tuple(to_dimnames(a, dimnames_domain)),
   )
   name_qr = randname(dimnames(a)[1])
-  dimnames_q = (name.(dimnames_codomain)..., name_qr)
-  dimnames_r = (name_qr, name.(dimnames_domain)...)
+  dimnames_q = (to_dimnames(a, dimnames_codomain)..., name_qr)
+  dimnames_r = (name_qr, to_dimnames(a, dimnames_domain)...)
   return nameddims(q, dimnames_q), nameddims(r, dimnames_r)
 end
 
 function LinearAlgebra.qr(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
-  return qr(a, dimnames_codomain, setdiff(dimnames(a), name.(dimnames_codomain)); kwargs...)
+  return qr(
+    a, dimnames_codomain, setdiff(dimnames(a), to_dimnames(a, dimnames_codomain)); kwargs...
+  )
 end
