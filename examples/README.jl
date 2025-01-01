@@ -37,7 +37,7 @@ julia> Pkg.add("NamedDimsArrays")
 
 # ## Examples
 
-using NamedDimsArrays: aligndims, unname, nameddimsindices, named, namedoneto
+using NamedDimsArrays: aligndims, dimnames, named, nameddimsindices, namedoneto, unname
 using TensorAlgebra: contract
 using Test: @test
 
@@ -50,6 +50,7 @@ k = namedoneto(2, "k")
 a1 = randn(i, j)
 a2 = randn(j, k)
 
+@test dimnames(a1) == ("i", "j")
 @test nameddimsindices(a1) == (i, j)
 @test axes(a1) == (named(1:2, i), named(1:2, j))
 @test size(a1) == (named(2, i), named(2, j))
@@ -90,3 +91,10 @@ c1 = a1[i[[2, 1]], j[[2, 1]]]
 @test unname(c1, (i[[2, 1]], j[[2, 1]])) == unname(a1, (i, j))[[2, 1], [2, 1]]
 @test c1[i[2], j[1]] == a1[i[2], j[1]]
 @test c1[2, 1] == a1[1, 2]
+
+a1[i[[2, 1]], j[[2, 1]]] = [22 21; 12 11]
+@test a1[i[1], j[1]] == 11
+
+x = randn(i[1:2], j[2:2])
+a1[i[1:2], j[2:2]] = x
+@test a1[i[1], j[2]] == x[i[1], j[2]]

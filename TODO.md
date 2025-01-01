@@ -1,3 +1,13 @@
+- Define `@align`/`@aligned` such that:
+```julia
+i = namedoneto(2, "i")
+j = namedoneto(2, "j")
+a = randn(i, j)
+@align a[j, i]
+@aligned a[j, i]
+```
+aligns the dimensions (currently `a[j, i]` doesn't align the dimensions).
+It could be written in terms of `align_getindex`/`align_view`.
 - `svd`, `eigen` (including tensor versions)
 - `reshape`, `vec`, including fused dimension names.
 - Dimension name set logic, i.e. `setdiffnameddimsindices(a::AbstractNamedDimsArray, b::AbstractNamedDimsArray)`, etc.

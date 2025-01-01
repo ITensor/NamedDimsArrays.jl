@@ -14,13 +14,14 @@ using NamedDimsArrays:
   dename,
   denamed,
   dim,
-  nameddimsindices,
+  dimnames,
   dims,
   fusednames,
   isnamed,
   name,
   named,
   nameddims,
+  nameddimsindices,
   namedoneto,
   replacenameddimsindices,
   setnameddimsindices,
@@ -56,10 +57,24 @@ using NamedDimsArrays:
     @test nameddimsindices(na) == (i, j)
     @test nameddimsindices(na, 1) == i
     @test nameddimsindices(na, 2) == j
+    @test dimnames(na) == ("i", "j")
+    @test dimnames(na, 1) == "i"
+    @test dimnames(na, 2) == "j"
     @test dim(na, "i") == 1
     @test dim(na, "j") == 2
     @test dims(na, ("j", "i")) == (2, 1)
     @test na[1, 1] == a[1, 1]
+
+    for na′ in (
+      similar(na, Float32, (j, i)),
+      similar(na, Float32, (aj, ai)),
+      similar(a, Float32, (j, i)),
+      similar(a, Float32, (aj, ai)),
+    )
+      @test eltype(na′) === Float32
+      @test nameddimsindices(na′) == (j, i)
+      @test na′ ≠ na
+    end
 
     # getindex syntax
     i = Name("i")
