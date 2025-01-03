@@ -1,4 +1,3 @@
-using Test: @test, @test_throws, @testset
 using NamedDimsArrays:
   NamedDimsArrays,
   AbstractNamedDimsArray,
@@ -27,6 +26,7 @@ using NamedDimsArrays:
   setnameddimsindices,
   unname,
   unnamed
+using Test: @test, @test_throws, @testset
 
 @testset "NamedDimsArrays.jl" begin
   @testset "Basic functionality" begin

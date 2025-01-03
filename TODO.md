@@ -20,7 +20,7 @@ It could be written in terms of `align_getindex`/`align_view`.
   - `Transpose(nameddims(a, nameddimsindices))` -> `nameddims(a, reverse(nameddimsindices))`
   - etc.
 - `MappedName(old_name, name)`, acts like `Name(name)` but keeps track of the old name.
-  - `namedmap(a, ::Pair...)`: `namedmap(named(randn(2, 2, 2, 2), i, j, k, l), i => k, j => l)`
+  - `nameddimsmap(a, ::Pair...)`: `namedmap(named(randn(2, 2, 2, 2), i, j, k, l), i => k, j => l)`
     represents that the names map back and forth to each other for the sake of `transpose`,
     `tr`, `eigen`, etc. Operators are generally `namedmap(named(randn(2, 2), i, i'), i => i')`.
 - `prime(:i) = PrimedName(:i)`, `prime(:i, 2) = PrimedName(:i, 2)`, `prime(prime(:i)) = PrimedName(:i, 2)`,

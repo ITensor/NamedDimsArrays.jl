@@ -391,6 +391,19 @@ end
 # Like `const ViewIndex = Union{Real,AbstractArray}`.
 const NamedViewIndex = Union{AbstractNamedInteger,AbstractNamedUnitRange,AbstractNamedArray}
 
+using ArrayLayouts: ArrayLayouts, MemoryLayout
+
+abstract type AbstractNamedDimsArrayLayout <: MemoryLayout end
+struct NamedDimsArrayLayout{ParentLayout} <: AbstractNamedDimsArrayLayout end
+
+function ArrayLayouts.MemoryLayout(arrtype::Type{<:AbstractNamedDimsArray})
+  return NamedDimsArrayLayout{typeof(MemoryLayout(parenttype(arrtype)))}()
+end
+
+function ArrayLayouts.sub_materialize(::NamedDimsArrayLayout, a, ax)
+  return copy(a)
+end
+
 function Base.view(a::AbstractArray, I1::NamedViewIndex, Irest::NamedViewIndex...)
   I = (I1, Irest...)
   sub_dims = filter(dim -> I[dim] isa AbstractArray, ntuple(identity, ndims(a)))
@@ -438,14 +451,22 @@ end
 # Repeated definition of `Base.ViewIndex`.
 const ViewIndex = Union{Real,AbstractArray}
 
-function Base.view(a::AbstractNamedDimsArray, I::ViewIndex...)
-  sub_dims = filter(dim -> I[dim] isa AbstractArray, ntuple(identity, ndims(a)))
+function nameddims_view(a::AbstractArray, I...)
+  sub_dims = filter(dim -> !(I[dim] isa Real), ntuple(identity, ndims(a)))
   sub_nameddimsindices = map(dim -> nameddimsindices(a, dim)[I[dim]], sub_dims)
   return nameddims(view(dename(a), I...), sub_nameddimsindices)
 end
 
-function Base.getindex(a::AbstractNamedDimsArray, I::ViewIndex...)
+function Base.view(a::AbstractNamedDimsArray, I::ViewIndex...)
+  return nameddims_view(a, I...)
+end
+
+function nameddims_getindex(a::AbstractArray, I...)
   return copy(view(a, I...))
+end
+
+function Base.getindex(a::AbstractNamedDimsArray, I::ViewIndex...)
+  return nameddims_getindex(a, I...)
 end
 
 function Base.setindex!(
