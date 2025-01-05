@@ -140,18 +140,34 @@ end
 
 Base.copy(a::AbstractNamedDimsArray) = nameddims(copy(dename(a)), nameddimsindices(a))
 
+const NamedDimsIndices = Union{
+  AbstractNamedUnitRange{<:Integer},AbstractNamedArray{<:Integer}
+}
+const NamedDimsAxis = AbstractNamedUnitRange{
+  <:Integer,<:AbstractUnitRange,<:NamedDimsIndices
+}
+
 # Generic constructor.
 function nameddims(a::AbstractArray, nameddimsindices)
   # TODO: Check the shape of `nameddimsindices` matches the shape of `a`.
-  return nameddimstype(eltype(nameddimsindices))(
-    a, to_nameddimsindices(a, nameddimsindices)
-  )
+  arrtype = mapreduce(nameddimsarraytype, combine_nameddimsarraytype, nameddimsindices)
+  return arrtype(a, to_nameddimsindices(a, nameddimsindices))
 end
 
 # Can overload this to get custom named dims array wrapper
 # depending on the dimension name types, for example
 # output an `ITensor` if the dimension names are `IndexName`s.
-nameddimstype(dimnametype::Type) = NamedDimsArray
+nameddimsarraytype(nameddim) = nameddimsarraytype(typeof(nameddim))
+nameddimsarraytype(nameddimtype::Type) = NamedDimsArray
+function nameddimsarraytype(nameddimtype::Type{<:NamedDimsIndices})
+  return nameddimsarraytype(nametype(nameddimtype))
+end
+function combine_nameddimsarraytype(
+  ::Type{<:AbstractNamedDimsArray}, ::Type{<:AbstractNamedDimsArray}
+)
+  return NamedDimsArray
+end
+combine_nameddimsarraytype(::Type{T}, ::Type{T}) where {T<:AbstractNamedDimsArray} = T
 
 Base.axes(a::AbstractNamedDimsArray) = map(named, axes(dename(a)), nameddimsindices(a))
 Base.size(a::AbstractNamedDimsArray) = map(named, size(dename(a)), nameddimsindices(a))
@@ -174,13 +190,6 @@ Base.eltype(a::AbstractNamedDimsArray) = eltype(dename(a))
 
 Base.axes(a::AbstractNamedDimsArray, dimname::Name) = axes(a, dim(a, dimname))
 Base.size(a::AbstractNamedDimsArray, dimname::Name) = size(a, dim(a, dimname))
-
-const NamedDimsIndices = Union{
-  AbstractNamedUnitRange{<:Integer},AbstractNamedArray{<:Integer}
-}
-const NamedDimsAxis = AbstractNamedUnitRange{
-  <:Integer,<:AbstractUnitRange,<:NamedDimsIndices
-}
 
 to_nameddimsaxes(dims) = map(to_nameddimsaxis, dims)
 to_nameddimsaxis(ax::NamedDimsAxis) = ax
