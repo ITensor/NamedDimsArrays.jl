@@ -169,8 +169,41 @@ function combine_nameddimsarraytype(
 end
 combine_nameddimsarraytype(::Type{T}, ::Type{T}) where {T<:AbstractNamedDimsArray} = T
 
-Base.axes(a::AbstractNamedDimsArray) = map(named, axes(dename(a)), nameddimsindices(a))
-Base.size(a::AbstractNamedDimsArray) = map(named, size(dename(a)), nameddimsindices(a))
+using Base.Broadcast: Broadcasted, Style
+
+struct NaiveOrderedSet{Values}
+  values::Values
+end
+Base.Tuple(s::NaiveOrderedSet) = s.values
+Base.length(s::NaiveOrderedSet) = length(Tuple(s))
+Base.axes(s::NaiveOrderedSet) = axes(Tuple(s))
+Base.:(==)(s1::NaiveOrderedSet, s2::NaiveOrderedSet) = issetequal(Tuple(s1), Tuple(s2))
+Base.iterate(s::NaiveOrderedSet, args...) = iterate(Tuple(s), args...)
+Base.getindex(s::NaiveOrderedSet, I::Int) = Tuple(s)[I]
+Base.invperm(s::NaiveOrderedSet) = NaiveOrderedSet(invperm(Tuple(s)))
+Base.Broadcast._axes(::Broadcasted, axes::NaiveOrderedSet) = axes
+Base.Broadcast.BroadcastStyle(::Type{<:NaiveOrderedSet}) = Style{NaiveOrderedSet}()
+Base.Broadcast.broadcastable(s::NaiveOrderedSet) = s
+
+function Base.copy(
+  bc::Broadcasted{Style{NaiveOrderedSet},<:Any,<:Any,<:Tuple{<:NaiveOrderedSet}}
+)
+  return NaiveOrderedSet(bc.f.(Tuple(only(bc.args))))
+end
+# Multiple arguments not supported.
+function Base.copy(bc::Broadcasted{Style{NaiveOrderedSet}})
+  return error("This broadcasting expression of `NaiveOrderedSet` is not supported.")
+end
+function Base.map(f::Function, s::NaiveOrderedSet)
+  return NaiveOrderedSet(map(f, Tuple(s)))
+end
+
+function Base.axes(a::AbstractNamedDimsArray)
+  return NaiveOrderedSet(map(named, axes(dename(a)), nameddimsindices(a)))
+end
+function Base.size(a::AbstractNamedDimsArray)
+  return NaiveOrderedSet(map(named, size(dename(a)), nameddimsindices(a)))
+end
 
 # Circumvent issue when ndims isn't known at compile time.
 function Base.axes(a::AbstractNamedDimsArray, d)
@@ -266,6 +299,9 @@ struct NamedDimsCartesianIndices{
   function NamedDimsCartesianIndices(indices::Tuple{Vararg{AbstractNamedUnitRange}})
     return new{length(indices),typeof(indices),Tuple{eltype.(indices)...}}(indices)
   end
+end
+function NamedDimsCartesianIndices(indices::NaiveOrderedSet)
+  return NamedDimsCartesianIndices(Tuple(indices))
 end
 
 Base.eltype(I::NamedDimsCartesianIndices) = eltype(typeof(I))
@@ -672,20 +708,25 @@ end
 Broadcast.combine_axes(a::AbstractNamedDimsArray) = axes(a)
 
 function Broadcast.broadcast_shape(
-  ax1::Tuple{Vararg{AbstractNamedUnitRange}},
-  ax2::Tuple{Vararg{AbstractNamedUnitRange}},
-  ax_rest::Tuple{Vararg{AbstractNamedUnitRange}}...,
+  ax1::NaiveOrderedSet, ax2::NaiveOrderedSet, ax_rest::NaiveOrderedSet...
 )
   return broadcast_shape(broadcast_shape(ax1, ax2), ax_rest...)
 end
 
-function Broadcast.broadcast_shape(
-  ax1::Tuple{Vararg{AbstractNamedUnitRange}}, ax2::Tuple{Vararg{AbstractNamedUnitRange}}
-)
+function Broadcast.broadcast_shape(ax1::NaiveOrderedSet, ax2::NaiveOrderedSet)
   return promote_shape(ax1, ax2)
 end
 
-function Base.promote_shape(
+# Handle scalar values.
+function Broadcast.broadcast_shape(ax1::Tuple{}, ax2::NaiveOrderedSet)
+  return ax2
+end
+
+function Base.promote_shape(ax1::NaiveOrderedSet, ax2::NaiveOrderedSet)
+  return NaiveOrderedSet(set_promote_shape(Tuple(ax1), Tuple(ax2)))
+end
+
+function set_promote_shape(
   ax1::Tuple{AbstractNamedUnitRange,Vararg{AbstractNamedUnitRange,N}},
   ax2::Tuple{AbstractNamedUnitRange,Vararg{AbstractNamedUnitRange,N}},
 ) where {N}
@@ -695,8 +736,11 @@ function Base.promote_shape(
   return named.(ax_promoted, name.(ax1))
 end
 
-# Avoid comparison of `NamedInteger` against `1`.
-function Broadcast.check_broadcast_shape(
+function Broadcast.check_broadcast_shape(ax1::NaiveOrderedSet, ax2::NaiveOrderedSet)
+  return set_check_broadcast_shape(Tuple(ax1), Tuple(ax2))
+end
+
+function set_check_broadcast_shape(
   ax1::Tuple{AbstractNamedUnitRange,Vararg{AbstractNamedUnitRange,N}},
   ax2::Tuple{AbstractNamedUnitRange,Vararg{AbstractNamedUnitRange,N}},
 ) where {N}
@@ -706,13 +750,6 @@ function Broadcast.check_broadcast_shape(
   return nothing
 end
 
-# Handle scalars.
-function Base.promote_shape(
-  ax1::Tuple{AbstractNamedUnitRange,Vararg{AbstractNamedUnitRange}}, ax2::Tuple{}
-)
-  return ax1
-end
-
 # Dename and lazily permute the arguments using the reference
 # dimension names.
 # TODO: Make a version that gets the nameddimsindices from `m`.
@@ -720,10 +757,10 @@ function denamed(m::Mapped, nameddimsindices)
   return mapped(m.f, map(arg -> denamed(arg, nameddimsindices), m.args)...)
 end
 
-function Base.similar(bc::Broadcasted{<:AbstractNamedDimsArrayStyle}, elt::Type, ax::Tuple)
+function Base.similar(bc::Broadcasted{<:AbstractNamedDimsArrayStyle}, elt::Type, ax)
   nameddimsindices = name.(ax)
   m′ = denamed(Mapped(bc), nameddimsindices)
-  return nameddims(similar(m′, elt, dename.(ax)), nameddimsindices)
+  return nameddims(similar(m′, elt, dename.(Tuple(ax))), nameddimsindices)
 end
 
 function Base.copyto!(

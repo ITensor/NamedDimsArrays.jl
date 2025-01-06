@@ -141,9 +141,9 @@ using Test: @test, @test_throws, @testset
     nb = setnameddimsindices(na, named(3, "i") => named(3, "k"))
     na[1, 1] = 11
     @test na[1, 1] == 11
-    @test size(na) == (named(3, named(1:3, "i")), named(4, named(1:4, "j")))
+    @test Tuple(size(na)) == (named(3, named(1:3, "i")), named(4, named(1:4, "j")))
     @test length(na) == named(12, fusednames(named(1:3, "i"), named(1:4, "j")))
-    @test axes(na) == (named(1:3, named(1:3, "i")), named(1:4, named(1:4, "j")))
+    @test Tuple(axes(na)) == (named(1:3, named(1:3, "i")), named(1:4, named(1:4, "j")))
     @test randn(named.((3, 4), ("i", "j"))) isa NamedDimsArray
     @test na["i" => 1, "j" => 2] == a[1, 2]
     @test na["j" => 2, "i" => 1] == a[1, 2]

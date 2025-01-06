@@ -52,8 +52,10 @@ a2 = randn(j, k)
 
 @test dimnames(a1) == ("i", "j")
 @test nameddimsindices(a1) == (i, j)
-@test axes(a1) == (named(1:2, i), named(1:2, j))
-@test size(a1) == (named(2, i), named(2, j))
+@test axes(a1, 1) == named(1:2, i)
+@test axes(a1, 2) == named(1:2, j)
+@test size(a1, 1) == named(2, i)
+@test size(a1, 2) == named(2, j)
 
 ## Indexing
 @test a1[j => 2, i => 1] == a1[1, 2]
