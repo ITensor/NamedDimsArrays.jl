@@ -1,4 +1,5 @@
 using Derive: Derive, @derive, AbstractArrayInterface
+using TypeParameterAccessors: unspecify_type_parameters
 
 # Some of the interface is inspired by:
 # https://github.com/ITensor/ITensors.jl
@@ -138,7 +139,9 @@ function checked_indexin(x::AbstractUnitRange, y::AbstractUnitRange)
   return findfirst(==(first(x)), y):findfirst(==(last(x)), y)
 end
 
-Base.copy(a::AbstractNamedDimsArray) = nameddims(copy(dename(a)), nameddimsindices(a))
+function Base.copy(a::AbstractNamedDimsArray)
+  return nameddimsarraytype(a)(copy(dename(a)), nameddimsindices(a))
+end
 
 const NamedDimsIndices = Union{
   AbstractNamedUnitRange{<:Integer},AbstractNamedArray{<:Integer}
@@ -174,28 +177,30 @@ using Base.Broadcast: Broadcasted, Style
 struct NaiveOrderedSet{Values}
   values::Values
 end
-Base.Tuple(s::NaiveOrderedSet) = s.values
-Base.length(s::NaiveOrderedSet) = length(Tuple(s))
-Base.axes(s::NaiveOrderedSet) = axes(Tuple(s))
-Base.:(==)(s1::NaiveOrderedSet, s2::NaiveOrderedSet) = issetequal(Tuple(s1), Tuple(s2))
-Base.iterate(s::NaiveOrderedSet, args...) = iterate(Tuple(s), args...)
-Base.getindex(s::NaiveOrderedSet, I::Int) = Tuple(s)[I]
-Base.invperm(s::NaiveOrderedSet) = NaiveOrderedSet(invperm(Tuple(s)))
+Base.values(s::NaiveOrderedSet) = s.values
+Base.Tuple(s::NaiveOrderedSet) = Tuple(values(s))
+Base.length(s::NaiveOrderedSet) = length(values(s))
+Base.axes(s::NaiveOrderedSet) = axes(values(s))
+Base.:(==)(s1::NaiveOrderedSet, s2::NaiveOrderedSet) = issetequal(values(s1), values(s2))
+Base.iterate(s::NaiveOrderedSet, args...) = iterate(values(s), args...)
+Base.getindex(s::NaiveOrderedSet, I::Int) = values(s)[I]
+Base.invperm(s::NaiveOrderedSet) = NaiveOrderedSet(invperm(values(s)))
 Base.Broadcast._axes(::Broadcasted, axes::NaiveOrderedSet) = axes
 Base.Broadcast.BroadcastStyle(::Type{<:NaiveOrderedSet}) = Style{NaiveOrderedSet}()
 Base.Broadcast.broadcastable(s::NaiveOrderedSet) = s
+Base.to_shape(s::NaiveOrderedSet) = s
 
 function Base.copy(
   bc::Broadcasted{Style{NaiveOrderedSet},<:Any,<:Any,<:Tuple{<:NaiveOrderedSet}}
 )
-  return NaiveOrderedSet(bc.f.(Tuple(only(bc.args))))
+  return NaiveOrderedSet(bc.f.(values(only(bc.args))))
 end
 # Multiple arguments not supported.
 function Base.copy(bc::Broadcasted{Style{NaiveOrderedSet}})
   return error("This broadcasting expression of `NaiveOrderedSet` is not supported.")
 end
 function Base.map(f::Function, s::NaiveOrderedSet)
-  return NaiveOrderedSet(map(f, Tuple(s)))
+  return NaiveOrderedSet(map(f, values(s)))
 end
 
 function Base.axes(a::AbstractNamedDimsArray)
@@ -228,15 +233,36 @@ to_nameddimsaxes(dims) = map(to_nameddimsaxis, dims)
 to_nameddimsaxis(ax::NamedDimsAxis) = ax
 to_nameddimsaxis(I::NamedDimsIndices) = named(dename(only(axes(I))), I)
 
+nameddimsarraytype(a::AbstractNamedDimsArray) = nameddimsarraytype(typeof(a))
+nameddimsarraytype(a::Type{<:AbstractNamedDimsArray}) = unspecify_type_parameters(a)
+
+function similar_nameddims(a::AbstractNamedDimsArray, elt::Type, inds)
+  ax = to_nameddimsaxes(inds)
+  return nameddimsarraytype(a)(similar(dename(a), elt, dename.(Tuple(ax))), name.(ax))
+end
+
+function similar_nameddims(a::AbstractArray, elt::Type, inds)
+  ax = to_nameddimsaxes(inds)
+  return nameddims(similar(a, elt, dename.(Tuple(ax))), name.(ax))
+end
+
+# Base.similar gets the eltype at compile time.
+function Base.similar(a::AbstractNamedDimsArray)
+  return similar(a, eltype(a))
+end
+
 function Base.similar(
   a::AbstractArray, elt::Type, inds::Tuple{NamedDimsIndices,Vararg{NamedDimsIndices}}
 )
-  ax = to_nameddimsaxes(inds)
-  return nameddims(similar(unname(a), elt, dename.(ax)), name.(ax))
+  return similar_nameddims(a, elt, inds)
+end
+
+function Base.similar(a::AbstractArray, elt::Type, inds::NaiveOrderedSet)
+  return similar_nameddims(a, elt, inds)
 end
 
 function setnameddimsindices(a::AbstractNamedDimsArray, nameddimsindices)
-  return nameddims(dename(a), nameddimsindices)
+  return nameddimsarraytype(a)(dename(a), nameddimsindices)
 end
 function replacenameddimsindices(f, a::AbstractNamedDimsArray)
   return setnameddimsindices(a, replace(f, nameddimsindices(a)))
@@ -530,7 +556,7 @@ function Base.setindex!(
   Irest::NamedViewIndex...,
 )
   I = (I1, Irest...)
-  setindex!(a, nameddims(value, I), I...)
+  setindex!(a, nameddimsarraytype(a)(value, I), I...)
   return a
 end
 function Base.setindex!(
@@ -560,7 +586,7 @@ function aligndims(a::AbstractArray, dims)
       "Dimension name mismatch $(nameddimsindices(a)), $(new_nameddimsindices)."
     ),
   )
-  return nameddims(permutedims(dename(a), perm), new_nameddimsindices)
+  return nameddimsarraytype(a)(permutedims(dename(a), perm), new_nameddimsindices)
 end
 
 function aligneddims(a::AbstractArray, dims)
@@ -572,7 +598,7 @@ function aligneddims(a::AbstractArray, dims)
       "Dimension name mismatch $(nameddimsindices(a)), $(new_nameddimsindices)."
     ),
   )
-  return nameddims(PermutedDimsArray(dename(a), perm), new_nameddimsindices)
+  return nameddimsarraytype(a)(PermutedDimsArray(dename(a), perm), new_nameddimsindices)
 end
 
 # Convenient constructors
@@ -634,7 +660,7 @@ end
 for f in [:zeros, :ones]
   @eval begin
     function Base.$f(
-      elt::Type{<:Number}, ax::Tuple{NamedDimsIndices,Vararg{NamedDimsIndices}}
+      elt::Type{<:Number}, inds::Tuple{NamedDimsIndices,Vararg{NamedDimsIndices}}
     )
       ax = to_nameddimsaxes(inds)
       a = $f(elt, dename.(ax))
@@ -760,6 +786,10 @@ end
 function Base.similar(bc::Broadcasted{<:AbstractNamedDimsArrayStyle}, elt::Type, ax)
   nameddimsindices = name.(ax)
   m′ = denamed(Mapped(bc), nameddimsindices)
+  # TODO: Store the wrapper type in `AbstractNamedDimsArrayStyle` and use that
+  # wrapper type rather than the generic `nameddims` constructor, which
+  # can lose information.
+  # Call it as `nameddimsarraytype(bc.style)`.
   return nameddims(similar(m′, elt, dename.(Tuple(ax))), nameddimsindices)
 end
 
