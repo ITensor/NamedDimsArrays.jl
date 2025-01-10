@@ -1,4 +1,4 @@
-using Derive: Derive, @derive, AbstractArrayInterface
+using DerivableInterfaces: DerivableInterfaces, @derive, AbstractArrayInterface
 using TypeParameterAccessors: unspecify_type_parameters
 
 # Some of the interface is inspired by:
@@ -16,7 +16,7 @@ abstract type AbstractNamedDimsArray{T,N} <: AbstractArray{T,N} end
 const AbstractNamedDimsVector{T} = AbstractNamedDimsArray{T,1}
 const AbstractNamedDimsMatrix{T} = AbstractNamedDimsArray{T,2}
 
-Derive.interface(::Type{<:AbstractNamedDimsArray}) = NamedDimsArrayInterface()
+DerivableInterfaces.interface(::Type{<:AbstractNamedDimsArray}) = NamedDimsArrayInterface()
 
 # Output the dimension names.
 nameddimsindices(a::AbstractArray) = throw(MethodError(nameddimsindices, Tuple{typeof(a)}))
@@ -711,7 +711,7 @@ using Base.Broadcast:
   broadcasted,
   check_broadcast_shape,
   combine_axes
-using BroadcastMapConversion: Mapped, mapped
+using MapBroadcast: Mapped, mapped
 
 abstract type AbstractNamedDimsArrayStyle{N} <: AbstractArrayStyle{N} end
 
