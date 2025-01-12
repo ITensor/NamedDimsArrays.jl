@@ -140,7 +140,7 @@ function checked_indexin(x::AbstractUnitRange, y::AbstractUnitRange)
 end
 
 function Base.copy(a::AbstractNamedDimsArray)
-  return nameddimsarraytype(a)(copy(dename(a)), nameddimsindices(a))
+  return constructorof(typeof(a))(copy(dename(a)), nameddimsindices(a))
 end
 
 const NamedDimsIndices = Union{
@@ -233,17 +233,20 @@ to_nameddimsaxes(dims) = map(to_nameddimsaxis, dims)
 to_nameddimsaxis(ax::NamedDimsAxis) = ax
 to_nameddimsaxis(I::NamedDimsIndices) = named(dename(only(axes(I))), I)
 
-nameddimsarraytype(a::AbstractNamedDimsArray) = nameddimsarraytype(typeof(a))
-nameddimsarraytype(a::Type{<:AbstractNamedDimsArray}) = unspecify_type_parameters(a)
+# Interface inspired by [ConstructionBase.constructorof](https://github.com/JuliaObjects/ConstructionBase.jl).
+constructorof(type::Type{<:AbstractArray}) = unspecify_type_parameters(type)
+
+constructorof_nameddims(type::Type{<:AbstractNamedDimsArray}) = constructorof(type)
+constructorof_nameddims(type::Type{<:AbstractArray}) = NamedDimsArray
 
 function similar_nameddims(a::AbstractNamedDimsArray, elt::Type, inds)
   ax = to_nameddimsaxes(inds)
-  return nameddimsarraytype(a)(similar(dename(a), elt, dename.(Tuple(ax))), name.(ax))
+  return constructorof(typeof(a))(similar(dename(a), elt, dename.(Tuple(ax))), name.(ax))
 end
 
 function similar_nameddims(a::AbstractArray, elt::Type, inds)
   ax = to_nameddimsaxes(inds)
-  return nameddims(similar(a, elt, dename.(Tuple(ax))), name.(ax))
+  return constructorof_nameddims(typeof(a))(similar(a, elt, dename.(Tuple(ax))), name.(ax))
 end
 
 # Base.similar gets the eltype at compile time.
@@ -262,7 +265,7 @@ function Base.similar(a::AbstractArray, elt::Type, inds::NaiveOrderedSet)
 end
 
 function setnameddimsindices(a::AbstractNamedDimsArray, nameddimsindices)
-  return nameddimsarraytype(a)(dename(a), nameddimsindices)
+  return constructorof(typeof(a))(dename(a), nameddimsindices)
 end
 function replacenameddimsindices(f, a::AbstractNamedDimsArray)
   return setnameddimsindices(a, replace(f, nameddimsindices(a)))
@@ -510,7 +513,9 @@ function Base.view(a::AbstractNamedDimsArray, I1::NamedViewIndex, Irest::NamedVi
   subinds = map(nameddimsindices(a), I) do dimname, i
     return checked_indexin(dename(i), dename(dimname))
   end
-  return nameddims(view(dename(a), subinds...), sub_nameddimsindices)
+  return constructorof_nameddims(typeof(a))(
+    view(dename(a), subinds...), sub_nameddimsindices
+  )
 end
 
 function Base.getindex(
@@ -522,22 +527,22 @@ end
 # Repeated definition of `Base.ViewIndex`.
 const ViewIndex = Union{Real,AbstractArray}
 
-function nameddims_view(a::AbstractArray, I...)
+function view_nameddims(a::AbstractArray, I...)
   sub_dims = filter(dim -> !(I[dim] isa Real), ntuple(identity, ndims(a)))
   sub_nameddimsindices = map(dim -> nameddimsindices(a, dim)[I[dim]], sub_dims)
-  return nameddims(view(dename(a), I...), sub_nameddimsindices)
+  return constructorof(typeof(a))(view(dename(a), I...), sub_nameddimsindices)
 end
 
 function Base.view(a::AbstractNamedDimsArray, I::ViewIndex...)
-  return nameddims_view(a, I...)
+  return view_nameddims(a, I...)
 end
 
-function nameddims_getindex(a::AbstractArray, I...)
+function getindex_nameddims(a::AbstractArray, I...)
   return copy(view(a, I...))
 end
 
 function Base.getindex(a::AbstractNamedDimsArray, I::ViewIndex...)
-  return nameddims_getindex(a, I...)
+  return getindex_nameddims(a, I...)
 end
 
 function Base.setindex!(
@@ -556,7 +561,7 @@ function Base.setindex!(
   Irest::NamedViewIndex...,
 )
   I = (I1, Irest...)
-  setindex!(a, nameddimsarraytype(a)(value, I), I...)
+  setindex!(a, constructorof(typeof(a))(value, I), I...)
   return a
 end
 function Base.setindex!(
@@ -586,7 +591,7 @@ function aligndims(a::AbstractArray, dims)
       "Dimension name mismatch $(nameddimsindices(a)), $(new_nameddimsindices)."
     ),
   )
-  return nameddimsarraytype(a)(permutedims(dename(a), perm), new_nameddimsindices)
+  return constructorof(typeof(a))(permutedims(dename(a), perm), new_nameddimsindices)
 end
 
 function aligneddims(a::AbstractArray, dims)
@@ -598,7 +603,9 @@ function aligneddims(a::AbstractArray, dims)
       "Dimension name mismatch $(nameddimsindices(a)), $(new_nameddimsindices)."
     ),
   )
-  return nameddimsarraytype(a)(PermutedDimsArray(dename(a), perm), new_nameddimsindices)
+  return constructorof_nameddims(typeof(a))(
+    PermutedDimsArray(dename(a), perm), new_nameddimsindices
+  )
 end
 
 # Convenient constructors
@@ -715,12 +722,13 @@ using MapBroadcast: Mapped, mapped
 
 abstract type AbstractNamedDimsArrayStyle{N} <: AbstractArrayStyle{N} end
 
-struct NamedDimsArrayStyle{N} <: AbstractNamedDimsArrayStyle{N} end
-NamedDimsArrayStyle(::Val{N}) where {N} = NamedDimsArrayStyle{N}()
-NamedDimsArrayStyle{M}(::Val{N}) where {M,N} = NamedDimsArrayStyle{N}()
+struct NamedDimsArrayStyle{N,NDA} <: AbstractNamedDimsArrayStyle{N} end
+NamedDimsArrayStyle(::Val{N}) where {N} = NamedDimsArrayStyle{N,NamedDimsArray}()
+NamedDimsArrayStyle{M}(::Val{N}) where {M,N} = NamedDimsArrayStyle{N,NamedDimsArray}()
+NamedDimsArrayStyle{M,NDA}(::Val{N}) where {M,N,NDA} = NamedDimsArrayStyle{N,NDA}()
 
 function Broadcast.BroadcastStyle(arraytype::Type{<:AbstractNamedDimsArray})
-  return NamedDimsArrayStyle{ndims(arraytype)}()
+  return NamedDimsArrayStyle{ndims(arraytype),constructorof(arraytype)}()
 end
 
 function Broadcast.combine_axes(
@@ -775,6 +783,7 @@ function set_check_broadcast_shape(
   check_broadcast_shape(dename.(ax1), dename.(ax2_aligned))
   return nothing
 end
+set_check_broadcast_shape(ax1::Tuple{}, ax2::Tuple{}) = nothing
 
 # Dename and lazily permute the arguments using the reference
 # dimension names.
@@ -790,7 +799,9 @@ function Base.similar(bc::Broadcasted{<:AbstractNamedDimsArrayStyle}, elt::Type,
   # wrapper type rather than the generic `nameddims` constructor, which
   # can lose information.
   # Call it as `nameddimsarraytype(bc.style)`.
-  return nameddims(similar(m′, elt, dename.(Tuple(ax))), nameddimsindices)
+  return nameddimsarraytype(bc.style)(
+    similar(m′, elt, dename.(Tuple(ax))), nameddimsindices
+  )
 end
 
 function Base.copyto!(
