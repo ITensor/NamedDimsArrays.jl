@@ -16,7 +16,7 @@ named(r::AbstractUnitRange, name) = namedunitrange(r, name)
 
 # Derived interface.
 # TODO: Use `Accessors.@set`?
-setname(r::AbstractNamedUnitRange, name) = namedunitrange(dename(r), name)
+setname(r::AbstractNamedUnitRange, name) = named(dename(r), name)
 
 # TODO: Use `TypeParameterAccessors`.
 denametype(::Type{<:AbstractNamedUnitRange{<:Any,Value}}) where {Value} = Value
