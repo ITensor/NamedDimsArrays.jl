@@ -1,5 +1,7 @@
 module NamedDimsArrays
 
+export NamedDimsArray, aligndims, named, nameddims
+
 include("isnamed.jl")
 include("randname.jl")
 include("abstractnamedinteger.jl")
