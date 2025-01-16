@@ -211,7 +211,7 @@ function Base.size(a::AbstractNamedDimsArray)
   return NaiveOrderedSet(map(named, size(dename(a)), nameddimsindices(a)))
 end
 function Base.length(a::AbstractNamedDimsArray)
-  return prod(size(a); init=1)
+  return prod(size(a); init=named(1, FusedNames(())))
 end
 
 # Circumvent issue when ndims isn't known at compile time.

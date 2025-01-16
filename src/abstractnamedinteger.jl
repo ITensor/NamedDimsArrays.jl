@@ -57,7 +57,9 @@ struct FusedNames{Names} <: AbstractName
   names::Names
 end
 fusednames(name1, name2) = FusedNames((name1, name2))
-fusednames(name1::FusedNames, name2::FusedNames) = FusedNames(generic_vcat(name1, name2))
+function fusednames(name1::FusedNames, name2::FusedNames)
+  return FusedNames(generic_vcat(name1.names, name2.names))
+end
 fusednames(name1, name2::FusedNames) = fusednames(FusedNames((name1,)), name2)
 fusednames(name1::FusedNames, name2) = fusednames(name1, FusedNames((name2,)))
 
