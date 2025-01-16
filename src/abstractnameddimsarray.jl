@@ -184,6 +184,7 @@ Base.axes(s::NaiveOrderedSet) = axes(values(s))
 Base.:(==)(s1::NaiveOrderedSet, s2::NaiveOrderedSet) = issetequal(values(s1), values(s2))
 Base.iterate(s::NaiveOrderedSet, args...) = iterate(values(s), args...)
 Base.getindex(s::NaiveOrderedSet, I::Int) = values(s)[I]
+Base.get(s::NaiveOrderedSet, I::Integer, default) = get(values(s), I, default)
 Base.invperm(s::NaiveOrderedSet) = NaiveOrderedSet(invperm(values(s)))
 Base.Broadcast._axes(::Broadcasted, axes::NaiveOrderedSet) = axes
 Base.Broadcast.BroadcastStyle(::Type{<:NaiveOrderedSet}) = Style{NaiveOrderedSet}()
@@ -208,6 +209,9 @@ function Base.axes(a::AbstractNamedDimsArray)
 end
 function Base.size(a::AbstractNamedDimsArray)
   return NaiveOrderedSet(map(named, size(dename(a)), nameddimsindices(a)))
+end
+function Base.length(a::AbstractNamedDimsArray)
+  return prod(size(a); init=1)
 end
 
 # Circumvent issue when ndims isn't known at compile time.
@@ -585,7 +589,7 @@ end
 function aligndims(a::AbstractArray, dims)
   new_nameddimsindices = to_nameddimsindices(a, dims)
   # TODO: Check this permutation is correct (it may be the inverse of what we want).
-  perm = getperm(nameddimsindices(a), new_nameddimsindices)
+  perm = Tuple(getperm(nameddimsindices(a), new_nameddimsindices))
   isperm(perm) || throw(
     NameMismatch(
       "Dimension name mismatch $(nameddimsindices(a)), $(new_nameddimsindices)."
@@ -770,6 +774,24 @@ function set_promote_shape(
   return named.(ax_promoted, name.(ax1))
 end
 
+# Handle operations like `ITensor() + ITensor(i, j)`.
+# TODO: Decide if this should be a general definition for `AbstractNamedDimsArray`,
+# or just for `AbstractITensor`.
+function set_promote_shape(
+  ax1::Tuple{}, ax2::Tuple{AbstractNamedUnitRange,Vararg{AbstractNamedUnitRange}}
+)
+  return ax2
+end
+
+# Handle operations like `ITensor(i, j) + ITensor()`.
+# TODO: Decide if this should be a general definition for `AbstractNamedDimsArray`,
+# or just for `AbstractITensor`.
+function set_promote_shape(
+  ax1::Tuple{AbstractNamedUnitRange,Vararg{AbstractNamedUnitRange}}, ax2::Tuple{}
+)
+  return ax1
+end
+
 function Broadcast.check_broadcast_shape(ax1::NaiveOrderedSet, ax2::NaiveOrderedSet)
   return set_check_broadcast_shape(Tuple(ax1), Tuple(ax2))
 end
@@ -792,6 +814,10 @@ function denamed(m::Mapped, nameddimsindices)
   return mapped(m.f, map(arg -> denamed(arg, nameddimsindices), m.args)...)
 end
 
+function nameddimsarraytype(style::NamedDimsArrayStyle{<:Any,NDA}) where {NDA}
+  return NDA
+end
+
 function Base.similar(bc::Broadcasted{<:AbstractNamedDimsArrayStyle}, elt::Type, ax)
   nameddimsindices = name.(ax)
   m′ = denamed(Mapped(bc), nameddimsindices)
@@ -804,9 +830,7 @@ function Base.similar(bc::Broadcasted{<:AbstractNamedDimsArrayStyle}, elt::Type,
   )
 end
 
-function Base.copyto!(
-  dest::AbstractArray{<:Any,N}, bc::Broadcasted{<:AbstractNamedDimsArrayStyle{N}}
-) where {N}
+function Base.copyto!(dest::AbstractArray, bc::Broadcasted{<:AbstractNamedDimsArrayStyle})
   return copyto!(dest, Mapped(bc))
 end
 

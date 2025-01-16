@@ -86,6 +86,8 @@ Base.:-(i::AbstractNamedInteger) = setvalue(i, -dename(i))
 # TODO: See if we can delete this.
 Base.:+(i1::Int, i2::AbstractNamedInteger) = i1 + dename(i2)
 
+Base.:*(i1::Int, i2::AbstractNamedInteger) = i1 * dename(i2)
+
 Base.zero(i::AbstractNamedInteger) = setvalue(i, zero(dename(i)))
 Base.one(i::AbstractNamedInteger) = setvalue(i, one(dename(i)))
 Base.signbit(i::AbstractNamedInteger) = signbit(dename(i))

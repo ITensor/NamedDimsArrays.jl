@@ -43,17 +43,17 @@ Base.length(r::AbstractNamedUnitRange) = named(length(dename(r)), name(r))
 Base.size(r::AbstractNamedUnitRange) = (named(length(dename(r)), name(r)),)
 Base.axes(r::AbstractNamedUnitRange) = (named(only(axes(dename(r))), name(r)),)
 Base.step(r::AbstractNamedUnitRange) = named(step(dename(r)), name(r))
-Base.getindex(r::AbstractNamedUnitRange, I::Int) = named_getindex(r, I)
+Base.getindex(r::AbstractNamedUnitRange, I::Int) = getindex_named(r, I)
 # Fix ambiguity error.
 function Base.getindex(r::AbstractNamedUnitRange, I::AbstractUnitRange{<:Integer})
-  return named_getindex(r, I)
+  return getindex_named(r, I)
 end
 # Fix ambiguity error.
 function Base.getindex(r::AbstractNamedUnitRange, I::Colon)
-  return named_getindex(r, I)
+  return getindex_named(r, I)
 end
 function Base.getindex(r::AbstractNamedUnitRange, I)
-  return named_getindex(r, I)
+  return getindex_named(r, I)
 end
 Base.isempty(r::AbstractNamedUnitRange) = isempty(dename(r))
 

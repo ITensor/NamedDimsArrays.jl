@@ -38,17 +38,17 @@ function Base.hash(a::AbstractNamedArray, h::UInt)
   return hash(name(a), h)
 end
 
-named_getindex(a::AbstractArray, I...) = named(getindex(dename(a), I...), name(a))
+getindex_named(a::AbstractArray, I...) = named(getindex(dename(a), I...), name(a))
 
 # Array funcionality.
 Base.size(a::AbstractNamedArray) = map(s -> named(s, name(a)), size(dename(a)))
 Base.axes(a::AbstractNamedArray) = map(s -> named(s, name(a)), axes(dename(a)))
 Base.eachindex(a::AbstractNamedArray) = eachindex(dename(a))
 function Base.getindex(a::AbstractNamedArray{<:Any,N}, I::Vararg{Int,N}) where {N}
-  return named_getindex(a, I...)
+  return getindex_named(a, I...)
 end
 function Base.getindex(a::AbstractNamedArray, I::Int)
-  return named_getindex(a, I)
+  return getindex_named(a, I)
 end
 Base.isempty(a::AbstractNamedArray) = isempty(dename(a))
 
