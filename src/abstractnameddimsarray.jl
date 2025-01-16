@@ -181,6 +181,7 @@ Base.values(s::NaiveOrderedSet) = s.values
 Base.Tuple(s::NaiveOrderedSet) = Tuple(values(s))
 Base.length(s::NaiveOrderedSet) = length(values(s))
 Base.axes(s::NaiveOrderedSet) = axes(values(s))
+Base.keys(s::NaiveOrderedSet) = Base.OneTo(length(s))
 Base.:(==)(s1::NaiveOrderedSet, s2::NaiveOrderedSet) = issetequal(values(s1), values(s2))
 Base.iterate(s::NaiveOrderedSet, args...) = iterate(values(s), args...)
 Base.getindex(s::NaiveOrderedSet, I::Int) = values(s)[I]
@@ -210,8 +211,9 @@ end
 function Base.size(a::AbstractNamedDimsArray)
   return NaiveOrderedSet(map(named, size(dename(a)), nameddimsindices(a)))
 end
+
 function Base.length(a::AbstractNamedDimsArray)
-  return prod(size(a); init=named(1, FusedNames(())))
+  return prod(size(a); init=1)
 end
 
 # Circumvent issue when ndims isn't known at compile time.
@@ -426,10 +428,18 @@ function Base.setindex!(a::AbstractNamedDimsArray, value, I::CartesianIndex)
   setindex!(a, value, to_indices(a, (I,))...)
   return a
 end
+
+function flatten_namedinteger(i::AbstractNamedInteger)
+  if name(i) isa Union{AbstractNamedUnitRange,AbstractNamedArray}
+    return name(i)[dename(i)]
+  end
+  return i
+end
+
 function Base.setindex!(
   a::AbstractNamedDimsArray, value, I1::AbstractNamedInteger, Irest::AbstractNamedInteger...
 )
-  I = (I1, Irest...)
+  I = flatten_namedinteger.((I1, Irest...))
   # TODO: Check if this permuation should be inverted.
   perm = getperm(name.(nameddimsindices(a)), name.(I))
   # TODO: Throw a `NameMismatch` error.
@@ -722,7 +732,7 @@ using Base.Broadcast:
   broadcasted,
   check_broadcast_shape,
   combine_axes
-using MapBroadcast: Mapped, mapped
+using MapBroadcast: MapBroadcast, Mapped, mapped, tile
 
 abstract type AbstractNamedDimsArrayStyle{N} <: AbstractArrayStyle{N} end
 
@@ -816,6 +826,16 @@ end
 
 function nameddimsarraytype(style::NamedDimsArrayStyle{<:Any,NDA}) where {NDA}
   return NDA
+end
+
+using FillArrays: Fill
+
+function MapBroadcast.tile(a::AbstractNamedDimsArray, ax)
+  axes(a) == ax && return a
+  if iszero(ndims(a))
+    return constructorof(typeof(a))(Fill(a[], dename.(Tuple(ax))), name.(ax))
+  end
+  return error("Not implemented.")
 end
 
 function Base.similar(bc::Broadcasted{<:AbstractNamedDimsArrayStyle}, elt::Type, ax)
