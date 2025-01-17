@@ -152,6 +152,9 @@ const NamedDimsAxis = AbstractNamedUnitRange{
 
 # Generic constructor.
 function nameddims(a::AbstractArray, nameddimsindices)
+  if iszero(ndims(a))
+    return constructorof_nameddims(typeof(a))(a, nameddimsindices)
+  end
   # TODO: Check the shape of `nameddimsindices` matches the shape of `a`.
   arrtype = mapreduce(nameddimsarraytype, combine_nameddimsarraytype, nameddimsindices)
   return arrtype(a, to_nameddimsindices(a, nameddimsindices))
@@ -781,7 +784,7 @@ function set_promote_shape(
   ax1::Tuple{AbstractNamedUnitRange,Vararg{AbstractNamedUnitRange,N}},
   ax2::Tuple{AbstractNamedUnitRange,Vararg{AbstractNamedUnitRange,N}},
 ) where {N}
-  perm = getperm(ax1, ax2)
+  perm = getperm(ax2, ax1)
   ax2_aligned = map(i -> ax2[i], perm)
   ax_promoted = promote_shape(dename.(ax1), dename.(ax2_aligned))
   return named.(ax_promoted, name.(ax1))
@@ -813,7 +816,7 @@ function set_check_broadcast_shape(
   ax1::Tuple{AbstractNamedUnitRange,Vararg{AbstractNamedUnitRange,N}},
   ax2::Tuple{AbstractNamedUnitRange,Vararg{AbstractNamedUnitRange,N}},
 ) where {N}
-  perm = getperm(ax1, ax2)
+  perm = getperm(ax2, ax1)
   ax2_aligned = map(i -> ax2[i], perm)
   check_broadcast_shape(dename.(ax1), dename.(ax2_aligned))
   return nothing
