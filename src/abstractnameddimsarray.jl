@@ -769,6 +769,9 @@ end
 function Broadcast.broadcast_shape(ax1::Tuple{}, ax2::NaiveOrderedSet)
   return ax2
 end
+function Broadcast.broadcast_shape(ax1::NaiveOrderedSet, ax2::Tuple{})
+  return ax1
+end
 
 function Base.promote_shape(ax1::NaiveOrderedSet, ax2::NaiveOrderedSet)
   return NaiveOrderedSet(set_promote_shape(Tuple(ax1), Tuple(ax2)))
