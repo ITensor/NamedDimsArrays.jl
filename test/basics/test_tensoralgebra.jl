@@ -1,4 +1,4 @@
-using LinearAlgebra: qr
+using LinearAlgebra: qr, svd
 using NamedDimsArrays: namedoneto, dename
 using TensorAlgebra: TensorAlgebra, contract, fusedims, splitdims
 using Test: @test, @testset, @test_broken
@@ -47,15 +47,30 @@ elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
     dims = (2, 2, 2, 2)
     i, j, k, l = namedoneto.(dims, ("i", "j", "k", "l"))
 
-    na = randn(elt, i, j)
+    a = randn(elt, i, j)
     # TODO: Should this be allowed?
     # TODO: Add support for specifying new name.
-    q, r = qr(na, (i,))
-    @test q * r ≈ na
+    q, r = qr(a, (i,))
+    @test q * r ≈ a
 
-    na = randn(elt, i, j, k, l)
+    a = randn(elt, i, j, k, l)
     # TODO: Add support for specifying new name.
-    q, r = qr(na, (i, k), (j, l))
-    @test contract(q, r) ≈ na
+    q, r = qr(a, (i, k), (j, l))
+    @test q * r ≈ a
+  end
+  @testset "svd" begin
+    dims = (2, 2, 2, 2)
+    i, j, k, l = namedoneto.(dims, ("i", "j", "k", "l"))
+
+    a = randn(elt, i, j)
+    # TODO: Should this be allowed?
+    # TODO: Add support for specifying new name.
+    u, s, v = svd(a, (i,))
+    @test u * s * v ≈ a
+
+    a = randn(elt, i, j, k, l)
+    # TODO: Add support for specifying new name.
+    u, s, v = svd(a, (i, k), (j, l))
+    @test u * s * v ≈ a
   end
 end
