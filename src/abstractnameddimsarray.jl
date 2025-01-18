@@ -400,8 +400,7 @@ function Base.getindex(
   a::AbstractNamedDimsArray, I1::AbstractNamedInteger, Irest::AbstractNamedInteger...
 )
   I = (I1, Irest...)
-  # TODO: Check if this permuation should be inverted.
-  perm = getperm(name.(nameddimsindices(a)), name.(I))
+  perm = getperm(name.(I), name.(nameddimsindices(a)))
   # TODO: Throw a `NameMismatch` error.
   @assert isperm(perm)
   I = map(p -> I[p], perm)
@@ -446,8 +445,7 @@ function Base.setindex!(
   a::AbstractNamedDimsArray, value, I1::AbstractNamedInteger, Irest::AbstractNamedInteger...
 )
   I = flatten_namedinteger.((I1, Irest...))
-  # TODO: Check if this permuation should be inverted.
-  perm = getperm(name.(nameddimsindices(a)), name.(I))
+  perm = getperm(name.(I), name.(nameddimsindices(a)))
   # TODO: Throw a `NameMismatch` error.
   @assert isperm(perm)
   I = map(p -> I[p], perm)
@@ -523,8 +521,7 @@ end
 
 function Base.view(a::AbstractNamedDimsArray, I1::NamedViewIndex, Irest::NamedViewIndex...)
   I = (I1, Irest...)
-  # TODO: Check if this permuation should be inverted.
-  perm = getperm(name.(nameddimsindices(a)), name.(I))
+  perm = getperm(name.(I), name.(nameddimsindices(a)))
   # TODO: Throw a `NameMismatch` error.
   @assert isperm(perm)
   I = map(p -> I[p], perm)
@@ -604,7 +601,6 @@ end
 
 function aligndims(a::AbstractArray, dims)
   new_nameddimsindices = to_nameddimsindices(a, dims)
-  # TODO: Check this permutation is correct (it may be the inverse of what we want).
   perm = Tuple(getperm(nameddimsindices(a), new_nameddimsindices))
   isperm(perm) || throw(
     NameMismatch(
@@ -616,7 +612,6 @@ end
 
 function aligneddims(a::AbstractArray, dims)
   new_nameddimsindices = to_nameddimsindices(a, dims)
-  # TODO: Check this permutation is correct (it may be the inverse of what we want).
   perm = getperm(nameddimsindices(a), new_nameddimsindices)
   isperm(perm) || throw(
     NameMismatch(

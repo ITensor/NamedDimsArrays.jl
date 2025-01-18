@@ -1,3 +1,4 @@
+using Combinatorics: Combinatorics
 using NamedDimsArrays:
   NamedDimsArrays,
   AbstractNamedDimsArray,
@@ -198,6 +199,23 @@ using Test: @test, @test_throws, @testset
     c = nameddims(Array{elt}(undef, 2, 3), (:i, :j))
     c .= a .+ 2 .* b
     @test dename(c, (:i, :j)) ≈ dename(a, (:i, :j)) + 2 * dename(b, (:i, :j))
+
+    # Regression test for proper permutations.
+    a = nameddims(randn(elt, 2, 3, 4), (:i, :j, :k))
+    I = (:i => 2, :j => 3, :k => 4)
+    for I′ in Combinatorics.permutations(I)
+      @test a[I′...] == a[2, 3, 4]
+      a′ = copy(a)
+      a′[I′...] = zero(Bool)
+      @test iszero(a′[2, 3, 4])
+    end
+    I = (:i => 2, :j => 2:3, :k => 4)
+    for I′ in Combinatorics.permutations(I)
+      @test a[I′...] == a[2, 2:3, 4]
+      ## TODO: This is broken, investigate.
+      ## a′[I′...] = zeros(Bool, 2)
+      ## @test iszero(a′[2, 2:3, 4])
+    end
   end
   @testset "Shorthand constructors (eltype=$elt)" for elt in (
     Float32, ComplexF32, Float64, ComplexF64
