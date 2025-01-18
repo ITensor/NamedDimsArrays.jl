@@ -17,6 +17,7 @@ using NamedDimsArrays:
   dims,
   fusednames,
   isnamed,
+  mapnameddimsindices,
   name,
   named,
   nameddims,
@@ -136,6 +137,9 @@ using Test: @test, @test_throws, @testset
     @test nameddimsindices(nb) == (named(1:3, "k"), named(1:4, "j"))
     @test dename(nb) == a
     nb = replacenameddimsindices(n -> n == named(1:3, "i") ? named(1:3, "k") : n, na)
+    @test nameddimsindices(nb) == (named(1:3, "k"), named(1:4, "j"))
+    @test dename(nb) == a
+    nb = mapnameddimsindices(n -> n == named(1:3, "i") ? named(1:3, "k") : n, na)
     @test nameddimsindices(nb) == (named(1:3, "k"), named(1:4, "j"))
     @test dename(nb) == a
     nb = setnameddimsindices(na, named(3, "i") => named(3, "k"))

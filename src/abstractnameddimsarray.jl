@@ -290,6 +290,9 @@ function replacenameddimsindices(a::AbstractNamedDimsArray, replacements::Pair..
   new_nameddimsindices = named.(dename.(old_nameddimsindices), last.(replacements))
   return replacenameddimsindices(a, (old_nameddimsindices .=> new_nameddimsindices)...)
 end
+function mapnameddimsindices(f, a::AbstractNamedDimsArray)
+  return setnameddimsindices(a, map(f, nameddimsindices(a)))
+end
 
 # `Base.isempty(a::AbstractArray)` is defined as `length(a) == 0`,
 # which involves comparing a named integer to an unnamed integer
