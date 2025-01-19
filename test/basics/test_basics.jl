@@ -3,6 +3,7 @@ using NamedDimsArrays:
   NamedDimsArrays,
   AbstractNamedDimsArray,
   AbstractNamedDimsMatrix,
+  NaiveOrderedSet,
   Name,
   NameMismatch,
   NamedDimsCartesianIndex,
@@ -269,6 +270,25 @@ using Test: @test, @test_throws, @testset
       @test na isa NamedDimsArray
       @test nameddimsindices(na) == Base.oneto.((i, j))
       @test !iszero(na)
+    end
+  end
+  @testset "NaiveOrderedSet" begin
+    s = NaiveOrderedSet(("a", "b", "c"))
+    @test values(s) == ("a", "b", "c")
+    @test Tuple(s) == ("a", "b", "c")
+    @test s[1] == "a"
+    @test s[2] == "b"
+    @test s[3] == "c"
+    for s′ in (
+      replace(x -> x == "b" ? "x" : x, s),
+      replace(s, "b" => "x"),
+      map(x -> x == "b" ? "x" : x, s),
+    )
+      @test s′ isa NaiveOrderedSet
+      @test Tuple(s′) == ("a", "x", "c")
+      @test s′[1] == "a"
+      @test s′[2] == "x"
+      @test s′[3] == "c"
     end
   end
 end

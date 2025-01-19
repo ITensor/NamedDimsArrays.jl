@@ -1,7 +1,7 @@
 name = "NamedDimsArrays"
 uuid = "60cbd0c0-df58-4cb7-918c-6f5607b73fde"
 authors = ["ITensor developers <support@itensor.org> and contributors"]
-version = "0.3.11"
+version = "0.3.12"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"

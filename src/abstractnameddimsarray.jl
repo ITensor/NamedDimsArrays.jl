@@ -207,6 +207,12 @@ end
 function Base.map(f::Function, s::NaiveOrderedSet)
   return NaiveOrderedSet(map(f, values(s)))
 end
+function Base.replace(f::Union{Function,Type}, s::NaiveOrderedSet; kwargs...)
+  return NaiveOrderedSet(replace(f, values(s); kwargs...))
+end
+function Base.replace(s::NaiveOrderedSet, replacements::Pair...; kwargs...)
+  return NaiveOrderedSet(replace(values(s), replacements...; kwargs...))
+end
 
 function Base.axes(a::AbstractNamedDimsArray)
   return NaiveOrderedSet(map(named, axes(dename(a)), nameddimsindices(a)))
