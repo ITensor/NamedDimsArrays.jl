@@ -151,9 +151,9 @@ const NamedDimsAxis = AbstractNamedUnitRange{
 }
 
 # Generic constructor.
-function nameddims(a::AbstractArray, nameddimsindices)
+function nameddimsarray(a::AbstractArray, nameddimsindices)
   if iszero(ndims(a))
-    return constructorof_nameddims(typeof(a))(a, nameddimsindices)
+    return constructorof_nameddimsarray(typeof(a))(a, nameddimsindices)
   end
   # TODO: Check the shape of `nameddimsindices` matches the shape of `a`.
   arrtype = mapreduce(nameddimsarraytype, combine_nameddimsarraytype, nameddimsindices)
@@ -251,17 +251,19 @@ to_nameddimsaxis(I::NamedDimsIndices) = named(dename(only(axes(I))), I)
 # Interface inspired by [ConstructionBase.constructorof](https://github.com/JuliaObjects/ConstructionBase.jl).
 constructorof(type::Type{<:AbstractArray}) = unspecify_type_parameters(type)
 
-constructorof_nameddims(type::Type{<:AbstractNamedDimsArray}) = constructorof(type)
-constructorof_nameddims(type::Type{<:AbstractArray}) = NamedDimsArray
+constructorof_nameddimsarray(type::Type{<:AbstractNamedDimsArray}) = constructorof(type)
+constructorof_nameddimsarray(type::Type{<:AbstractArray}) = NamedDimsArray
 
-function similar_nameddims(a::AbstractNamedDimsArray, elt::Type, inds)
+function similar_nameddimsarray(a::AbstractNamedDimsArray, elt::Type, inds)
   ax = to_nameddimsaxes(inds)
   return constructorof(typeof(a))(similar(dename(a), elt, dename.(Tuple(ax))), name.(ax))
 end
 
-function similar_nameddims(a::AbstractArray, elt::Type, inds)
+function similar_nameddimsarray(a::AbstractArray, elt::Type, inds)
   ax = to_nameddimsaxes(inds)
-  return constructorof_nameddims(typeof(a))(similar(a, elt, dename.(Tuple(ax))), name.(ax))
+  return constructorof_nameddimsarray(typeof(a))(
+    similar(a, elt, dename.(Tuple(ax))), name.(ax)
+  )
 end
 
 # Base.similar gets the eltype at compile time.
@@ -272,11 +274,11 @@ end
 function Base.similar(
   a::AbstractArray, elt::Type, inds::Tuple{NamedDimsIndices,Vararg{NamedDimsIndices}}
 )
-  return similar_nameddims(a, elt, inds)
+  return similar_nameddimsarray(a, elt, inds)
 end
 
 function Base.similar(a::AbstractArray, elt::Type, inds::NaiveOrderedSet)
-  return similar_nameddims(a, elt, inds)
+  return similar_nameddimsarray(a, elt, inds)
 end
 
 function setnameddimsindices(a::AbstractNamedDimsArray, nameddimsindices)
@@ -506,7 +508,7 @@ function Base.view(a::AbstractArray, I1::NamedViewIndex, Irest::NamedViewIndex..
   I = (I1, Irest...)
   sub_dims = filter(dim -> I[dim] isa AbstractArray, ntuple(identity, ndims(a)))
   sub_nameddimsindices = map(dim -> I[dim], sub_dims)
-  return nameddims(view(a, dename.(I)...), sub_nameddimsindices)
+  return nameddimsarray(view(a, dename.(I)...), sub_nameddimsindices)
 end
 
 function Base.getindex(a::AbstractArray, I1::NamedViewIndex, Irest::NamedViewIndex...)
@@ -514,7 +516,7 @@ function Base.getindex(a::AbstractArray, I1::NamedViewIndex, Irest::NamedViewInd
 end
 
 function Base.view(a::AbstractArray, I1::Name, Irest::Name...)
-  return nameddims(a, name.((I1, Irest...)))
+  return nameddimsarray(a, name.((I1, Irest...)))
 end
 
 function Base.view(a::AbstractNamedDimsArray, I1::Name, Irest::Name...)
@@ -536,7 +538,7 @@ function Base.view(a::AbstractNamedDimsArray, I1::NamedViewIndex, Irest::NamedVi
   subinds = map(nameddimsindices(a), I) do dimname, i
     return checked_indexin(dename(i), dename(dimname))
   end
-  return constructorof_nameddims(typeof(a))(
+  return constructorof_nameddimsarray(typeof(a))(
     view(dename(a), subinds...), sub_nameddimsindices
   )
 end
@@ -550,22 +552,22 @@ end
 # Repeated definition of `Base.ViewIndex`.
 const ViewIndex = Union{Real,AbstractArray}
 
-function view_nameddims(a::AbstractArray, I...)
+function view_nameddimsarray(a::AbstractArray, I...)
   sub_dims = filter(dim -> !(I[dim] isa Real), ntuple(identity, ndims(a)))
   sub_nameddimsindices = map(dim -> nameddimsindices(a, dim)[I[dim]], sub_dims)
   return constructorof(typeof(a))(view(dename(a), I...), sub_nameddimsindices)
 end
 
 function Base.view(a::AbstractNamedDimsArray, I::ViewIndex...)
-  return view_nameddims(a, I...)
+  return view_nameddimsarray(a, I...)
 end
 
-function getindex_nameddims(a::AbstractArray, I...)
+function getindex_nameddimsarray(a::AbstractArray, I...)
   return copy(view(a, I...))
 end
 
 function Base.getindex(a::AbstractNamedDimsArray, I::ViewIndex...)
-  return getindex_nameddims(a, I...)
+  return getindex_nameddimsarray(a, I...)
 end
 
 function Base.setindex!(
@@ -624,7 +626,7 @@ function aligneddims(a::AbstractArray, dims)
       "Dimension name mismatch $(nameddimsindices(a)), $(new_nameddimsindices)."
     ),
   )
-  return constructorof_nameddims(typeof(a))(
+  return constructorof_nameddimsarray(typeof(a))(
     PermutedDimsArray(dename(a), perm), new_nameddimsindices
   )
 end
@@ -659,7 +661,7 @@ for (f, f′) in [(:rand, :_rand), (:randn, :_randn)]
     )
       ax = to_nameddimsaxes(inds)
       a = $f′(rng, elt, dename.(ax))
-      return nameddims(a, name.(ax))
+      return nameddimsarray(a, name.(ax))
     end
     function Base.$f(
       rng::AbstractRNG,
@@ -692,13 +694,13 @@ for f in [:zeros, :ones]
     )
       ax = to_nameddimsaxes(inds)
       a = $f(elt, dename.(ax))
-      return nameddims(a, name.(ax))
+      return nameddimsarray(a, name.(ax))
     end
     function Base.$f(
       elt::Type{<:Number}, dims::Tuple{AbstractNamedInteger,Vararg{AbstractNamedInteger}}
     )
       a = $f(elt, dename.(dims))
-      return nameddims(a, Base.oneto.(dims))
+      return nameddimsarray(a, Base.oneto.(dims))
     end
   end
   for dimtype in [:AbstractNamedInteger, :NamedDimsIndices]
@@ -715,11 +717,11 @@ end
   function Base.fill(value, inds::Tuple{NamedDimsIndices,Vararg{NamedDimsIndices}})
     ax = to_nameddimsaxes(inds)
     a = fill(value, dename.(ax))
-    return nameddims(a, name.(ax))
+    return nameddimsarray(a, name.(ax))
   end
   function Base.fill(value, dims::Tuple{AbstractNamedInteger,Vararg{AbstractNamedInteger}})
     a = fill(value, dename.(dims))
-    return nameddims(a, Base.oneto.(dims))
+    return nameddimsarray(a, Base.oneto.(dims))
   end
 end
 for dimtype in [:AbstractNamedInteger, :NamedDimsIndices]
@@ -896,7 +898,7 @@ function Base.show(io::IO, mime::MIME"text/plain", a::AbstractNamedDimsArray)
 end
 
 function Base.show(io::IO, a::AbstractNamedDimsArray)
-  print(io, "nameddims(")
+  print(io, "nameddimsarray(")
   show(io, dename(a))
   print(io, ", ", nameddimsindices(a), ")")
   return nothing

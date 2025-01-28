@@ -22,7 +22,7 @@ using NamedDimsArrays:
   mapnameddimsindices,
   name,
   named,
-  nameddims,
+  nameddimsarray,
   nameddimsindices,
   namedoneto,
   replacenameddimsindices,
@@ -36,7 +36,7 @@ using Test: @test, @test_throws, @testset
     elt = Float64
     a = randn(elt, 3, 4)
     @test !isnamed(a)
-    na = nameddims(a, ("i", "j"))
+    na = nameddimsarray(a, ("i", "j"))
     @test na isa NamedDimsMatrix{elt,Matrix{elt}}
     @test na isa AbstractNamedDimsMatrix{elt}
     @test na isa NamedDimsArray{elt}
@@ -171,8 +171,8 @@ using Test: @test, @test_throws, @testset
     @test unname(na′) isa PermutedDimsArray{elt}
     @test a == permutedims(unname(na′), (2, 1))
 
-    na = nameddims(randn(elt, 2, 3), (:i, :j))
-    nb = nameddims(randn(elt, 3, 2), (:j, :i))
+    na = nameddimsarray(randn(elt, 2, 3), (:i, :j))
+    nb = nameddimsarray(randn(elt, 3, 2), (:j, :i))
     nc = zeros(elt, named.((2, 3), (:i, :j)))
     Is = eachindex(na, nb)
     @test Is isa NamedDimsCartesianIndices{2}
@@ -184,25 +184,25 @@ using Test: @test, @test_throws, @testset
     end
     @test dename(nc, (:i, :j)) ≈ dename(na, (:i, :j)) + dename(nb, (:i, :j))
 
-    a = nameddims(randn(elt, 2, 3), (:i, :j))
-    b = nameddims(randn(elt, 3, 2), (:j, :i))
+    a = nameddimsarray(randn(elt, 2, 3), (:i, :j))
+    b = nameddimsarray(randn(elt, 3, 2), (:j, :i))
     c = a + b
     @test dename(c, (:i, :j)) ≈ dename(a, (:i, :j)) + dename(b, (:i, :j))
     c = a .+ b
     @test dename(c, (:i, :j)) ≈ dename(a, (:i, :j)) + dename(b, (:i, :j))
     c = map(+, a, b)
     @test dename(c, (:i, :j)) ≈ dename(a, (:i, :j)) + dename(b, (:i, :j))
-    c = nameddims(Array{elt}(undef, 2, 3), (:i, :j))
+    c = nameddimsarray(Array{elt}(undef, 2, 3), (:i, :j))
     c = map!(+, c, a, b)
     @test dename(c, (:i, :j)) ≈ dename(a, (:i, :j)) + dename(b, (:i, :j))
     c = a .+ 2 .* b
     @test dename(c, (:i, :j)) ≈ dename(a, (:i, :j)) + 2 * dename(b, (:i, :j))
-    c = nameddims(Array{elt}(undef, 2, 3), (:i, :j))
+    c = nameddimsarray(Array{elt}(undef, 2, 3), (:i, :j))
     c .= a .+ 2 .* b
     @test dename(c, (:i, :j)) ≈ dename(a, (:i, :j)) + 2 * dename(b, (:i, :j))
 
     # Regression test for proper permutations.
-    a = nameddims(randn(elt, 2, 3, 4), (:i, :j, :k))
+    a = nameddimsarray(randn(elt, 2, 3, 4), (:i, :j, :k))
     I = (:i => 2, :j => 3, :k => 4)
     for I′ in Combinatorics.permutations(I)
       @test a[I′...] == a[2, 3, 4]
