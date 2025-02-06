@@ -277,6 +277,10 @@ function Base.similar(
   return similar_nameddimsarray(a, elt, inds)
 end
 
+function Base.similar(a::AbstractArray, inds::NaiveOrderedSet)
+  return similar_nameddimsarray(a, eltype(a), inds)
+end
+
 function Base.similar(a::AbstractArray, elt::Type, inds::NaiveOrderedSet)
   return similar_nameddimsarray(a, elt, inds)
 end
