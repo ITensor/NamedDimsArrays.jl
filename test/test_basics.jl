@@ -292,7 +292,13 @@ using Test: @test, @test_throws, @testset
     end
   end
   @testset "NaiveOrderedSet" begin
+    # Broadcasting
+    s = NaiveOrderedSet((1, 2))
+    @test s .+ [3, 4] == [4, 6]
+    @test s .+ (3, 4) === (4, 6)
+
     s = NaiveOrderedSet(("a", "b", "c"))
+    @test all(s .== ("a", "b", "c"))
     @test values(s) == ("a", "b", "c")
     @test Tuple(s) == ("a", "b", "c")
     @test s[1] == "a"

@@ -175,7 +175,7 @@ function combine_nameddimsarraytype(
 end
 combine_nameddimsarraytype(::Type{T}, ::Type{T}) where {T<:AbstractNamedDimsArray} = T
 
-using Base.Broadcast: Broadcasted, Style
+using Base.Broadcast: AbstractArrayStyle, Broadcasted, Style
 
 struct NaiveOrderedSet{Values}
   values::Values
@@ -192,6 +192,9 @@ Base.get(s::NaiveOrderedSet, I::Integer, default) = get(values(s), I, default)
 Base.invperm(s::NaiveOrderedSet) = NaiveOrderedSet(invperm(values(s)))
 Base.Broadcast._axes(::Broadcasted, axes::NaiveOrderedSet) = axes
 Base.Broadcast.BroadcastStyle(::Type{<:NaiveOrderedSet}) = Style{NaiveOrderedSet}()
+Base.Broadcast.BroadcastStyle(::Style{Tuple}, ::Style{NaiveOrderedSet}) = Style{Tuple}()
+Base.Broadcast.BroadcastStyle(s1::AbstractArrayStyle{0}, s2::Style{NaiveOrderedSet}) = s2
+Base.Broadcast.BroadcastStyle(s1::AbstractArrayStyle, s2::Style{NaiveOrderedSet}) = s1
 Base.Broadcast.broadcastable(s::NaiveOrderedSet) = s
 Base.to_shape(s::NaiveOrderedSet) = s
 
