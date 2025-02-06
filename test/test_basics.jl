@@ -70,12 +70,31 @@ using Test: @test, @test_throws, @testset
 
     for na′ in (
       similar(na, Float32, (j, i)),
+      similar(na, Float32, NaiveOrderedSet((j, i))),
       similar(na, Float32, (aj, ai)),
+      similar(na, Float32, NaiveOrderedSet((aj, ai))),
       similar(a, Float32, (j, i)),
+      similar(a, Float32, NaiveOrderedSet((j, i))),
       similar(a, Float32, (aj, ai)),
+      similar(a, Float32, NaiveOrderedSet((aj, ai))),
     )
       @test eltype(na′) === Float32
-      @test nameddimsindices(na′) == (j, i)
+      @test all(nameddimsindices(na′) .== (j, i))
+      @test na′ ≠ na
+    end
+
+    for na′ in (
+      similar(na, (j, i)),
+      similar(na, NaiveOrderedSet((j, i))),
+      similar(na, (aj, ai)),
+      similar(na, NaiveOrderedSet((aj, ai))),
+      similar(a, (j, i)),
+      similar(a, NaiveOrderedSet((j, i))),
+      similar(a, (aj, ai)),
+      similar(a, NaiveOrderedSet((aj, ai))),
+    )
+      @test eltype(na′) === eltype(na)
+      @test all(nameddimsindices(na′) .== (j, i))
       @test na′ ≠ na
     end
 
