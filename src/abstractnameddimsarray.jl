@@ -188,6 +188,8 @@ Base.keys(s::NaiveOrderedSet) = Base.OneTo(length(s))
 Base.:(==)(s1::NaiveOrderedSet, s2::NaiveOrderedSet) = issetequal(values(s1), values(s2))
 Base.iterate(s::NaiveOrderedSet, args...) = iterate(values(s), args...)
 Base.getindex(s::NaiveOrderedSet, I::Int) = values(s)[I]
+# TODO: Required in Julia 1.10, delete when we drop support for that.
+Base.getindex(s::NaiveOrderedSet, I::CartesianIndex{1}) = values(s)[I]
 Base.get(s::NaiveOrderedSet, I::Integer, default) = get(values(s), I, default)
 Base.invperm(s::NaiveOrderedSet) = NaiveOrderedSet(invperm(values(s)))
 Base.Broadcast._axes(::Broadcasted, axes::NaiveOrderedSet) = axes
