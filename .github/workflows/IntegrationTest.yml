@@ -17,7 +17,7 @@ jobs:
     strategy:
        matrix:
          repo:
-           - 'ITensor/ITensorBase.jl'
+           - '(ghuser = "ITensor", repo = "ITensorBase")'
     uses: "ITensor/ITensorActions/.github/workflows/IntegrationTest.yml@main"
     with:
       localregistry: "https://github.com/ITensor/ITensorRegistry.git"
