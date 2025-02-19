@@ -7,7 +7,10 @@ using Test: @test, @testset
     :aligndims,
     :named,
     :nameddimsarray,
-    :to_nameddimsindices,
   ]
+  public = [:to_nameddimsindices]
+  if VERSION ≥ v"1.11-"
+    exports = [exports; public]
+  end
   @test issetequal(names(NamedDimsArrays), exports)
 end
