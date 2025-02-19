@@ -60,7 +60,11 @@ function to_nameddimsindices(a::AbstractArray, dims)
 end
 function to_nameddimsindices(a::AbstractArray, axes, dims)
   length(axes) == length(dims) || error("Number of dimensions don't match.")
-  return map((axis, dim) -> to_dimname(a, axis, dim), axes, dims)
+  nameddimsindices = map((axis, dim) -> to_dimname(a, axis, dim), axes, dims)
+  if any(size(a) .≠ length.(dename.(nameddimsindices)))
+    error("Input dimensions don't match.")
+  end
+  return nameddimsindices
 end
 function to_dimname(a::AbstractArray, axis, dim::AbstractNamedArray)
   # TODO: Check `axis` and `dim` have the same shape?

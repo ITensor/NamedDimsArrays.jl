@@ -6,10 +6,8 @@ struct NamedDimsArray{T,N,Parent<:AbstractArray{T,N},DimNames} <:
   parent::Parent
   nameddimsindices::DimNames
   function NamedDimsArray(parent::AbstractArray, dims)
+    # This checks the shapes of the inputs.
     nameddimsindices = to_nameddimsindices(parent, dims)
-    if any(size(parent) .≠ length.(dename.(nameddimsindices)))
-      error("Input dimensions don't match.")
-    end
     return new{eltype(parent),ndims(parent),typeof(parent),typeof(nameddimsindices)}(
       parent, nameddimsindices
     )
