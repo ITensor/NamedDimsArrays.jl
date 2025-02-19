@@ -68,6 +68,14 @@ using Test: @test, @test_throws, @testset
     @test dims(na, ("j", "i")) == (2, 1)
     @test na[1, 1] == a[1, 1]
 
+    @test_throws ErrorException NamedDimsArray(randn(4), namedoneto.((2, 2), ("i", "j")))
+    @test_throws ErrorException NamedDimsArray(randn(2, 2), namedoneto.((2, 3), ("i", "j")))
+
+    a = randn(elt, 3, 4)
+    na = nameddimsarray(a, ("i", "j"))
+    i = namedoneto(3, "i")
+    j = namedoneto(4, "j")
+    ai, aj = axes(na)
     for na′ in (
       similar(na, Float32, (j, i)),
       similar(na, Float32, NaiveOrderedSet((j, i))),
@@ -83,6 +91,11 @@ using Test: @test, @test_throws, @testset
       @test na′ ≠ na
     end
 
+    a = randn(elt, 3, 4)
+    na = nameddimsarray(a, ("i", "j"))
+    i = namedoneto(3, "i")
+    j = namedoneto(4, "j")
+    ai, aj = axes(na)
     for na′ in (
       similar(na, (j, i)),
       similar(na, NaiveOrderedSet((j, i))),

@@ -7,6 +7,9 @@ struct NamedDimsArray{T,N,Parent<:AbstractArray{T,N},DimNames} <:
   nameddimsindices::DimNames
   function NamedDimsArray(parent::AbstractArray, dims)
     nameddimsindices = to_nameddimsindices(parent, dims)
+    if any(size(parent) .≠ length.(dename.(nameddimsindices)))
+      error("Input dimensions don't match.")
+    end
     return new{eltype(parent),ndims(parent),typeof(parent),typeof(nameddimsindices)}(
       parent, nameddimsindices
     )
