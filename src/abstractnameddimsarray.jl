@@ -523,6 +523,10 @@ end
 function Base.getindex(a::AbstractArray, I1::NamedViewIndex, Irest::NamedViewIndex...)
   return copy(view(a, I1, Irest...))
 end
+# Disambiguate from `Base.getindex(A::Array, I::AbstractUnitRange{<:Integer})`.
+function Base.getindex(a::Array, I1::AbstractNamedUnitRange{<:Integer})
+  return copy(view(a, I1))
+end
 
 function Base.view(a::AbstractArray, I1::Name, Irest::Name...)
   return nameddimsarray(a, name.((I1, Irest...)))
