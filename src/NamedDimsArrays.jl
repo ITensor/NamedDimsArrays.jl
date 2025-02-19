@@ -1,6 +1,8 @@
 module NamedDimsArrays
 
 export NamedDimsArray, aligndims, named, nameddimsarray
+using Compat: @compat
+@compat public to_nameddimsindices
 
 include("isnamed.jl")
 include("randname.jl")

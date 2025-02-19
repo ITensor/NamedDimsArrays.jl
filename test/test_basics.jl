@@ -127,8 +127,19 @@ using Test: @test, @test_throws, @testset
     @test size(na, i) == si
     @test size(na, j) == sj
 
+    # Regression test for ambiguity error with
+    # `Base.getindex(A::Array, I::AbstractUnitRange{<:Integer})`.
+    i = namedoneto(2, "i")
+    a = randn(elt, 2)
+    na = a[i]
+    @test na isa NamedDimsArray{elt}
+    @test dimnames(na) == ("i",)
+    @test dename(na) == a
+
     # aliasing
-    a′ = randn(2, 2)
+    a′ = randn(elt, 2, 2)
+    i = Name("i")
+    j = Name("j")
     a′ij = @view a′[i, j]
     a′ij[i[1], j[2]] = 12
     @test a′ij[i[1], j[2]] == 12
@@ -139,7 +150,9 @@ using Test: @test, @test_throws, @testset
     @test a′ij[i[2], j[1]] == 21
     @test a′[2, 1] == 21
 
-    a′ = randn(2, 2)
+    a′ = randn(elt, 2, 2)
+    i = Name("i")
+    j = Name("j")
     a′ij = a′[i, j]
     a′ij[i[1], j[2]] = 12
     @test a′ij[i[1], j[2]] == 12
@@ -150,6 +163,8 @@ using Test: @test, @test_throws, @testset
     @test a′ij[i[2], j[1]] ≠ 21
     @test a′[2, 1] ≠ 21
 
+    a = randn(elt, 3, 4)
+    na = nameddimsarray(a, ("i", "j"))
     a′ = dename(na)
     @test a′ isa Matrix{elt}
     @test a′ == a
