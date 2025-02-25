@@ -1,6 +1,6 @@
 using LinearAlgebra: LinearAlgebra
 using TensorAlgebra:
-  TensorAlgebra, blockedperm, contract, contract!, fusedims, qr, splitdims, svd
+  TensorAlgebra, blockedperm, contract, contract!, fusedims, permmortar, qr, splitdims, svd
 using TensorAlgebra.BaseExtensions: BaseExtensions
 
 function TensorAlgebra.contract!(
@@ -72,7 +72,7 @@ function TensorAlgebra.blockedperm(na::AbstractNamedDimsArray, nameddim_blocks::
   perms = map(dimname_blocks) do dimname_block
     return BaseExtensions.indexin(dimname_block, nameddimsindices_a)
   end
-  return blockedperm(perms...)
+  return permmortar(perms)
 end
 
 # i, j, k, l = named.((2, 2, 2, 2), ("i", "j", "k", "l"))
