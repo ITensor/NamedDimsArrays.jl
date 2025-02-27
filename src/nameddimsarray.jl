@@ -31,8 +31,9 @@ function NamedDimsArray(a::AbstractNamedDimsArray)
 end
 
 # Minimal interface.
-nameddimsindices(a::NamedDimsArray) = a.nameddimsindices
-Base.parent(a::NamedDimsArray) = a.parent
+nameddimsindices(a::NamedDimsArray) = getfield(a, :nameddimsindices)
+Base.parent(a::NamedDimsArray) = getfield(a, :parent)
+dename(a::NamedDimsArray) = parent(a)
 
 function TypeParameterAccessors.position(
   ::Type{<:AbstractNamedDimsArray}, ::typeof(parenttype)
