@@ -20,8 +20,20 @@ DerivableInterfaces.interface(::Type{<:AbstractNamedDimsArray}) = NamedDimsArray
 
 # Output the dimension names.
 nameddimsindices(a::AbstractArray) = throw(MethodError(nameddimsindices, Tuple{typeof(a)}))
-# Unwrapping the names
-Base.parent(a::AbstractNamedDimsArray) = throw(MethodError(parent, Tuple{typeof(a)}))
+# Unwrapping the names (`NamedDimsArrays.jl` interface).
+# TODO: Use `IsNamed` trait?
+dename(a::AbstractNamedDimsArray) = throw(MethodError(dename, Tuple{typeof(a)}))
+function dename(a::AbstractNamedDimsArray, nameddimsindices)
+  return dename(aligndims(a, nameddimsindices))
+end
+function denamed(a::AbstractNamedDimsArray, nameddimsindices)
+  return dename(aligneddims(a, nameddimsindices))
+end
+
+unname(a::AbstractArray, nameddimsindices) = dename(a, nameddimsindices)
+unnamed(a::AbstractArray, nameddimsindices) = denamed(a, nameddimsindices)
+
+isnamed(::Type{<:AbstractNamedDimsArray}) = true
 
 nameddimsindices(a::AbstractArray, dim::Int) = nameddimsindices(a)[dim]
 
@@ -109,21 +121,6 @@ function to_nameddimsindices(a::AbstractNamedDimsArray, dims)
   return map(dim -> to_dimname(a, dim), dims)
 end
 
-# Unwrapping the names (`NamedDimsArrays.jl` interface).
-# TODO: Use `IsNamed` trait?
-dename(a::AbstractNamedDimsArray) = parent(a)
-function dename(a::AbstractNamedDimsArray, nameddimsindices)
-  return dename(aligndims(a, nameddimsindices))
-end
-function denamed(a::AbstractNamedDimsArray, nameddimsindices)
-  return dename(aligneddims(a, nameddimsindices))
-end
-
-unname(a::AbstractArray, nameddimsindices) = dename(a, nameddimsindices)
-unnamed(a::AbstractArray, nameddimsindices) = denamed(a, nameddimsindices)
-
-isnamed(::Type{<:AbstractNamedDimsArray}) = true
-
 # TODO: Move to `utils.jl` file.
 # TODO: Use `Base.indexin`?
 function getperm(x, y; isequal=isequal)
@@ -146,6 +143,36 @@ end
 
 function Base.copy(a::AbstractNamedDimsArray)
   return constructorof(typeof(a))(copy(dename(a)), nameddimsindices(a))
+end
+
+function Base.copyto!(a_dest::AbstractNamedDimsArray, a_src::AbstractNamedDimsArray)
+  a′_dest = dename(a_dest)
+  # TODO: Use `denamed` to do the permutations lazily.
+  a′_src = dename(a_src, nameddimsindices(a_dest))
+  copyto!(a′_dest, a′_src)
+  return a_dest
+end
+
+# Conversion
+
+# Copied from `Base` (defined in abstractarray.jl).
+@noinline _checkaxs(axd, axs) =
+  axd == axs || throw(DimensionMismatch("axes must agree, got $axd and $axs"))
+function copyto_axcheck!(dest, src)
+  _checkaxs(axes(dest), axes(src))
+  return copyto!(dest, src)
+end
+
+# These are defined since the Base versions assume the eltype and ndims are known
+# at compile time, which isn't true for ITensors.
+Base.Array(a::AbstractNamedDimsArray) = Array(dename(a))
+Base.Array{T}(a::AbstractNamedDimsArray) where {T} = Array{T}(dename(a))
+Base.Array{T,N}(a::AbstractNamedDimsArray) where {T,N} = Array{T,N}(dename(a))
+Base.AbstractArray{T}(a::AbstractNamedDimsArray) where {T} = AbstractArray{T,ndims(a)}(a)
+function Base.AbstractArray{T,N}(a::AbstractNamedDimsArray) where {T,N}
+  dest = similar(a, T)
+  copyto_axcheck!(dename(dest), dename(a))
+  return dest
 end
 
 const NamedDimsIndices = Union{
@@ -380,7 +407,7 @@ function Base.getindex(a::NamedDimsCartesianIndices{N}, I::Vararg{Int,N}) where 
 end
 
 nameddimsindices(I::NamedDimsCartesianIndices) = name.(I.indices)
-function Base.parent(I::NamedDimsCartesianIndices)
+function dename(I::NamedDimsCartesianIndices)
   return CartesianIndices(dename.(I.indices))
 end
 

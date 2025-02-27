@@ -73,6 +73,30 @@ using Test: @test, @test_throws, @testset
 
     a = randn(elt, 3, 4)
     na = nameddimsarray(a, ("i", "j"))
+    a′ = Array(na)
+    @test eltype(a′) === elt
+    @test a′ isa Matrix{elt}
+    @test a′ == a
+
+    a = randn(elt, 3, 4)
+    na = nameddimsarray(a, ("i", "j"))
+    for a′ in (Array{Float32}(na), Matrix{Float32}(na))
+      @test eltype(a′) === Float32
+      @test a′ isa Matrix{Float32}
+      @test a′ == Float32.(a)
+    end
+
+    a = randn(elt, 2, 2, 2)
+    na = nameddimsarray(a, ("i", "j", "k"))
+    b = randn(elt, 2, 2, 2)
+    nb = nameddimsarray(b, ("k", "i", "j"))
+    copyto!(na, nb)
+    @test na == nb
+    @test dename(na) == dename(nb, ("i", "j", "k"))
+    @test dename(na) == permutedims(dename(nb), (2, 3, 1))
+
+    a = randn(elt, 3, 4)
+    na = nameddimsarray(a, ("i", "j"))
     i = namedoneto(3, "i")
     j = namedoneto(4, "j")
     ai, aj = axes(na)
