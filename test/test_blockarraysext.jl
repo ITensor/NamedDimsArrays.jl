@@ -27,7 +27,7 @@ using Test: @test, @testset
   b[Block(2, 1)] = randn(elt, 3, 2)
   b[Block(1, 2)] = randn(elt, 2, 3)
   na = nameddimsarray(a, ("i", "j"))
-  nb = nameddimsarray(a, ("j", "i"))
+  nb = nameddimsarray(b, ("j", "i"))
   nc = na .+ 2 .* nb
   c = a + 2 * permutedims(b, (2, 1))
   @test dename(nc, ("i", "j")) ≈ c
