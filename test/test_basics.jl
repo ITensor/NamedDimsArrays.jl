@@ -370,8 +370,12 @@ using Test: @test, @test_throws, @testset
   end
   @testset "show" begin
     a = NamedDimsArray([1 2; 3 4], ("i", "j"))
-    @test sprint(show, "text/plain", a) ==
-      "named(Base.OneTo(2), \"i\")×named(Base.OneTo(2), \"j\") NamedDimsArray{Int64, 2, Matrix{Int64}, …}\n2×2 Matrix{Int64}:\n 1  2\n 3  4"
+    function ref(prefix)
+      return "named(Base.OneTo(2), \"i\")×named(Base.OneTo(2), \"j\") $(prefix)NamedDimsArray{Int64, 2, Matrix{Int64}, …}\n2×2 Matrix{Int64}:\n 1  2\n 3  4"
+    end
+    res = sprint(show, "text/plain", a)
+    # Could be either one depending on the namespacing.
+    @test (res == ref("")) || (res == ref("NamedDimsArrays."))
     @test sprint(show, a) ==
       "NamedDimsArray([1 2; 3 4], (named(Base.OneTo(2), \"i\"), named(Base.OneTo(2), \"j\")))"
   end
