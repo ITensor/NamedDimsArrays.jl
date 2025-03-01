@@ -376,7 +376,13 @@ using Test: @test, @test_throws, @testset
     res = sprint(show, "text/plain", a)
     # Could be either one depending on the namespacing.
     @test (res == ref("")) || (res == ref("NamedDimsArrays."))
-    @test sprint(show, a) ==
-      "NamedDimsArray([1 2; 3 4], (named(Base.OneTo(2), \"i\"), named(Base.OneTo(2), \"j\")))"
+
+    a = NamedDimsArray([1 2; 3 4], ("i", "j"))
+    function ref(prefix)
+      return "$(prefix)NamedDimsArray([1 2; 3 4], (named(Base.OneTo(2), \"i\"), named(Base.OneTo(2), \"j\")))"
+    end
+    res = sprint(show, a)
+    # Could be either one depending on the namespacing.
+    @test (res == ref("")) || (res == ref("NamedDimsArrays."))
   end
 end
