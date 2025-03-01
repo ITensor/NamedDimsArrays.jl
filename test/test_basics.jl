@@ -368,4 +368,9 @@ using Test: @test, @test_throws, @testset
       @test s′[3] == "c"
     end
   end
+  @testset "show" begin
+    a = NamedDimsArray([1 2; 3 4], ("i", "j"))
+    @test sprint(show, "text/plain", a) ==
+      "named(Base.OneTo(2), \"i\")×named(Base.OneTo(2), \"j\") NamedDimsArray{Int64, 2, Matrix{Int64}, …}\n2×2 Matrix{Int64}:\n 1  2\n 3  4"
+  end
 end

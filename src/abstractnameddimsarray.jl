@@ -935,6 +935,52 @@ end
 
 # Printing
 
+# Copy of `Base.dims2string` defined in `show.jl`.
+function dims_to_string(d)
+  isempty(d) && return "0-dimensional"
+  length(d) == 1 && return "$(d[1])-element"
+  return join(map(string, d), '×')
+end
+
+using TypeParameterAccessors: type_parameters, unspecify_type_parameters
+function concretetype_to_string_truncated(type::Type; param_truncation_length=typemax(Int))
+  isconcretetype(type) || throw(ArgumentError("Type must be concrete."))
+  alias = Base.make_typealias(type)
+  base_type, params = if isnothing(alias)
+    unspecify_type_parameters(type), type_parameters(type)
+  else
+    base_type_globalref, params_svec = alias
+    base_type_globalref.name, params_svec
+  end
+  str = string(base_type)
+  if isempty(params)
+    return str
+  end
+  str *= '{'
+  param_strings = map(params) do param
+    param_string = string(param)
+    if length(param_string) > param_truncation_length
+      return "…"
+    end
+    return param_string
+  end
+  str *= join(param_strings, ", ")
+  str *= '}'
+  return str
+end
+
+function summary_nameddims(io::IO, a::AbstractArray)
+  print(io, dims_to_string(nameddimsindices(a)))
+  print(io, ' ')
+  print(io, concretetype_to_string_truncated(typeof(a); param_truncation_length=40))
+  return nothing
+end
+
+function Base.summary(io::IO, a::AbstractNamedDimsArray)
+  summary_nameddims(io, a)
+  return nothing
+end
+
 function Base.show(io::IO, mime::MIME"text/plain", a::AbstractNamedDimsArray)
   summary(io, a)
   println(io)
@@ -943,7 +989,8 @@ function Base.show(io::IO, mime::MIME"text/plain", a::AbstractNamedDimsArray)
 end
 
 function Base.show(io::IO, a::AbstractNamedDimsArray)
-  print(io, "nameddimsarray(")
+  show(io, unspecify_type_parameters(typeof(a)))
+  print(io, "(")
   show(io, dename(a))
   print(io, ", ", nameddimsindices(a), ")")
   return nothing
