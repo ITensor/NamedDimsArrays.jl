@@ -969,15 +969,10 @@ function concretetype_to_string_truncated(type::Type; param_truncation_length=ty
   return str
 end
 
-function summary_nameddims(io::IO, a::AbstractArray)
+function Base.summary(io::IO, a::AbstractNamedDimsArray)
   print(io, dims_to_string(nameddimsindices(a)))
   print(io, ' ')
   print(io, concretetype_to_string_truncated(typeof(a); param_truncation_length=40))
-  return nothing
-end
-
-function Base.summary(io::IO, a::AbstractNamedDimsArray)
-  summary_nameddims(io, a)
   return nothing
 end
 
