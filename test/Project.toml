@@ -14,6 +14,7 @@ TensorAlgebra = "68bd88dc-f39d-4e12-b2ca-f046b68fcc6a"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
+Adapt = "4"
 Aqua = "0.8.9"
 SafeTestsets = "0.1"
 Suppressor = "0.2"
