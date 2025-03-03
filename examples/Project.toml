@@ -2,3 +2,6 @@
 NamedDimsArrays = "60cbd0c0-df58-4cb7-918c-6f5607b73fde"
 TensorAlgebra = "68bd88dc-f39d-4e12-b2ca-f046b68fcc6a"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[compat]
+TensorAlgebra = "0.2"
