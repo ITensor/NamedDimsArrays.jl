@@ -160,6 +160,26 @@ using Test: @test, @test_throws, @testset
     @test dimnames(na) == ("i",)
     @test dename(na) == a
 
+    # slicing
+    a = randn(elt, 3, 3)
+    na = NamedDimsArray(a, ("i", "j"))
+    for na′ in (na[named(2:3, "i"), named(2:3, "j")], na["i" => 2:3, "j" => 2:3])
+      @test nameddimsindices(na′) == (named(2:3, "i"), named(2:3, "j"))
+      @test dename(na′) == a[2:3, 2:3]
+      @test dename(na′) isa typeof(a)
+    end
+
+    # view slicing
+    a = randn(elt, 3, 3)
+    na = NamedDimsArray(a, ("i", "j"))
+    for na′ in
+        (@view(na[named(2:3, "i"), named(2:3, "j")]), @view(na["i" => 2:3, "j" => 2:3]))
+      @test nameddimsindices(na′) == (named(2:3, "i"), named(2:3, "j"))
+      @test copy(dename(na′)) == a[2:3, 2:3]
+      @test dename(na′) === @view(a[2:3, 2:3])
+      @test dename(na′) isa SubArray{elt,2}
+    end
+
     # aliasing
     a′ = randn(elt, 2, 2)
     i = Name("i")

@@ -587,6 +587,11 @@ function Base.view(a::AbstractNamedDimsArray, I1::NamedViewIndex, Irest::NamedVi
     view(dename(a), subinds...), sub_nameddimsindices
   )
 end
+function Base.view(a::AbstractNamedDimsArray, I1::Pair, Irest::Pair...)
+  I = (I1, Irest...)
+  nameddimsindices = to_nameddimsindices(a, first.(I))
+  return view(a, map((i, name) -> name[i], last.(I), nameddimsindices)...)
+end
 
 function Base.getindex(
   a::AbstractNamedDimsArray, I1::NamedViewIndex, Irest::NamedViewIndex...
