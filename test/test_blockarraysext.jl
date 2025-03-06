@@ -6,7 +6,7 @@ using Test: @test, @testset
 @testset "NamedDimsArraysBlockArraysExt" begin
   elt = Float64
 
-  a = BlockSparseArray{elt}([2, 3], [2, 3])
+  a = BlockSparseArray{elt}(undef, [2, 3], [2, 3])
   a[Block(2, 1)] = randn(elt, 3, 2)
   a[Block(1, 2)] = randn(elt, 2, 3)
   n = nameddimsarray(a, ("i", "j"))
@@ -20,10 +20,10 @@ using Test: @test, @testset
   @test dename(n[Block.(1:2), Block(1)]) == a[Block.(1:2), Block(1)]
   @test dename(n[Block.(1:2), Block.(1:2)]) == a[Block.(1:2), Block.(1:2)]
 
-  a = BlockSparseArray{elt}([2, 3], [2, 3])
+  a = BlockSparseArray{elt}(undef, [2, 3], [2, 3])
   a[Block(2, 1)] = randn(elt, 3, 2)
   a[Block(1, 2)] = randn(elt, 2, 3)
-  b = BlockSparseArray{elt}([2, 3], [2, 3])
+  b = BlockSparseArray{elt}(undef, [2, 3], [2, 3])
   b[Block(2, 1)] = randn(elt, 3, 2)
   b[Block(1, 2)] = randn(elt, 2, 3)
   na = nameddimsarray(a, ("i", "j"))
