@@ -134,10 +134,10 @@ function TensorAlgebra.splitdims(na::AbstractNamedDimsArray, splitters::Pair...)
 end
 
 function TensorAlgebra.qr(
-  a::AbstractNamedDimsArray, nameddimsindices_codomain, nameddimsindices_domain; kwargs...
+  a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
 )
-  codomain = to_nameddimsindices(a, nameddimsindices_codomain)
-  domain = to_nameddimsindices(a, nameddimsindices_domain)
+  codomain = to_nameddimsindices(a, dimnames_codomain)
+  domain = to_nameddimsindices(a, dimnames_domain)
   q_unnamed, r_unnamed = qr(dename(a), nameddimsindices(a), codomain, domain; kwargs...)
   name_q = randname(dimnames(a, 1))
   name_r = name_q
@@ -149,8 +149,8 @@ function TensorAlgebra.qr(
   r = nameddimsarray(r_unnamed, nameddimsindices_r)
   return q, r
 end
-function TensorAlgebra.qr(a::AbstractNamedDimsArray, nameddimsindices_codomain; kwargs...)
-  codomain = to_nameddimsindices(a, nameddimsindices_codomain)
+function TensorAlgebra.qr(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
+  codomain = to_nameddimsindices(a, dimnames_codomain)
   domain = setdiff(nameddimsindices(a), codomain)
   return qr(a, codomain, domain; kwargs...)
 end
@@ -159,10 +159,10 @@ function LinearAlgebra.qr(a::AbstractNamedDimsArray, args...; kwargs...)
 end
 
 function TensorAlgebra.lq(
-  a::AbstractNamedDimsArray, nameddimsindices_codomain, nameddimsindices_domain; kwargs...
+  a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
 )
-  codomain = to_nameddimsindices(a, nameddimsindices_codomain)
-  domain = to_nameddimsindices(a, nameddimsindices_domain)
+  codomain = to_nameddimsindices(a, dimnames_codomain)
+  domain = to_nameddimsindices(a, dimnames_domain)
   l_unnamed, q_unnamed = lq(dename(a), nameddimsindices(a), codomain, domain; kwargs...)
   name_l = randname(dimnames(a, 1))
   name_q = name_l
@@ -174,8 +174,8 @@ function TensorAlgebra.lq(
   q = nameddimsarray(q_unnamed, nameddimsindices_q)
   return l, q
 end
-function TensorAlgebra.lq(a::AbstractNamedDimsArray, nameddimsindices_codomain; kwargs...)
-  codomain = to_nameddimsindices(a, nameddimsindices_codomain)
+function TensorAlgebra.lq(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
+  codomain = to_nameddimsindices(a, dimnames_codomain)
   domain = setdiff(nameddimsindices(a), codomain)
   return lq(a, codomain, domain; kwargs...)
 end
@@ -184,10 +184,10 @@ function LinearAlgebra.lq(a::AbstractNamedDimsArray, args...; kwargs...)
 end
 
 function TensorAlgebra.svd(
-  a::AbstractNamedDimsArray, nameddimsindices_codomain, nameddimsindices_domain; kwargs...
+  a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
 )
-  codomain = to_nameddimsindices(a, nameddimsindices_codomain)
-  domain = to_nameddimsindices(a, nameddimsindices_domain)
+  codomain = to_nameddimsindices(a, dimnames_codomain)
+  domain = to_nameddimsindices(a, dimnames_domain)
   u_unnamed, s_unnamed, v_unnamed = svd(
     dename(a), nameddimsindices(a), codomain, domain; kwargs...
   )
@@ -203,11 +203,11 @@ function TensorAlgebra.svd(
   v = nameddimsarray(v_unnamed, nameddimsindices_v)
   return u, s, v
 end
-function TensorAlgebra.svd(a::AbstractNamedDimsArray, nameddimsindices_codomain; kwargs...)
+function TensorAlgebra.svd(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
   return svd(
     a,
-    nameddimsindices_codomain,
-    setdiff(nameddimsindices(a), to_nameddimsindices(a, nameddimsindices_codomain));
+    dimnames_codomain,
+    setdiff(nameddimsindices(a), to_nameddimsindices(a, dimnames_codomain));
     kwargs...,
   )
 end
@@ -216,20 +216,18 @@ function LinearAlgebra.svd(a::AbstractNamedDimsArray, args...; kwargs...)
 end
 
 function TensorAlgebra.svdvals(
-  a::AbstractNamedDimsArray, nameddimsindices_codomain, nameddimsindices_domain; kwargs...
+  a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
 )
   return svdvals(
     dename(a),
     nameddimsindices(a),
-    to_nameddimsindices(a, nameddimsindices_codomain),
-    to_nameddimsindices(a, nameddimsindices_domain);
+    to_nameddimsindices(a, dimnames_codomain),
+    to_nameddimsindices(a, dimnames_domain);
     kwargs...,
   )
 end
-function TensorAlgebra.svdvals(
-  a::AbstractNamedDimsArray, nameddimsindices_codomain; kwargs...
-)
-  codomain = to_nameddimsindices(a, nameddimsindices_codomain)
+function TensorAlgebra.svdvals(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
+  codomain = to_nameddimsindices(a, dimnames_codomain)
   domain = setdiff(nameddimsindices(a), codomain)
   return svdvals(a, codomain, domain; kwargs...)
 end
@@ -238,10 +236,10 @@ function LinearAlgebra.svdvals(a::AbstractNamedDimsArray, args...; kwargs...)
 end
 
 function TensorAlgebra.eigen(
-  a::AbstractNamedDimsArray, nameddimsindices_codomain, nameddimsindices_domain; kwargs...
+  a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
 )
-  codomain = to_nameddimsindices(a, nameddimsindices_codomain)
-  domain = to_nameddimsindices(a, nameddimsindices_domain)
+  codomain = to_nameddimsindices(a, dimnames_codomain)
+  domain = to_nameddimsindices(a, dimnames_domain)
   d_unnamed, v_unnamed = eigen(dename(a), nameddimsindices(a), codomain, domain; kwargs...)
   name_d = randname(dimnames(a, 1))
   name_d′ = randname(name_d)
@@ -260,10 +258,10 @@ function LinearAlgebra.eigen(a::AbstractNamedDimsArray, args...; kwargs...)
 end
 
 function TensorAlgebra.eigvals(
-  a::AbstractNamedDimsArray, nameddimsindices_codomain, nameddimsindices_domain; kwargs...
+  a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
 )
-  codomain = to_nameddimsindices(a, nameddimsindices_codomain)
-  domain = to_nameddimsindices(a, nameddimsindices_domain)
+  codomain = to_nameddimsindices(a, dimnames_codomain)
+  domain = to_nameddimsindices(a, dimnames_domain)
   return eigvals(dename(a), nameddimsindices(a), codomain, domain; kwargs...)
 end
 function LinearAlgebra.eigvals(a::AbstractNamedDimsArray, args...; kwargs...)
@@ -271,39 +269,35 @@ function LinearAlgebra.eigvals(a::AbstractNamedDimsArray, args...; kwargs...)
 end
 
 function TensorAlgebra.left_null(
-  a::AbstractNamedDimsArray, nameddimsindices_codomain, nameddimsindices_domain; kwargs...
+  a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
 )
-  codomain = to_nameddimsindices(a, nameddimsindices_codomain)
-  domain = to_nameddimsindices(a, nameddimsindices_domain)
+  codomain = to_nameddimsindices(a, dimnames_codomain)
+  domain = to_nameddimsindices(a, dimnames_domain)
   n_unnamed = left_null(dename(a), nameddimsindices(a), codomain, domain; kwargs...)
   name_n = randname(dimnames(a, 1))
   namedindices_n = named(last(axes(n_unnamed)), name_n)
   nameddimsindices_n = (codomain..., namedindices_n)
   return nameddimsarray(n_unnamed, nameddimsindices_n)
 end
-function TensorAlgebra.left_null(
-  a::AbstractNamedDimsArray, nameddimsindices_codomain; kwargs...
-)
-  codomain = to_nameddimsindices(a, nameddimsindices_codomain)
+function TensorAlgebra.left_null(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
+  codomain = to_nameddimsindices(a, dimnames_codomain)
   domain = setdiff(nameddimsindices(a), codomain)
   return left_null(a, codomain, domain; kwargs...)
 end
 
 function TensorAlgebra.right_null(
-  a::AbstractNamedDimsArray, nameddimsindices_codomain, nameddimsindices_domain; kwargs...
+  a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
 )
-  codomain = to_nameddimsindices(a, nameddimsindices_codomain)
-  domain = to_nameddimsindices(a, nameddimsindices_domain)
+  codomain = to_nameddimsindices(a, dimnames_codomain)
+  domain = to_nameddimsindices(a, dimnames_domain)
   n_unnamed = right_null(dename(a), nameddimsindices(a), codomain, domain; kwargs...)
   name_n = randname(dimnames(a, 1))
   namedindices_n = named(first(axes(n_unnamed)), name_n)
   nameddimsindices_n = (namedindices_n, domain...)
   return nameddimsarray(n_unnamed, nameddimsindices_n)
 end
-function TensorAlgebra.right_null(
-  a::AbstractNamedDimsArray, nameddimsindices_codomain; kwargs...
-)
-  codomain = to_nameddimsindices(a, nameddimsindices_codomain)
+function TensorAlgebra.right_null(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
+  codomain = to_nameddimsindices(a, dimnames_codomain)
   domain = setdiff(nameddimsindices(a), codomain)
   return right_null(a, codomain, domain; kwargs...)
 end
