@@ -1,7 +1,9 @@
+using Combinatorics: Combinatorics
 using NamedDimsArrays:
   NamedDimsArrays,
   AbstractNamedDimsArray,
   AbstractNamedDimsMatrix,
+  NaiveOrderedSet,
   Name,
   NameMismatch,
   NamedDimsCartesianIndex,
@@ -17,9 +19,10 @@ using NamedDimsArrays:
   dims,
   fusednames,
   isnamed,
+  mapnameddimsindices,
   name,
   named,
-  nameddims,
+  nameddimsarray,
   nameddimsindices,
   namedoneto,
   replacenameddimsindices,
@@ -33,7 +36,7 @@ using Test: @test, @test_throws, @testset
     elt = Float64
     a = randn(elt, 3, 4)
     @test !isnamed(a)
-    na = nameddims(a, ("i", "j"))
+    na = nameddimsarray(a, ("i", "j"))
     @test na isa NamedDimsMatrix{elt,Matrix{elt}}
     @test na isa AbstractNamedDimsMatrix{elt}
     @test na isa NamedDimsArray{elt}
@@ -65,14 +68,70 @@ using Test: @test, @test_throws, @testset
     @test dims(na, ("j", "i")) == (2, 1)
     @test na[1, 1] == a[1, 1]
 
+    @test_throws ErrorException NamedDimsArray(randn(4), namedoneto.((2, 2), ("i", "j")))
+    @test_throws ErrorException NamedDimsArray(randn(2, 2), namedoneto.((2, 3), ("i", "j")))
+
+    a = randn(elt, 3, 4)
+    na = nameddimsarray(a, ("i", "j"))
+    a′ = Array(na)
+    @test eltype(a′) === elt
+    @test a′ isa Matrix{elt}
+    @test a′ == a
+
+    a = randn(elt, 3, 4)
+    na = nameddimsarray(a, ("i", "j"))
+    for a′ in (Array{Float32}(na), Matrix{Float32}(na))
+      @test eltype(a′) === Float32
+      @test a′ isa Matrix{Float32}
+      @test a′ == Float32.(a)
+    end
+
+    a = randn(elt, 2, 2, 2)
+    na = nameddimsarray(a, ("i", "j", "k"))
+    b = randn(elt, 2, 2, 2)
+    nb = nameddimsarray(b, ("k", "i", "j"))
+    copyto!(na, nb)
+    @test na == nb
+    @test dename(na) == dename(nb, ("i", "j", "k"))
+    @test dename(na) == permutedims(dename(nb), (2, 3, 1))
+
+    a = randn(elt, 3, 4)
+    na = nameddimsarray(a, ("i", "j"))
+    i = namedoneto(3, "i")
+    j = namedoneto(4, "j")
+    ai, aj = axes(na)
     for na′ in (
       similar(na, Float32, (j, i)),
+      similar(na, Float32, NaiveOrderedSet((j, i))),
       similar(na, Float32, (aj, ai)),
+      similar(na, Float32, NaiveOrderedSet((aj, ai))),
       similar(a, Float32, (j, i)),
+      similar(a, Float32, NaiveOrderedSet((j, i))),
       similar(a, Float32, (aj, ai)),
+      similar(a, Float32, NaiveOrderedSet((aj, ai))),
     )
       @test eltype(na′) === Float32
-      @test nameddimsindices(na′) == (j, i)
+      @test all(nameddimsindices(na′) .== (j, i))
+      @test na′ ≠ na
+    end
+
+    a = randn(elt, 3, 4)
+    na = nameddimsarray(a, ("i", "j"))
+    i = namedoneto(3, "i")
+    j = namedoneto(4, "j")
+    ai, aj = axes(na)
+    for na′ in (
+      similar(na, (j, i)),
+      similar(na, NaiveOrderedSet((j, i))),
+      similar(na, (aj, ai)),
+      similar(na, NaiveOrderedSet((aj, ai))),
+      similar(a, (j, i)),
+      similar(a, NaiveOrderedSet((j, i))),
+      similar(a, (aj, ai)),
+      similar(a, NaiveOrderedSet((aj, ai))),
+    )
+      @test eltype(na′) === eltype(na)
+      @test all(nameddimsindices(na′) .== (j, i))
       @test na′ ≠ na
     end
 
@@ -92,8 +151,39 @@ using Test: @test, @test_throws, @testset
     @test size(na, i) == si
     @test size(na, j) == sj
 
+    # Regression test for ambiguity error with
+    # `Base.getindex(A::Array, I::AbstractUnitRange{<:Integer})`.
+    i = namedoneto(2, "i")
+    a = randn(elt, 2)
+    na = a[i]
+    @test na isa NamedDimsArray{elt}
+    @test dimnames(na) == ("i",)
+    @test dename(na) == a
+
+    # slicing
+    a = randn(elt, 3, 3)
+    na = NamedDimsArray(a, ("i", "j"))
+    for na′ in (na[named(2:3, "i"), named(2:3, "j")], na["i" => 2:3, "j" => 2:3])
+      @test nameddimsindices(na′) == (named(2:3, "i"), named(2:3, "j"))
+      @test dename(na′) == a[2:3, 2:3]
+      @test dename(na′) isa typeof(a)
+    end
+
+    # view slicing
+    a = randn(elt, 3, 3)
+    na = NamedDimsArray(a, ("i", "j"))
+    for na′ in
+        (@view(na[named(2:3, "i"), named(2:3, "j")]), @view(na["i" => 2:3, "j" => 2:3]))
+      @test nameddimsindices(na′) == (named(2:3, "i"), named(2:3, "j"))
+      @test copy(dename(na′)) == a[2:3, 2:3]
+      @test dename(na′) === @view(a[2:3, 2:3])
+      @test dename(na′) isa SubArray{elt,2}
+    end
+
     # aliasing
-    a′ = randn(2, 2)
+    a′ = randn(elt, 2, 2)
+    i = Name("i")
+    j = Name("j")
     a′ij = @view a′[i, j]
     a′ij[i[1], j[2]] = 12
     @test a′ij[i[1], j[2]] == 12
@@ -104,7 +194,9 @@ using Test: @test, @test_throws, @testset
     @test a′ij[i[2], j[1]] == 21
     @test a′[2, 1] == 21
 
-    a′ = randn(2, 2)
+    a′ = randn(elt, 2, 2)
+    i = Name("i")
+    j = Name("j")
     a′ij = a′[i, j]
     a′ij[i[1], j[2]] = 12
     @test a′ij[i[1], j[2]] == 12
@@ -115,6 +207,8 @@ using Test: @test, @test_throws, @testset
     @test a′ij[i[2], j[1]] ≠ 21
     @test a′[2, 1] ≠ 21
 
+    a = randn(elt, 3, 4)
+    na = nameddimsarray(a, ("i", "j"))
     a′ = dename(na)
     @test a′ isa Matrix{elt}
     @test a′ == a
@@ -136,6 +230,9 @@ using Test: @test, @test_throws, @testset
     @test nameddimsindices(nb) == (named(1:3, "k"), named(1:4, "j"))
     @test dename(nb) == a
     nb = replacenameddimsindices(n -> n == named(1:3, "i") ? named(1:3, "k") : n, na)
+    @test nameddimsindices(nb) == (named(1:3, "k"), named(1:4, "j"))
+    @test dename(nb) == a
+    nb = mapnameddimsindices(n -> n == named(1:3, "i") ? named(1:3, "k") : n, na)
     @test nameddimsindices(nb) == (named(1:3, "k"), named(1:4, "j"))
     @test dename(nb) == a
     nb = setnameddimsindices(na, named(3, "i") => named(3, "k"))
@@ -165,8 +262,8 @@ using Test: @test, @test_throws, @testset
     @test unname(na′) isa PermutedDimsArray{elt}
     @test a == permutedims(unname(na′), (2, 1))
 
-    na = nameddims(randn(elt, 2, 3), (:i, :j))
-    nb = nameddims(randn(elt, 3, 2), (:j, :i))
+    na = nameddimsarray(randn(elt, 2, 3), (:i, :j))
+    nb = nameddimsarray(randn(elt, 3, 2), (:j, :i))
     nc = zeros(elt, named.((2, 3), (:i, :j)))
     Is = eachindex(na, nb)
     @test Is isa NamedDimsCartesianIndices{2}
@@ -178,22 +275,39 @@ using Test: @test, @test_throws, @testset
     end
     @test dename(nc, (:i, :j)) ≈ dename(na, (:i, :j)) + dename(nb, (:i, :j))
 
-    a = nameddims(randn(elt, 2, 3), (:i, :j))
-    b = nameddims(randn(elt, 3, 2), (:j, :i))
+    a = nameddimsarray(randn(elt, 2, 3), (:i, :j))
+    b = nameddimsarray(randn(elt, 3, 2), (:j, :i))
     c = a + b
     @test dename(c, (:i, :j)) ≈ dename(a, (:i, :j)) + dename(b, (:i, :j))
     c = a .+ b
     @test dename(c, (:i, :j)) ≈ dename(a, (:i, :j)) + dename(b, (:i, :j))
     c = map(+, a, b)
     @test dename(c, (:i, :j)) ≈ dename(a, (:i, :j)) + dename(b, (:i, :j))
-    c = nameddims(Array{elt}(undef, 2, 3), (:i, :j))
+    c = nameddimsarray(Array{elt}(undef, 2, 3), (:i, :j))
     c = map!(+, c, a, b)
     @test dename(c, (:i, :j)) ≈ dename(a, (:i, :j)) + dename(b, (:i, :j))
     c = a .+ 2 .* b
     @test dename(c, (:i, :j)) ≈ dename(a, (:i, :j)) + 2 * dename(b, (:i, :j))
-    c = nameddims(Array{elt}(undef, 2, 3), (:i, :j))
+    c = nameddimsarray(Array{elt}(undef, 2, 3), (:i, :j))
     c .= a .+ 2 .* b
     @test dename(c, (:i, :j)) ≈ dename(a, (:i, :j)) + 2 * dename(b, (:i, :j))
+
+    # Regression test for proper permutations.
+    a = nameddimsarray(randn(elt, 2, 3, 4), (:i, :j, :k))
+    I = (:i => 2, :j => 3, :k => 4)
+    for I′ in Combinatorics.permutations(I)
+      @test a[I′...] == a[2, 3, 4]
+      a′ = copy(a)
+      a′[I′...] = zero(Bool)
+      @test iszero(a′[2, 3, 4])
+    end
+    I = (:i => 2, :j => 2:3, :k => 4)
+    for I′ in Combinatorics.permutations(I)
+      @test a[I′...] == a[2, 2:3, 4]
+      ## TODO: This is broken, investigate.
+      ## a′[I′...] = zeros(Bool, 2)
+      ## @test iszero(a′[2, 2:3, 4])
+    end
   end
   @testset "Shorthand constructors (eltype=$elt)" for elt in (
     Float32, ComplexF32, Float64, ComplexF64
@@ -248,5 +362,47 @@ using Test: @test, @test_throws, @testset
       @test nameddimsindices(na) == Base.oneto.((i, j))
       @test !iszero(na)
     end
+  end
+  @testset "NaiveOrderedSet" begin
+    # Broadcasting
+    s = NaiveOrderedSet((1, 2))
+    @test s .+ [3, 4] == [4, 6]
+    @test s .+ (3, 4) === (4, 6)
+
+    s = NaiveOrderedSet(("a", "b", "c"))
+    @test all(s .== ("a", "b", "c"))
+    @test values(s) == ("a", "b", "c")
+    @test Tuple(s) == ("a", "b", "c")
+    @test s[1] == "a"
+    @test s[2] == "b"
+    @test s[3] == "c"
+    for s′ in (
+      replace(x -> x == "b" ? "x" : x, s),
+      replace(s, "b" => "x"),
+      map(x -> x == "b" ? "x" : x, s),
+    )
+      @test s′ isa NaiveOrderedSet
+      @test Tuple(s′) == ("a", "x", "c")
+      @test s′[1] == "a"
+      @test s′[2] == "x"
+      @test s′[3] == "c"
+    end
+  end
+  @testset "show" begin
+    a = NamedDimsArray([1 2; 3 4], ("i", "j"))
+    function ref(prefix)
+      return "named(Base.OneTo(2), \"i\")×named(Base.OneTo(2), \"j\") $(prefix)NamedDimsArray{Int64, 2, Matrix{Int64}, …}\n2×2 Matrix{Int64}:\n 1  2\n 3  4"
+    end
+    res = sprint(show, "text/plain", a)
+    # Could be either one depending on the namespacing.
+    @test (res == ref("")) || (res == ref("NamedDimsArrays."))
+
+    a = NamedDimsArray([1 2; 3 4], ("i", "j"))
+    function ref(prefix)
+      return "$(prefix)NamedDimsArray([1 2; 3 4], (named(Base.OneTo(2), \"i\"), named(Base.OneTo(2), \"j\")))"
+    end
+    res = sprint(show, a)
+    # Could be either one depending on the namespacing.
+    @test (res == ref("")) || (res == ref("NamedDimsArrays."))
   end
 end

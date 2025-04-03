@@ -20,8 +20,20 @@ DerivableInterfaces.interface(::Type{<:AbstractNamedDimsArray}) = NamedDimsArray
 
 # Output the dimension names.
 nameddimsindices(a::AbstractArray) = throw(MethodError(nameddimsindices, Tuple{typeof(a)}))
-# Unwrapping the names
-Base.parent(a::AbstractNamedDimsArray) = throw(MethodError(parent, Tuple{typeof(a)}))
+# Unwrapping the names (`NamedDimsArrays.jl` interface).
+# TODO: Use `IsNamed` trait?
+dename(a::AbstractNamedDimsArray) = throw(MethodError(dename, Tuple{typeof(a)}))
+function dename(a::AbstractNamedDimsArray, nameddimsindices)
+  return dename(aligndims(a, nameddimsindices))
+end
+function denamed(a::AbstractNamedDimsArray, nameddimsindices)
+  return dename(aligneddims(a, nameddimsindices))
+end
+
+unname(a::AbstractArray, nameddimsindices) = dename(a, nameddimsindices)
+unnamed(a::AbstractArray, nameddimsindices) = denamed(a, nameddimsindices)
+
+isnamed(::Type{<:AbstractNamedDimsArray}) = true
 
 nameddimsindices(a::AbstractArray, dim::Int) = nameddimsindices(a)[dim]
 
@@ -59,7 +71,12 @@ function to_nameddimsindices(a::AbstractArray, dims)
   return to_nameddimsindices(a, axes(a), dims)
 end
 function to_nameddimsindices(a::AbstractArray, axes, dims)
-  return map((axis, dim) -> to_dimname(a, axis, dim), axes, dims)
+  length(axes) == length(dims) || error("Number of dimensions don't match.")
+  nameddimsindices = map((axis, dim) -> to_dimname(a, axis, dim), axes, dims)
+  if any(size(a) .≠ length.(dename.(nameddimsindices)))
+    error("Input dimensions don't match.")
+  end
+  return nameddimsindices
 end
 function to_dimname(a::AbstractArray, axis, dim::AbstractNamedArray)
   # TODO: Check `axis` and `dim` have the same shape?
@@ -104,21 +121,6 @@ function to_nameddimsindices(a::AbstractNamedDimsArray, dims)
   return map(dim -> to_dimname(a, dim), dims)
 end
 
-# Unwrapping the names (`NamedDimsArrays.jl` interface).
-# TODO: Use `IsNamed` trait?
-dename(a::AbstractNamedDimsArray) = parent(a)
-function dename(a::AbstractNamedDimsArray, nameddimsindices)
-  return dename(aligndims(a, nameddimsindices))
-end
-function denamed(a::AbstractNamedDimsArray, nameddimsindices)
-  return dename(aligneddims(a, nameddimsindices))
-end
-
-unname(a::AbstractArray, nameddimsindices) = dename(a, nameddimsindices)
-unnamed(a::AbstractArray, nameddimsindices) = denamed(a, nameddimsindices)
-
-isnamed(::Type{<:AbstractNamedDimsArray}) = true
-
 # TODO: Move to `utils.jl` file.
 # TODO: Use `Base.indexin`?
 function getperm(x, y; isequal=isequal)
@@ -143,6 +145,36 @@ function Base.copy(a::AbstractNamedDimsArray)
   return constructorof(typeof(a))(copy(dename(a)), nameddimsindices(a))
 end
 
+function Base.copyto!(a_dest::AbstractNamedDimsArray, a_src::AbstractNamedDimsArray)
+  a′_dest = dename(a_dest)
+  # TODO: Use `denamed` to do the permutations lazily.
+  a′_src = dename(a_src, nameddimsindices(a_dest))
+  copyto!(a′_dest, a′_src)
+  return a_dest
+end
+
+# Conversion
+
+# Copied from `Base` (defined in abstractarray.jl).
+@noinline _checkaxs(axd, axs) =
+  axd == axs || throw(DimensionMismatch("axes must agree, got $axd and $axs"))
+function copyto_axcheck!(dest, src)
+  _checkaxs(axes(dest), axes(src))
+  return copyto!(dest, src)
+end
+
+# These are defined since the Base versions assume the eltype and ndims are known
+# at compile time, which isn't true for ITensors.
+Base.Array(a::AbstractNamedDimsArray) = Array(dename(a))
+Base.Array{T}(a::AbstractNamedDimsArray) where {T} = Array{T}(dename(a))
+Base.Array{T,N}(a::AbstractNamedDimsArray) where {T,N} = Array{T,N}(dename(a))
+Base.AbstractArray{T}(a::AbstractNamedDimsArray) where {T} = AbstractArray{T,ndims(a)}(a)
+function Base.AbstractArray{T,N}(a::AbstractNamedDimsArray) where {T,N}
+  dest = similar(a, T)
+  copyto_axcheck!(dename(dest), dename(a))
+  return dest
+end
+
 const NamedDimsIndices = Union{
   AbstractNamedUnitRange{<:Integer},AbstractNamedArray{<:Integer}
 }
@@ -151,7 +183,10 @@ const NamedDimsAxis = AbstractNamedUnitRange{
 }
 
 # Generic constructor.
-function nameddims(a::AbstractArray, nameddimsindices)
+function nameddimsarray(a::AbstractArray, nameddimsindices)
+  if iszero(ndims(a))
+    return constructorof_nameddimsarray(typeof(a))(a, nameddimsindices)
+  end
   # TODO: Check the shape of `nameddimsindices` matches the shape of `a`.
   arrtype = mapreduce(nameddimsarraytype, combine_nameddimsarraytype, nameddimsindices)
   return arrtype(a, to_nameddimsindices(a, nameddimsindices))
@@ -172,7 +207,7 @@ function combine_nameddimsarraytype(
 end
 combine_nameddimsarraytype(::Type{T}, ::Type{T}) where {T<:AbstractNamedDimsArray} = T
 
-using Base.Broadcast: Broadcasted, Style
+using Base.Broadcast: AbstractArrayStyle, Broadcasted, Style
 
 struct NaiveOrderedSet{Values}
   values::Values
@@ -185,10 +220,15 @@ Base.keys(s::NaiveOrderedSet) = Base.OneTo(length(s))
 Base.:(==)(s1::NaiveOrderedSet, s2::NaiveOrderedSet) = issetequal(values(s1), values(s2))
 Base.iterate(s::NaiveOrderedSet, args...) = iterate(values(s), args...)
 Base.getindex(s::NaiveOrderedSet, I::Int) = values(s)[I]
+# TODO: Required in Julia 1.10, delete when we drop support for that.
+Base.getindex(s::NaiveOrderedSet, I::CartesianIndex{1}) = values(s)[I]
 Base.get(s::NaiveOrderedSet, I::Integer, default) = get(values(s), I, default)
 Base.invperm(s::NaiveOrderedSet) = NaiveOrderedSet(invperm(values(s)))
 Base.Broadcast._axes(::Broadcasted, axes::NaiveOrderedSet) = axes
 Base.Broadcast.BroadcastStyle(::Type{<:NaiveOrderedSet}) = Style{NaiveOrderedSet}()
+Base.Broadcast.BroadcastStyle(::Style{Tuple}, ::Style{NaiveOrderedSet}) = Style{Tuple}()
+Base.Broadcast.BroadcastStyle(s1::AbstractArrayStyle{0}, s2::Style{NaiveOrderedSet}) = s2
+Base.Broadcast.BroadcastStyle(s1::AbstractArrayStyle, s2::Style{NaiveOrderedSet}) = s1
 Base.Broadcast.broadcastable(s::NaiveOrderedSet) = s
 Base.to_shape(s::NaiveOrderedSet) = s
 
@@ -203,6 +243,12 @@ function Base.copy(bc::Broadcasted{Style{NaiveOrderedSet}})
 end
 function Base.map(f::Function, s::NaiveOrderedSet)
   return NaiveOrderedSet(map(f, values(s)))
+end
+function Base.replace(f::Union{Function,Type}, s::NaiveOrderedSet; kwargs...)
+  return NaiveOrderedSet(replace(f, values(s); kwargs...))
+end
+function Base.replace(s::NaiveOrderedSet, replacements::Pair...; kwargs...)
+  return NaiveOrderedSet(replace(values(s), replacements...; kwargs...))
 end
 
 function Base.axes(a::AbstractNamedDimsArray)
@@ -242,17 +288,19 @@ to_nameddimsaxis(I::NamedDimsIndices) = named(dename(only(axes(I))), I)
 # Interface inspired by [ConstructionBase.constructorof](https://github.com/JuliaObjects/ConstructionBase.jl).
 constructorof(type::Type{<:AbstractArray}) = unspecify_type_parameters(type)
 
-constructorof_nameddims(type::Type{<:AbstractNamedDimsArray}) = constructorof(type)
-constructorof_nameddims(type::Type{<:AbstractArray}) = NamedDimsArray
+constructorof_nameddimsarray(type::Type{<:AbstractNamedDimsArray}) = constructorof(type)
+constructorof_nameddimsarray(type::Type{<:AbstractArray}) = NamedDimsArray
 
-function similar_nameddims(a::AbstractNamedDimsArray, elt::Type, inds)
+function similar_nameddimsarray(a::AbstractNamedDimsArray, elt::Type, inds)
   ax = to_nameddimsaxes(inds)
   return constructorof(typeof(a))(similar(dename(a), elt, dename.(Tuple(ax))), name.(ax))
 end
 
-function similar_nameddims(a::AbstractArray, elt::Type, inds)
+function similar_nameddimsarray(a::AbstractArray, elt::Type, inds)
   ax = to_nameddimsaxes(inds)
-  return constructorof_nameddims(typeof(a))(similar(a, elt, dename.(Tuple(ax))), name.(ax))
+  return constructorof_nameddimsarray(typeof(a))(
+    similar(a, elt, dename.(Tuple(ax))), name.(ax)
+  )
 end
 
 # Base.similar gets the eltype at compile time.
@@ -263,11 +311,15 @@ end
 function Base.similar(
   a::AbstractArray, elt::Type, inds::Tuple{NamedDimsIndices,Vararg{NamedDimsIndices}}
 )
-  return similar_nameddims(a, elt, inds)
+  return similar_nameddimsarray(a, elt, inds)
+end
+
+function Base.similar(a::AbstractArray, inds::NaiveOrderedSet)
+  return similar_nameddimsarray(a, eltype(a), inds)
 end
 
 function Base.similar(a::AbstractArray, elt::Type, inds::NaiveOrderedSet)
-  return similar_nameddims(a, elt, inds)
+  return similar_nameddimsarray(a, elt, inds)
 end
 
 function setnameddimsindices(a::AbstractNamedDimsArray, nameddimsindices)
@@ -286,6 +338,9 @@ function replacenameddimsindices(a::AbstractNamedDimsArray, replacements::Pair..
   old_nameddimsindices = to_nameddimsindices(a, first.(replacements))
   new_nameddimsindices = named.(dename.(old_nameddimsindices), last.(replacements))
   return replacenameddimsindices(a, (old_nameddimsindices .=> new_nameddimsindices)...)
+end
+function mapnameddimsindices(f, a::AbstractNamedDimsArray)
+  return setnameddimsindices(a, map(f, nameddimsindices(a)))
 end
 
 # `Base.isempty(a::AbstractArray)` is defined as `length(a) == 0`,
@@ -352,7 +407,7 @@ function Base.getindex(a::NamedDimsCartesianIndices{N}, I::Vararg{Int,N}) where 
 end
 
 nameddimsindices(I::NamedDimsCartesianIndices) = name.(I.indices)
-function Base.parent(I::NamedDimsCartesianIndices)
+function dename(I::NamedDimsCartesianIndices)
   return CartesianIndices(dename.(I.indices))
 end
 
@@ -384,6 +439,27 @@ end
 
 # Scalar indexing
 
+function Base.to_indices(
+  a::AbstractNamedDimsArray, I::Tuple{AbstractNamedInteger,Vararg{AbstractNamedInteger}}
+)
+  perm = getperm(name.(I), name.(nameddimsindices(a)))
+  # TODO: Throw a `NameMismatch` error.
+  @assert isperm(perm)
+  I = map(p -> I[p], perm)
+  return map(nameddimsindices(a), I) do dimname, i
+    return checked_indexin(dename(i), dename(dimname))
+  end
+end
+function Base.to_indices(
+  a::AbstractNamedDimsArray, I::Tuple{Pair{<:Any,Int},Vararg{Pair{<:Any,Int}}}
+)
+  nameddimsindices = to_nameddimsindices(a, first.(I))
+  return to_indices(a, map((i, name) -> name[i], last.(I), nameddimsindices))
+end
+function Base.to_indices(a::AbstractNamedDimsArray, I::Tuple{NamedDimsCartesianIndex})
+  return to_indices(a, Tuple(only(I)))
+end
+
 function Base.getindex(a::AbstractNamedDimsArray, I1::Int, Irest::Int...)
   return getindex(dename(a), I1, Irest...)
 end
@@ -393,24 +469,15 @@ end
 function Base.getindex(
   a::AbstractNamedDimsArray, I1::AbstractNamedInteger, Irest::AbstractNamedInteger...
 )
-  I = (I1, Irest...)
-  # TODO: Check if this permuation should be inverted.
-  perm = getperm(name.(nameddimsindices(a)), name.(I))
-  # TODO: Throw a `NameMismatch` error.
-  @assert isperm(perm)
-  I = map(p -> I[p], perm)
-  subinds = map(nameddimsindices(a), I) do dimname, i
-    return checked_indexin(dename(i), dename(dimname))
-  end
-  return getindex(dename(a), subinds...)
+  return getindex(a, to_indices(a, (I1, Irest...))...)
 end
 function Base.getindex(a::AbstractNamedDimsArray, I::NamedDimsCartesianIndex)
-  return getindex(a, Tuple(I)...)
+  return getindex(a, to_indices(a, (I,))...)
 end
-function Base.getindex(a::AbstractNamedDimsArray, I1::Pair, Irest::Pair...)
-  I = (I1, Irest...)
-  nameddimsindices = to_nameddimsindices(a, first.(I))
-  return getindex(a, map((i, name) -> name[i], last.(I), nameddimsindices)...)
+function Base.getindex(
+  a::AbstractNamedDimsArray, I1::Pair{<:Any,Int}, Irest::Pair{<:Any,Int}...
+)
+  return getindex(a, to_indices(a, (I1, Irest...))...)
 end
 function Base.getindex(a::AbstractNamedDimsArray)
   return getindex(dename(a))
@@ -439,25 +506,15 @@ end
 function Base.setindex!(
   a::AbstractNamedDimsArray, value, I1::AbstractNamedInteger, Irest::AbstractNamedInteger...
 )
-  I = flatten_namedinteger.((I1, Irest...))
-  # TODO: Check if this permuation should be inverted.
-  perm = getperm(name.(nameddimsindices(a)), name.(I))
-  # TODO: Throw a `NameMismatch` error.
-  @assert isperm(perm)
-  I = map(p -> I[p], perm)
-  subinds = map(nameddimsindices(a), I) do dimname, i
-    return checked_indexin(dename(i), dename(dimname))
-  end
-  return setindex!(dename(a), value, subinds...)
+  setindex!(a, value, to_indices(a, (I1, Irest...))...)
+  return a
 end
 function Base.setindex!(a::AbstractNamedDimsArray, value, I::NamedDimsCartesianIndex)
-  setindex!(a, value, Tuple(I)...)
+  setindex!(a, value, to_indices(a, (I,))...)
   return a
 end
 function Base.setindex!(a::AbstractNamedDimsArray, value, I1::Pair, Irest::Pair...)
-  I = (I1, Irest...)
-  nameddimsindices = to_nameddimsindices(a, first.(I))
-  setindex!(a, value, map((i, name) -> name[i], last.(I), nameddimsindices)...)
+  setindex!(a, value, to_indices(a, (I1, Irest...))...)
   return a
 end
 function Base.setindex!(a::AbstractNamedDimsArray, value)
@@ -496,15 +553,24 @@ function Base.view(a::AbstractArray, I1::NamedViewIndex, Irest::NamedViewIndex..
   I = (I1, Irest...)
   sub_dims = filter(dim -> I[dim] isa AbstractArray, ntuple(identity, ndims(a)))
   sub_nameddimsindices = map(dim -> I[dim], sub_dims)
-  return nameddims(view(a, dename.(I)...), sub_nameddimsindices)
+  return nameddimsarray(view(a, dename.(I)...), sub_nameddimsindices)
 end
 
 function Base.getindex(a::AbstractArray, I1::NamedViewIndex, Irest::NamedViewIndex...)
   return copy(view(a, I1, Irest...))
 end
+# Disambiguate from `Base.getindex(A::Array, I::AbstractUnitRange{<:Integer})`.
+function Base.getindex(a::Array, I1::AbstractNamedUnitRange{<:Integer})
+  return copy(view(a, I1))
+end
+function Base.getindex(a::AbstractNamedDimsArray, I1::Pair, Irest::Pair...)
+  I = (I1, Irest...)
+  nameddimsindices = to_nameddimsindices(a, first.(I))
+  return getindex(a, map((i, name) -> name[i], last.(I), nameddimsindices)...)
+end
 
 function Base.view(a::AbstractArray, I1::Name, Irest::Name...)
-  return nameddims(a, name.((I1, Irest...)))
+  return nameddimsarray(a, name.((I1, Irest...)))
 end
 
 function Base.view(a::AbstractNamedDimsArray, I1::Name, Irest::Name...)
@@ -517,8 +583,7 @@ end
 
 function Base.view(a::AbstractNamedDimsArray, I1::NamedViewIndex, Irest::NamedViewIndex...)
   I = (I1, Irest...)
-  # TODO: Check if this permuation should be inverted.
-  perm = getperm(name.(nameddimsindices(a)), name.(I))
+  perm = getperm(name.(I), name.(nameddimsindices(a)))
   # TODO: Throw a `NameMismatch` error.
   @assert isperm(perm)
   I = map(p -> I[p], perm)
@@ -527,9 +592,14 @@ function Base.view(a::AbstractNamedDimsArray, I1::NamedViewIndex, Irest::NamedVi
   subinds = map(nameddimsindices(a), I) do dimname, i
     return checked_indexin(dename(i), dename(dimname))
   end
-  return constructorof_nameddims(typeof(a))(
+  return constructorof_nameddimsarray(typeof(a))(
     view(dename(a), subinds...), sub_nameddimsindices
   )
+end
+function Base.view(a::AbstractNamedDimsArray, I1::Pair, Irest::Pair...)
+  I = (I1, Irest...)
+  nameddimsindices = to_nameddimsindices(a, first.(I))
+  return view(a, map((i, name) -> name[i], last.(I), nameddimsindices)...)
 end
 
 function Base.getindex(
@@ -541,22 +611,22 @@ end
 # Repeated definition of `Base.ViewIndex`.
 const ViewIndex = Union{Real,AbstractArray}
 
-function view_nameddims(a::AbstractArray, I...)
+function view_nameddimsarray(a::AbstractArray, I...)
   sub_dims = filter(dim -> !(I[dim] isa Real), ntuple(identity, ndims(a)))
   sub_nameddimsindices = map(dim -> nameddimsindices(a, dim)[I[dim]], sub_dims)
   return constructorof(typeof(a))(view(dename(a), I...), sub_nameddimsindices)
 end
 
 function Base.view(a::AbstractNamedDimsArray, I::ViewIndex...)
-  return view_nameddims(a, I...)
+  return view_nameddimsarray(a, I...)
 end
 
-function getindex_nameddims(a::AbstractArray, I...)
+function getindex_nameddimsarray(a::AbstractArray, I...)
   return copy(view(a, I...))
 end
 
 function Base.getindex(a::AbstractNamedDimsArray, I::ViewIndex...)
-  return getindex_nameddims(a, I...)
+  return getindex_nameddimsarray(a, I...)
 end
 
 function Base.setindex!(
@@ -598,7 +668,6 @@ end
 
 function aligndims(a::AbstractArray, dims)
   new_nameddimsindices = to_nameddimsindices(a, dims)
-  # TODO: Check this permutation is correct (it may be the inverse of what we want).
   perm = Tuple(getperm(nameddimsindices(a), new_nameddimsindices))
   isperm(perm) || throw(
     NameMismatch(
@@ -610,14 +679,13 @@ end
 
 function aligneddims(a::AbstractArray, dims)
   new_nameddimsindices = to_nameddimsindices(a, dims)
-  # TODO: Check this permutation is correct (it may be the inverse of what we want).
   perm = getperm(nameddimsindices(a), new_nameddimsindices)
   isperm(perm) || throw(
     NameMismatch(
       "Dimension name mismatch $(nameddimsindices(a)), $(new_nameddimsindices)."
     ),
   )
-  return constructorof_nameddims(typeof(a))(
+  return constructorof_nameddimsarray(typeof(a))(
     PermutedDimsArray(dename(a), perm), new_nameddimsindices
   )
 end
@@ -652,7 +720,7 @@ for (f, f′) in [(:rand, :_rand), (:randn, :_randn)]
     )
       ax = to_nameddimsaxes(inds)
       a = $f′(rng, elt, dename.(ax))
-      return nameddims(a, name.(ax))
+      return nameddimsarray(a, name.(ax))
     end
     function Base.$f(
       rng::AbstractRNG,
@@ -685,13 +753,13 @@ for f in [:zeros, :ones]
     )
       ax = to_nameddimsaxes(inds)
       a = $f(elt, dename.(ax))
-      return nameddims(a, name.(ax))
+      return nameddimsarray(a, name.(ax))
     end
     function Base.$f(
       elt::Type{<:Number}, dims::Tuple{AbstractNamedInteger,Vararg{AbstractNamedInteger}}
     )
       a = $f(elt, dename.(dims))
-      return nameddims(a, Base.oneto.(dims))
+      return nameddimsarray(a, Base.oneto.(dims))
     end
   end
   for dimtype in [:AbstractNamedInteger, :NamedDimsIndices]
@@ -708,11 +776,11 @@ end
   function Base.fill(value, inds::Tuple{NamedDimsIndices,Vararg{NamedDimsIndices}})
     ax = to_nameddimsaxes(inds)
     a = fill(value, dename.(ax))
-    return nameddims(a, name.(ax))
+    return nameddimsarray(a, name.(ax))
   end
   function Base.fill(value, dims::Tuple{AbstractNamedInteger,Vararg{AbstractNamedInteger}})
     a = fill(value, dename.(dims))
-    return nameddims(a, Base.oneto.(dims))
+    return nameddimsarray(a, Base.oneto.(dims))
   end
 end
 for dimtype in [:AbstractNamedInteger, :NamedDimsIndices]
@@ -781,7 +849,7 @@ function set_promote_shape(
   ax1::Tuple{AbstractNamedUnitRange,Vararg{AbstractNamedUnitRange,N}},
   ax2::Tuple{AbstractNamedUnitRange,Vararg{AbstractNamedUnitRange,N}},
 ) where {N}
-  perm = getperm(ax1, ax2)
+  perm = getperm(ax2, ax1)
   ax2_aligned = map(i -> ax2[i], perm)
   ax_promoted = promote_shape(dename.(ax1), dename.(ax2_aligned))
   return named.(ax_promoted, name.(ax1))
@@ -813,7 +881,7 @@ function set_check_broadcast_shape(
   ax1::Tuple{AbstractNamedUnitRange,Vararg{AbstractNamedUnitRange,N}},
   ax2::Tuple{AbstractNamedUnitRange,Vararg{AbstractNamedUnitRange,N}},
 ) where {N}
-  perm = getperm(ax1, ax2)
+  perm = getperm(ax2, ax1)
   ax2_aligned = map(i -> ax2[i], perm)
   check_broadcast_shape(dename.(ax1), dename.(ax2_aligned))
   return nothing
@@ -881,6 +949,47 @@ end
 
 # Printing
 
+# Copy of `Base.dims2string` defined in `show.jl`.
+function dims_to_string(d)
+  isempty(d) && return "0-dimensional"
+  length(d) == 1 && return "$(d[1])-element"
+  return join(map(string, d), '×')
+end
+
+using TypeParameterAccessors: type_parameters, unspecify_type_parameters
+function concretetype_to_string_truncated(type::Type; param_truncation_length=typemax(Int))
+  isconcretetype(type) || throw(ArgumentError("Type must be concrete."))
+  alias = Base.make_typealias(type)
+  base_type, params = if isnothing(alias)
+    unspecify_type_parameters(type), type_parameters(type)
+  else
+    base_type_globalref, params_svec = alias
+    base_type_globalref.name, params_svec
+  end
+  str = string(base_type)
+  if isempty(params)
+    return str
+  end
+  str *= '{'
+  param_strings = map(params) do param
+    param_string = string(param)
+    if length(param_string) > param_truncation_length
+      return "…"
+    end
+    return param_string
+  end
+  str *= join(param_strings, ", ")
+  str *= '}'
+  return str
+end
+
+function Base.summary(io::IO, a::AbstractNamedDimsArray)
+  print(io, dims_to_string(nameddimsindices(a)))
+  print(io, ' ')
+  print(io, concretetype_to_string_truncated(typeof(a); param_truncation_length=40))
+  return nothing
+end
+
 function Base.show(io::IO, mime::MIME"text/plain", a::AbstractNamedDimsArray)
   summary(io, a)
   println(io)
@@ -889,7 +998,8 @@ function Base.show(io::IO, mime::MIME"text/plain", a::AbstractNamedDimsArray)
 end
 
 function Base.show(io::IO, a::AbstractNamedDimsArray)
-  print(io, "nameddims(")
+  show(io, unspecify_type_parameters(typeof(a)))
+  print(io, "(")
   show(io, dename(a))
   print(io, ", ", nameddimsindices(a), ")")
   return nothing

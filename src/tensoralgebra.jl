@@ -1,6 +1,6 @@
 using LinearAlgebra: LinearAlgebra
 using TensorAlgebra:
-  TensorAlgebra, blockedperm, contract, contract!, fusedims, qr, splitdims, svd
+  TensorAlgebra, blockedperm, contract, contract!, fusedims, permmortar, qr, splitdims, svd
 using TensorAlgebra.BaseExtensions: BaseExtensions
 
 function TensorAlgebra.contract!(
@@ -29,7 +29,10 @@ function TensorAlgebra.contract(
   a_dest, nameddimsindices_dest = contract(
     dename(a1), nameddimsindices(a1), dename(a2), nameddimsindices(a2), α
   )
-  return nameddims(a_dest, nameddimsindices_dest)
+  nameddimstype = combine_nameddimsarraytype(
+    constructorof(typeof(a1)), constructorof(typeof(a2))
+  )
+  return nameddimstype(a_dest, nameddimsindices_dest)
 end
 
 function Base.:*(a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray)
@@ -69,7 +72,7 @@ function TensorAlgebra.blockedperm(na::AbstractNamedDimsArray, nameddim_blocks::
   perms = map(dimname_blocks) do dimname_block
     return BaseExtensions.indexin(dimname_block, nameddimsindices_a)
   end
-  return blockedperm(perms...)
+  return permmortar(perms)
 end
 
 # i, j, k, l = named.((2, 2, 2, 2), ("i", "j", "k", "l"))
@@ -92,7 +95,7 @@ function TensorAlgebra.fusedims(na::AbstractNamedDimsArray, fusions::Pair...)
   end
   perm = blockedperm(na, nameddimsindices_fuse...)
   a_fused = fusedims(unname(na), perm)
-  return nameddims(a_fused, nameddimsindices_fused)
+  return nameddimsarray(a_fused, nameddimsindices_fused)
 end
 
 function TensorAlgebra.splitdims(na::AbstractNamedDimsArray, splitters::Pair...)
@@ -113,7 +116,7 @@ function TensorAlgebra.splitdims(na::AbstractNamedDimsArray, splitters::Pair...)
     names_split[fused_dim] = split_names
   end
   names_split = reduce((x, y) -> (x..., y...), names_split)
-  return nameddims(a_split, names_split)
+  return nameddimsarray(a_split, names_split)
 end
 
 function TensorAlgebra.qr(
@@ -137,8 +140,13 @@ function TensorAlgebra.qr(
     to_nameddimsindices(a, nameddimsindices_codomain)..., namedindices_q
   )
   nameddimsindices_r = (namedindices_r, to_nameddimsindices(a, nameddimsindices_domain)...)
+<<<<<<< HEAD
   q = nameddims(q_unnamed, nameddimsindices_q)
   r = nameddims(r_unnamed, nameddimsindices_r)
+=======
+  q = nameddimsarray(q_unnamed, nameddimsindices_q)
+  r = nameddimsarray(r_unnamed, nameddimsindices_r)
+>>>>>>> main
   return q, r
 end
 
@@ -173,9 +181,15 @@ function TensorAlgebra.svd(
   )
   nameddimsindices_s = (namedindices_u, namedindices_v)
   nameddimsindices_v = (namedindices_v, to_nameddimsindices(a, nameddimsindices_domain)...)
+<<<<<<< HEAD
   u = nameddims(u_unnamed, nameddimsindices_u)
   s = nameddims(s_unnamed, nameddimsindices_s)
   v = nameddims(v_unnamed, nameddimsindices_v)
+=======
+  u = nameddimsarray(u_unnamed, nameddimsindices_u)
+  s = nameddimsarray(s_unnamed, nameddimsindices_s)
+  v = nameddimsarray(v_unnamed, nameddimsindices_v)
+>>>>>>> main
   return u, s, v
 end
 

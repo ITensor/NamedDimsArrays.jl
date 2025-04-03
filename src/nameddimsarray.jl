@@ -6,6 +6,7 @@ struct NamedDimsArray{T,N,Parent<:AbstractArray{T,N},DimNames} <:
   parent::Parent
   nameddimsindices::DimNames
   function NamedDimsArray(parent::AbstractArray, dims)
+    # This checks the shapes of the inputs.
     nameddimsindices = to_nameddimsindices(parent, dims)
     return new{eltype(parent),ndims(parent),typeof(parent),typeof(nameddimsindices)}(
       parent, nameddimsindices
@@ -30,8 +31,9 @@ function NamedDimsArray(a::AbstractNamedDimsArray)
 end
 
 # Minimal interface.
-nameddimsindices(a::NamedDimsArray) = a.nameddimsindices
-Base.parent(a::NamedDimsArray) = a.parent
+nameddimsindices(a::NamedDimsArray) = getfield(a, :nameddimsindices)
+Base.parent(a::NamedDimsArray) = getfield(a, :parent)
+dename(a::NamedDimsArray) = parent(a)
 
 function TypeParameterAccessors.position(
   ::Type{<:AbstractNamedDimsArray}, ::typeof(parenttype)
