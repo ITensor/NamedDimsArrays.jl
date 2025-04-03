@@ -1,7 +1,7 @@
 name = "NamedDimsArrays"
 uuid = "60cbd0c0-df58-4cb7-918c-6f5607b73fde"
 authors = ["ITensor developers <support@itensor.org> and contributors"]
-version = "0.5.9"
+version = "0.6.0"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
@@ -18,11 +18,11 @@ TypeParameterAccessors = "7e5a90cf-f82e-492e-a09b-e3e26432c138"
 
 [weakdeps]
 BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
-GradedUnitRanges = "e2de450a-8a67-46c7-b59c-01d5a3d041c5"
+GradedArrays = "bc96ca6e-b7c8-4bb6-888e-c93f838762c2"
 
 [extensions]
 NamedDimsArraysBlockArraysExt = "BlockArrays"
-NamedDimsArraysGradedUnitRangesExt = "GradedUnitRanges"
+NamedDimsArraysGradedArraysExt = "GradedArrays"
 
 [compat]
 Adapt = "4.1.1"
@@ -31,7 +31,7 @@ BlockArrays = "1.3.0"
 Compat = "4.16.0"
 DerivableInterfaces = "0.4"
 FillArrays = "1.13.0"
-GradedUnitRanges = "0.2"
+GradedArrays = "0.2.1"
 LinearAlgebra = "1.10"
 MapBroadcast = "0.1.6"
 Random = "1.10"
