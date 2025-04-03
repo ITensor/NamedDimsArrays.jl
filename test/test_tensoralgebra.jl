@@ -1,4 +1,4 @@
-using LinearAlgebra: qr, svd
+using LinearAlgebra: lq, qr, svd
 using NamedDimsArrays: namedoneto, dename
 using TensorAlgebra: TensorAlgebra, contract, fusedims, splitdims
 using Test: @test, @testset, @test_broken
@@ -43,20 +43,24 @@ elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
     @test dename(na_split, ("j", "i", "b")) ≈
       reshape(dename(na, ("a", "b")), (dename(j), dename(i), dename(b)))
   end
-  @testset "qr" begin
+  @testset "qr/lq" begin
     dims = (2, 2, 2, 2)
     i, j, k, l = namedoneto.(dims, ("i", "j", "k", "l"))
 
     a = randn(elt, i, j)
     # TODO: Should this be allowed?
     # TODO: Add support for specifying new name.
-    q, r = qr(a, (i,))
-    @test q * r ≈ a
+    for f in (qr, lq)
+      x, y = f(a, (i,))
+      @test x * y ≈ a
+    end
 
     a = randn(elt, i, j, k, l)
     # TODO: Add support for specifying new name.
-    q, r = qr(a, (i, k), (j, l))
-    @test q * r ≈ a
+    for f in (qr, lq)
+      x, y = f(a, (i, k), (j, l))
+      @test x * y ≈ a
+    end
   end
   @testset "svd" begin
     dims = (2, 2, 2, 2)
