@@ -1,7 +1,7 @@
 name = "NamedDimsArrays"
 uuid = "60cbd0c0-df58-4cb7-918c-6f5607b73fde"
 authors = ["ITensor developers <support@itensor.org> and contributors"]
-version = "0.6.1"
+version = "0.6.2"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
@@ -36,6 +36,6 @@ LinearAlgebra = "1.10"
 MapBroadcast = "0.1.6"
 Random = "1.10"
 SimpleTraits = "0.9.4"
-TensorAlgebra = "0.2"
+TensorAlgebra = "0.2.9"
 TypeParameterAccessors = "0.2, 0.3"
 julia = "1.10"

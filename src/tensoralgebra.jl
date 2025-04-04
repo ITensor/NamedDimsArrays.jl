@@ -6,12 +6,17 @@ using TensorAlgebra:
   contract!,
   eigen,
   eigvals,
+  factorize,
   fusedims,
   left_null,
+  left_orth,
+  left_polar,
   lq,
   permmortar,
   qr,
   right_null,
+  right_orth,
+  right_polar,
   splitdims,
   svd,
   svdvals
@@ -133,55 +138,57 @@ function TensorAlgebra.splitdims(na::AbstractNamedDimsArray, splitters::Pair...)
   return nameddimsarray(a_split, names_split)
 end
 
-function TensorAlgebra.qr(
-  a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
+# Generic interface for forwarding binary factorizations
+# to the corresponding functions in TensorAlgebra.jl.
+function factorize_with(
+  f, a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
 )
   codomain = to_nameddimsindices(a, dimnames_codomain)
   domain = to_nameddimsindices(a, dimnames_domain)
-  q_unnamed, r_unnamed = qr(dename(a), nameddimsindices(a), codomain, domain; kwargs...)
-  name_q = randname(dimnames(a, 1))
-  name_r = name_q
-  namedindices_q = named(last(axes(q_unnamed)), name_q)
-  namedindices_r = named(first(axes(r_unnamed)), name_r)
-  nameddimsindices_q = (codomain..., namedindices_q)
-  nameddimsindices_r = (namedindices_r, domain...)
-  q = nameddimsarray(q_unnamed, nameddimsindices_q)
-  r = nameddimsarray(r_unnamed, nameddimsindices_r)
-  return q, r
+  x_unnamed, y_unnamed = f(dename(a), nameddimsindices(a), codomain, domain; kwargs...)
+  name_x = randname(dimnames(a, 1))
+  name_y = name_x
+  namedindices_x = named(last(axes(x_unnamed)), name_x)
+  namedindices_y = named(first(axes(y_unnamed)), name_y)
+  nameddimsindices_x = (codomain..., namedindices_x)
+  nameddimsindices_y = (namedindices_y, domain...)
+  x = nameddimsarray(x_unnamed, nameddimsindices_x)
+  y = nameddimsarray(y_unnamed, nameddimsindices_y)
+  return x, y
 end
-function TensorAlgebra.qr(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
+function factorize_with(f, a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
   codomain = to_nameddimsindices(a, dimnames_codomain)
   domain = setdiff(nameddimsindices(a), codomain)
-  return qr(a, codomain, domain; kwargs...)
-end
-function LinearAlgebra.qr(a::AbstractNamedDimsArray, args...; kwargs...)
-  return TensorAlgebra.qr(a, args...; kwargs...)
+  return factorize_with(f, a, codomain, domain; kwargs...)
 end
 
-function TensorAlgebra.lq(
-  a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
-)
-  codomain = to_nameddimsindices(a, dimnames_codomain)
-  domain = to_nameddimsindices(a, dimnames_domain)
-  l_unnamed, q_unnamed = lq(dename(a), nameddimsindices(a), codomain, domain; kwargs...)
-  name_l = randname(dimnames(a, 1))
-  name_q = name_l
-  namedindices_l = named(last(axes(l_unnamed)), name_l)
-  namedindices_q = named(first(axes(q_unnamed)), name_q)
-  nameddimsindices_l = (codomain..., namedindices_l)
-  nameddimsindices_q = (namedindices_q, domain...)
-  l = nameddimsarray(l_unnamed, nameddimsindices_l)
-  q = nameddimsarray(q_unnamed, nameddimsindices_q)
-  return l, q
+for f in [:qr, :lq, :left_polar, :right_polar, :left_orth, :right_orth, :factorize]
+  @eval begin
+    function TensorAlgebra.$f(
+      a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
+    )
+      return factorize_with($f, a, dimnames_codomain, dimnames_domain; kwargs...)
+    end
+    function TensorAlgebra.$f(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
+      return factorize_with($f, a, dimnames_codomain; kwargs...)
+    end
+  end
 end
-function TensorAlgebra.lq(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
-  codomain = to_nameddimsindices(a, dimnames_codomain)
-  domain = setdiff(nameddimsindices(a), codomain)
-  return lq(a, codomain, domain; kwargs...)
+
+# Overload LinearAlgebra functions where relevant.
+function LinearAlgebra.qr(a::AbstractNamedDimsArray, args...; kwargs...)
+  return TensorAlgebra.qr(a, args...; kwargs...)
 end
 function LinearAlgebra.lq(a::AbstractNamedDimsArray, args...; kwargs...)
   return TensorAlgebra.lq(a, args...; kwargs...)
 end
+function LinearAlgebra.factorize(a::AbstractNamedDimsArray, args...; kwargs...)
+  return TensorAlgebra.factorize(a, args...; kwargs...)
+end
+
+#
+# Non-binary factorizations.
+#
 
 function TensorAlgebra.svd(
   a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...

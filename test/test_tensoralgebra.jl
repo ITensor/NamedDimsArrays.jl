@@ -1,5 +1,14 @@
-using LinearAlgebra: lq, norm, qr, svd
-using NamedDimsArrays: dename, left_null, nameddimsindices, namedoneto, right_null
+using LinearAlgebra: factorize, lq, norm, qr, svd
+using NamedDimsArrays:
+  dename,
+  left_null,
+  left_orth,
+  left_polar,
+  nameddimsindices,
+  namedoneto,
+  right_null,
+  right_orth,
+  right_polar
 using TensorAlgebra: TensorAlgebra, contract, fusedims, splitdims
 using Test: @test, @testset, @test_broken
 elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
@@ -50,14 +59,14 @@ elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
     a = randn(elt, i, j)
     # TODO: Should this be allowed?
     # TODO: Add support for specifying new name.
-    for f in (qr, lq)
+    for f in (qr, lq, left_polar, right_polar, left_orth, right_orth, factorize)
       x, y = f(a, (i,))
       @test x * y ≈ a
     end
 
     a = randn(elt, i, j, k, l)
     # TODO: Add support for specifying new name.
-    for f in (qr, lq)
+    for f in (qr, lq, left_polar, right_polar, left_orth, right_orth, factorize)
       x, y = f(a, (i, k), (j, l))
       @test x * y ≈ a
     end
