@@ -5,4 +5,4 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
 NamedDimsArrays = "0.6"
-TensorAlgebra = "0.2"
+TensorAlgebra = "0.2, 0.3"
