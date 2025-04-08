@@ -140,30 +140,6 @@ function TensorAlgebra.splitdims(na::AbstractNamedDimsArray, splitters::Pair...)
   return nameddimsarray(a_split, names_split)
 end
 
-# Generic interface for forwarding binary factorizations
-# to the corresponding functions in TensorAlgebra.jl.
-function factorize_with(
-  f, a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
-)
-  codomain = to_nameddimsindices(a, dimnames_codomain)
-  domain = to_nameddimsindices(a, dimnames_domain)
-  x_unnamed, y_unnamed = f(dename(a), nameddimsindices(a), codomain, domain; kwargs...)
-  name_x = randname(dimnames(a, 1))
-  name_y = name_x
-  namedindices_x = named(last(axes(x_unnamed)), name_x)
-  namedindices_y = named(first(axes(y_unnamed)), name_y)
-  nameddimsindices_x = (codomain..., namedindices_x)
-  nameddimsindices_y = (namedindices_y, domain...)
-  x = nameddimsarray(x_unnamed, nameddimsindices_x)
-  y = nameddimsarray(y_unnamed, nameddimsindices_y)
-  return x, y
-end
-function factorize_with(f, a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
-  codomain = to_nameddimsindices(a, dimnames_codomain)
-  domain = setdiff(nameddimsindices(a), codomain)
-  return factorize_with(f, a, codomain, domain; kwargs...)
-end
-
 for f in [
   :factorize, :left_orth, :left_polar, :lq, :orth, :polar, :qr, :right_orth, :right_polar
 ]
@@ -171,10 +147,23 @@ for f in [
     function TensorAlgebra.$f(
       a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
     )
-      return factorize_with($f, a, dimnames_codomain, dimnames_domain; kwargs...)
+      codomain = to_nameddimsindices(a, dimnames_codomain)
+      domain = to_nameddimsindices(a, dimnames_domain)
+      x_unnamed, y_unnamed = $f(dename(a), nameddimsindices(a), codomain, domain; kwargs...)
+      name_x = randname(dimnames(a, 1))
+      name_y = name_x
+      namedindices_x = named(last(axes(x_unnamed)), name_x)
+      namedindices_y = named(first(axes(y_unnamed)), name_y)
+      nameddimsindices_x = (codomain..., namedindices_x)
+      nameddimsindices_y = (namedindices_y, domain...)
+      x = nameddimsarray(x_unnamed, nameddimsindices_x)
+      y = nameddimsarray(y_unnamed, nameddimsindices_y)
+      return x, y
     end
     function TensorAlgebra.$f(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
-      return factorize_with($f, a, dimnames_codomain; kwargs...)
+      codomain = to_nameddimsindices(a, dimnames_codomain)
+      domain = setdiff(nameddimsindices(a), codomain)
+      return $f(a, codomain, domain; kwargs...)
     end
   end
 end
