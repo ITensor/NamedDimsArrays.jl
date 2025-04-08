@@ -1,15 +1,18 @@
 using LinearAlgebra: factorize, lq, norm, qr, svd
-using NamedDimsArrays:
-  dename,
+using NamedDimsArrays: dename, nameddimsindices, namedoneto
+using TensorAlgebra:
+  TensorAlgebra,
+  contract,
+  fusedims,
   left_null,
   left_orth,
   left_polar,
-  nameddimsindices,
-  namedoneto,
+  orth,
+  polar,
   right_null,
   right_orth,
-  right_polar
-using TensorAlgebra: TensorAlgebra, contract, fusedims, splitdims
+  right_polar,
+  splitdims
 using Test: @test, @testset, @test_broken
 elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
 @testset "TensorAlgebra (eltype=$(elt))" for elt in elts
@@ -59,14 +62,16 @@ elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
     a = randn(elt, i, j)
     # TODO: Should this be allowed?
     # TODO: Add support for specifying new name.
-    for f in (qr, lq, left_polar, right_polar, left_orth, right_orth, factorize)
+    for f in
+        (factorize, left_orth, left_polar, lq, orth, polar, qr, right_orth, right_polar)
       x, y = f(a, (i,))
       @test x * y ≈ a
     end
 
     a = randn(elt, i, j, k, l)
     # TODO: Add support for specifying new name.
-    for f in (qr, lq, left_polar, right_polar, left_orth, right_orth, factorize)
+    for f in
+        (factorize, left_orth, left_polar, lq, orth, polar, qr, right_orth, right_polar)
       x, y = f(a, (i, k), (j, l))
       @test x * y ≈ a
     end

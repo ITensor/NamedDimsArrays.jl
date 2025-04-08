@@ -12,7 +12,9 @@ using TensorAlgebra:
   left_orth,
   left_polar,
   lq,
+  orth,
   permmortar,
+  polar,
   qr,
   right_null,
   right_orth,
@@ -162,7 +164,9 @@ function factorize_with(f, a::AbstractNamedDimsArray, dimnames_codomain; kwargs.
   return factorize_with(f, a, codomain, domain; kwargs...)
 end
 
-for f in [:qr, :lq, :left_polar, :right_polar, :left_orth, :right_orth, :factorize]
+for f in [
+  :factorize, :left_orth, :left_polar, :lq, :orth, :polar, :qr, :right_orth, :right_polar
+]
   @eval begin
     function TensorAlgebra.$f(
       a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
