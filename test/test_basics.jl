@@ -31,9 +31,9 @@ using NamedDimsArrays:
   unnamed
 using Test: @test, @test_throws, @testset
 
+const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
 @testset "NamedDimsArrays.jl" begin
-  @testset "Basic functionality" begin
-    elt = Float64
+  @testset "Basic functionality (eltype=$elt)" for elt in elts
     a = randn(elt, 3, 4)
     @test !isnamed(a)
     na = nameddimsarray(a, ("i", "j"))
@@ -78,12 +78,14 @@ using Test: @test, @test_throws, @testset
     @test a′ isa Matrix{elt}
     @test a′ == a
 
-    a = randn(elt, 3, 4)
-    na = nameddimsarray(a, ("i", "j"))
-    for a′ in (Array{Float32}(na), Matrix{Float32}(na))
-      @test eltype(a′) === Float32
-      @test a′ isa Matrix{Float32}
-      @test a′ == Float32.(a)
+    if elt <: Real
+      a = randn(elt, 3, 4)
+      na = nameddimsarray(a, ("i", "j"))
+      for a′ in (Array{Float32}(na), Matrix{Float32}(na))
+        @test eltype(a′) === Float32
+        @test a′ isa Matrix{Float32}
+        @test a′ == Float32.(a)
+      end
     end
 
     a = randn(elt, 2, 2, 2)
@@ -214,11 +216,11 @@ using Test: @test, @test_throws, @testset
     @test a′ == a
     for a′ in (dename(na, ("j", "i")), unname(na, ("j", "i")))
       @test a′ isa Matrix{elt}
-      @test a′ == a'
+      @test a′ == transpose(a)
     end
     for a′ in (denamed(na, ("j", "i")), unnamed(na, ("j", "i")))
       @test a′ isa PermutedDimsArray{elt}
-      @test a′ == a'
+      @test a′ == transpose(a)
     end
     nb = setnameddimsindices(na, ("k", "j"))
     @test nameddimsindices(nb) == (named(1:3, "k"), named(1:4, "j"))
@@ -309,9 +311,31 @@ using Test: @test, @test_throws, @testset
       ## @test iszero(a′[2, 2:3, 4])
     end
   end
-  @testset "Shorthand constructors (eltype=$elt)" for elt in (
-    Float32, ComplexF32, Float64, ComplexF64
-  )
+  @testset "begin/end (eltype=$elt)" for elt in elts
+    i, j = namedoneto.((2, 3), ("i", "j"))
+    a = randn(elt, i, j)
+    @test a[begin, begin] == a[1, 1]
+    @test a[2, begin] == a[2, 1]
+    @test a[begin, 2] == a[1, 2]
+    @test a[begin, end] == a[1, 3]
+    @test a[end, begin] == a[2, 1]
+    @test a[end, end] == a[2, 3]
+
+    @test a[j => begin, i => begin] == a[1, 1]
+    @test a[j => 2, i => begin] == a[1, 2]
+    @test a[j => begin, i => 2] == a[2, 1]
+    @test a[j => begin, i => end] == a[2, 1]
+    @test a[j => end, i => begin] == a[1, 3]
+    @test a[j => end, i => end] == a[2, 3]
+
+    @test a[j[begin], i[begin]] == a[1, 1]
+    @test a[j[2], i[begin]] == a[1, 2]
+    @test a[j[begin], i[2]] == a[2, 1]
+    @test a[j[begin], i[end]] == a[2, 1]
+    @test a[j[end], i[begin]] == a[1, 3]
+    @test a[j[end], i[end]] == a[2, 3]
+  end
+  @testset "Shorthand constructors (eltype=$elt)" for elt in elts
     i, j = named.((2, 2), ("i", "j"))
     value = rand(elt)
     for na in (zeros(elt, i, j), zeros(elt, (i, j)))

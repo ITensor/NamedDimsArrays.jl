@@ -91,3 +91,22 @@ end
 dename(c::NamedColon) = Colon()
 name(c::NamedColon) = c.name
 named(::Colon, name) = NamedColon(name)
+
+struct FirstIndex{Arr<:AbstractArray,Dim}
+  array::Arr
+  dim::Dim
+end
+Base.to_index(i::FirstIndex) = Int(first(axes(i.array, i.dim)))
+
+struct LastIndex{Arr<:AbstractArray,Dim}
+  array::Arr
+  dim::Dim
+end
+Base.to_index(i::LastIndex) = Int(last(axes(i.array, i.dim)))
+
+function Base.getindex(r::AbstractNamedUnitRange, I::FirstIndex)
+  return first(r)
+end
+function Base.getindex(r::AbstractNamedUnitRange, I::LastIndex)
+  return last(r)
+end
