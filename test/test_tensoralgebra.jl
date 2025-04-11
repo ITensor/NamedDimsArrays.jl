@@ -35,12 +35,6 @@ elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
       dename(na, (k, i, j, l)),
       (dename(length(k)) * dename(length(i)), dename(length(j)) * dename(length(l))),
     )
-    na_fused = matricize(na, (k, i) => "a")
-    # Fuse a subset of dimensions.
-    @test dename(na_fused, ("a", "j", "l")) ≈ reshape(
-      dename(na, (k, i, j, l)),
-      (dename(length(k)) * dename(length(i)), dename(length(j)), dename(length(l))),
-    )
   end
   @testset "unmatricize" begin
     a, b = namedoneto.((6, 20), ("a", "b"))
@@ -50,10 +44,6 @@ elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
     na_split = unmatricize(na, "a" => (k, i), "b" => (j, l))
     @test dename(na_split, ("k", "i", "j", "l")) ≈
       reshape(dename(na, ("a", "b")), (dename(k), dename(i), dename(j), dename(l)))
-    # Split a subset of dimensions.
-    na_split = unmatricize(na, "a" => (j, i))
-    @test dename(na_split, ("j", "i", "b")) ≈
-      reshape(dename(na, ("a", "b")), (dename(j), dename(i), dename(b)))
   end
   @testset "qr/lq" begin
     dims = (2, 2, 2, 2)
@@ -97,7 +87,7 @@ elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
     @test u * s * v ≉ a
     @test Int.(Tuple(size(s))) == (2, 2)
   end
-  @testset "left_null/eight_null" begin
+  @testset "left_null/right_null" begin
     dims = (2, 2, 2, 2)
     i, j, k, l = namedoneto.(dims, ("i", "j", "k", "l"))
 

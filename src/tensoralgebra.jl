@@ -23,6 +23,7 @@ using TensorAlgebra:
   svdvals,
   unmatricize
 using TensorAlgebra.BaseExtensions: BaseExtensions
+using TupleTools: TupleTools
 
 function TensorAlgebra.contract!(
   a_dest::AbstractNamedDimsArray,
@@ -101,7 +102,7 @@ end
 # matricize(a, (i, k) => "a")
 # matricize(a, (i, k) => "a", (j, l) => "b")
 # TODO: Rewrite in terms of `matricize(a, .., (1, 3))` interface.
-function TensorAlgebra.matricize(na::AbstractNamedDimsArray, fusions::Pair...)
+function TensorAlgebra.matricize(na::AbstractNamedDimsArray, fusions::Vararg{Pair,2})
   nameddimsindices_fuse = map(group -> to_nameddimsindices(na, group), first.(fusions))
   nameddimsindices_fused = last.(fusions)
   if sum(length, nameddimsindices_fuse) < ndims(na)
@@ -119,7 +120,7 @@ function TensorAlgebra.matricize(na::AbstractNamedDimsArray, fusions::Pair...)
   return nameddimsarray(a_fused, nameddimsindices_fused)
 end
 
-function TensorAlgebra.unmatricize(na::AbstractNamedDimsArray, splitters::Pair...)
+function TensorAlgebra.unmatricize(na::AbstractNamedDimsArray, splitters::Vararg{Pair,2})
   splitters = to_nameddimsindices(na, first.(splitters)) .=> last.(splitters)
   split_namedlengths = last.(splitters)
   splitters_unnamed = map(splitters) do splitter
@@ -128,7 +129,8 @@ function TensorAlgebra.unmatricize(na::AbstractNamedDimsArray, splitters::Pair..
     split_lengths = unname.(split_namedlengths)
     return fused_dim => split_lengths
   end
-  a_split = unmatricize(dename(na), splitters_unnamed...)
+  blocked_axes = last.(TupleTools.sort(splitters_unnamed; by=first))
+  a_split = unmatricize(dename(na), blocked_axes...)
   names_split = Any[tuple.(nameddimsindices(na))...]
   for splitter in splitters
     fused_name, split_namedlengths = splitter
