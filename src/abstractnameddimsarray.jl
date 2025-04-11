@@ -482,7 +482,6 @@ function Base.to_indices(
 end
 function Base.to_indices(a::AbstractNamedDimsArray, I::Tuple{Pair,Vararg{Pair}})
   nameddimsindices = to_nameddimsindices(a, first.(I))
-  ## return to_indices(a, map((i, name) -> name[i], last.(I), nameddimsindices))
   return map((i, name) -> name[i], last.(I), nameddimsindices)
 end
 
