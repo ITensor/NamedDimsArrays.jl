@@ -64,7 +64,7 @@ fusednames(name1, name2::FusedNames) = fusednames(FusedNames((name1,)), name2)
 fusednames(name1::FusedNames, name2) = fusednames(name1, FusedNames((name2,)))
 
 function Base.:(==)(n1::FusedNames, n2::FusedNames)
-  return mapreduce(==, &, n1.names, n2.names)
+  return mapreduce(==,&,n1.names,n2.names)
 end
 
 # Integer interface

@@ -737,10 +737,12 @@ for (f, f′) in [(:rand, :_rand), (:randn, :_randn)]
       )
         return $f(rng, elt, (dim1, dims...))
       end
-      Base.$f(elt::Type{<:Number}, dims::Tuple{$dimtype,Vararg{$dimtype}}) =
-        $f(Random.default_rng(), elt, dims)
-      Base.$f(elt::Type{<:Number}, dim1::$dimtype, dims::Vararg{$dimtype}) =
-        $f(elt, (dim1, dims...))
+      Base.$f(elt::Type{<:Number}, dims::Tuple{$dimtype,Vararg{$dimtype}}) = $f(
+        Random.default_rng(), elt, dims
+      )
+      Base.$f(elt::Type{<:Number}, dim1::$dimtype, dims::Vararg{$dimtype}) = $f(
+        elt, (dim1, dims...)
+      )
       Base.$f(dims::Tuple{$dimtype,Vararg{$dimtype}}) = $f(default_eltype(), dims)
       Base.$f(dim1::$dimtype, dims::Vararg{$dimtype}) = $f((dim1, dims...))
     end
