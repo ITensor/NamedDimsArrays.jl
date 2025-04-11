@@ -1,6 +1,6 @@
 using GradedArrays: dual, gradedrange, isdual
+using GradedArrays.SymmetrySectors: U1
 using NamedDimsArrays: dename, named
-using SymmetrySectors: U1
 using Test: @test, @testset
 
 @testset "NamedDimsArraysGradedArraysExt" begin
