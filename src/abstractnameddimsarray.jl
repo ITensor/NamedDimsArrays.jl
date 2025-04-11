@@ -111,7 +111,7 @@ function to_dimname(a::AbstractNamedDimsArray, axis, dim::AbstractNamedUnitRange
   return dim
 end
 function to_dimname(a::AbstractNamedDimsArray, axis, dim)
-  return named(dename(axis), dim)
+  return named(dename(name(axis)), dim)
 end
 function to_dimname(a::AbstractNamedDimsArray, axis, dim::Name)
   return to_dimname(a, axis, name(dim))
@@ -439,10 +439,28 @@ end
 
 # Scalar indexing
 
+Base.firstindex(a::AbstractNamedDimsArray) = firstindex(dename(a))
+Base.lastindex(a::AbstractNamedDimsArray) = lastindex(dename(a))
+
+struct FirstIndex{A<:AbstractArray,D}
+  a::A
+  d::D
+end
+function Base.firstindex(a::AbstractNamedDimsArray, d)
+  return FirstIndex(a, d)
+end
+struct LastIndex{A<:AbstractArray,D}
+  a::A
+  d::D
+end
+function Base.lastindex(a::AbstractNamedDimsArray, d)
+  return LastIndex(a, d)
+end
+
 function Base.to_indices(
   a::AbstractNamedDimsArray, I::Tuple{AbstractNamedInteger,Vararg{AbstractNamedInteger}}
 )
-  perm = getperm(name.(I), name.(nameddimsindices(a)))
+  perm = getperm(to_nameddimsindices(a, name.(I)), nameddimsindices(a))
   # TODO: Throw a `NameMismatch` error.
   @assert isperm(perm)
   I = map(p -> I[p], perm)
@@ -494,13 +512,6 @@ end
 function Base.setindex!(a::AbstractNamedDimsArray, value, I::CartesianIndex)
   setindex!(a, value, to_indices(a, (I,))...)
   return a
-end
-
-function flatten_namedinteger(i::AbstractNamedInteger)
-  if name(i) isa Union{AbstractNamedUnitRange,AbstractNamedArray}
-    return name(i)[dename(i)]
-  end
-  return i
 end
 
 function Base.setindex!(

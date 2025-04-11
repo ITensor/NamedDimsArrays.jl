@@ -36,7 +36,7 @@ function Base.hash(r::AbstractNamedUnitRange, h::UInt)
   return hash(name(r), h)
 end
 
-# Unit range funcionality.
+# Unit range functionality.
 Base.first(r::AbstractNamedUnitRange) = named(first(dename(r)), name(r))
 Base.last(r::AbstractNamedUnitRange) = named(last(dename(r)), name(r))
 Base.length(r::AbstractNamedUnitRange) = named(length(dename(r)), name(r))
@@ -54,6 +54,12 @@ function Base.getindex(r::AbstractNamedUnitRange, I::Colon)
 end
 function Base.getindex(r::AbstractNamedUnitRange, I)
   return getindex_named(r, I)
+end
+# Fixes `r[begin]`/`r[end]`, since `firstindex` and `lastindex`
+# returned named indices.
+function Base.getindex(r::AbstractNamedUnitRange, I::AbstractNamedInteger)
+  @assert name(r) == name(I)
+  return getindex_named(r, dename(I))
 end
 Base.isempty(r::AbstractNamedUnitRange) = isempty(dename(r))
 
