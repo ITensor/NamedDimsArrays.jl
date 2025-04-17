@@ -52,7 +52,7 @@ function TensorAlgebra.contract(
     dename(a1), nameddimsindices(a1), dename(a2), nameddimsindices(a2), α
   )
   nameddimstype = combine_nameddimsarraytype(
-    constructorof(typeof(a1)), constructorof(typeof(a2))
+    constructorof_nameddimsarray(typeof(a1)), constructorof_nameddimsarray(typeof(a2))
   )
   return nameddimstype(a_dest, nameddimsindices_dest)
 end

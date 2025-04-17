@@ -142,7 +142,7 @@ function checked_indexin(x::AbstractUnitRange, y::AbstractUnitRange)
 end
 
 function Base.copy(a::AbstractNamedDimsArray)
-  return constructorof(typeof(a))(copy(dename(a)), nameddimsindices(a))
+  return constructorof_nameddimsarray(typeof(a))(copy(dename(a)), nameddimsindices(a))
 end
 
 function Base.copyto!(a_dest::AbstractNamedDimsArray, a_src::AbstractNamedDimsArray)
@@ -293,7 +293,9 @@ constructorof_nameddimsarray(type::Type{<:AbstractArray}) = NamedDimsArray
 
 function similar_nameddimsarray(a::AbstractNamedDimsArray, elt::Type, inds)
   ax = to_nameddimsaxes(inds)
-  return constructorof(typeof(a))(similar(dename(a), elt, dename.(Tuple(ax))), name.(ax))
+  return constructorof_nameddimsarray(typeof(a))(
+    similar(dename(a), elt, dename.(Tuple(ax))), name.(ax)
+  )
 end
 
 function similar_nameddimsarray(a::AbstractArray, elt::Type, inds)
@@ -323,7 +325,7 @@ function Base.similar(a::AbstractArray, elt::Type, inds::NaiveOrderedSet)
 end
 
 function setnameddimsindices(a::AbstractNamedDimsArray, nameddimsindices)
-  return constructorof(typeof(a))(dename(a), nameddimsindices)
+  return constructorof_nameddimsarray(typeof(a))(dename(a), nameddimsindices)
 end
 function replacenameddimsindices(f, a::AbstractNamedDimsArray)
   return setnameddimsindices(a, replace(f, nameddimsindices(a)))
@@ -631,7 +633,9 @@ const ViewIndex = Union{Real,AbstractArray}
 function view_nameddimsarray(a::AbstractArray, I...)
   sub_dims = filter(dim -> !(I[dim] isa Real), ntuple(identity, ndims(a)))
   sub_nameddimsindices = map(dim -> nameddimsindices(a, dim)[I[dim]], sub_dims)
-  return constructorof(typeof(a))(view(dename(a), I...), sub_nameddimsindices)
+  return constructorof_nameddimsarray(typeof(a))(
+    view(dename(a), I...), sub_nameddimsindices
+  )
 end
 
 function Base.view(a::AbstractNamedDimsArray, I::ViewIndex...)
@@ -662,7 +666,7 @@ function Base.setindex!(
   Irest::NamedViewIndex...,
 )
   I = (I1, Irest...)
-  setindex!(a, constructorof(typeof(a))(value, I), I...)
+  setindex!(a, constructorof_nameddimsarray(typeof(a))(value, I), I...)
   return a
 end
 function Base.setindex!(
@@ -691,7 +695,9 @@ function aligndims(a::AbstractArray, dims)
       "Dimension name mismatch $(nameddimsindices(a)), $(new_nameddimsindices)."
     ),
   )
-  return constructorof(typeof(a))(permutedims(dename(a), perm), new_nameddimsindices)
+  return constructorof_nameddimsarray(typeof(a))(
+    permutedims(dename(a), perm), new_nameddimsindices
+  )
 end
 
 function aligneddims(a::AbstractArray, dims)
@@ -829,7 +835,7 @@ NamedDimsArrayStyle{M}(::Val{N}) where {M,N} = NamedDimsArrayStyle{N,NamedDimsAr
 NamedDimsArrayStyle{M,NDA}(::Val{N}) where {M,N,NDA} = NamedDimsArrayStyle{N,NDA}()
 
 function Broadcast.BroadcastStyle(arraytype::Type{<:AbstractNamedDimsArray})
-  return NamedDimsArrayStyle{ndims(arraytype),constructorof(arraytype)}()
+  return NamedDimsArrayStyle{ndims(arraytype),constructorof_nameddimsarray(arraytype)}()
 end
 
 function Broadcast.combine_axes(
@@ -923,7 +929,7 @@ using FillArrays: Fill
 function MapBroadcast.tile(a::AbstractNamedDimsArray, ax)
   axes(a) == ax && return a
   if iszero(ndims(a))
-    return constructorof(typeof(a))(Fill(a[], dename.(Tuple(ax))), name.(ax))
+    return constructorof_nameddimsarray(typeof(a))(Fill(a[], dename.(Tuple(ax))), name.(ax))
   end
   return error("Not implemented.")
 end
