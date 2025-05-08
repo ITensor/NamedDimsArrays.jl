@@ -1,5 +1,4 @@
-using GradedArrays: dual, gradedrange, isdual
-using GradedArrays.SymmetrySectors: U1
+using GradedArrays: U1, dual, gradedrange, isdual
 using NamedDimsArrays: dename, named
 using Test: @test, @testset
 
