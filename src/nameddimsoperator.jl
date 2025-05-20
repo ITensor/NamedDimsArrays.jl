@@ -21,7 +21,7 @@ get_domain_ind(a, i) = throw(MethodError(get_domain_ind, (a, i)))
 get_codomain_ind(a, i) = throw(MethodError(get_codomain_ind, (a, i)))
 
 # TODO: Should this be `adjoint`?
-function dag(a, inds_map)
+function dag(a::AbstractNamedDimsArray, inds_map)
   a = conj(a)
   a′ = mapnameddimsindices(a) do i
     return get(inds_map, i, i)
@@ -29,21 +29,21 @@ function dag(a, inds_map)
   return a′
 end
 
-function apply_operator(x, y)
-  xy = state(x) * y
+function apply(x::AbstractNamedDimsArray, y::AbstractNamedDimsArray)
+  xy = x * y
   return mapnameddimsindices(xy) do i
     return get_domain_ind(x, i)
   end
 end
 
-function apply_operator_dag(x, y)
-  xy = x * parent(y)
+function apply_dag(x::AbstractNamedDimsArray, y::AbstractNamedDimsArray)
+  xy = x * y
   return mapnameddimsindices(xy) do i
     return get_codomain_ind(y, i)
   end
 end
 
-function transpose_operator(a)
+function Base.transpose(a::AbstractNamedDimsArray)
   c = codomain(a)
   d = domain(a)
   a_map = merge(Dict(c .=> d), Dict(d .=> c))
@@ -53,11 +53,11 @@ function transpose_operator(a)
   return operator(a′, c .=> d)
 end
 
-function adjoint_operator(a)
+function Base.adjoint(a::AbstractNamedDimsArray)
   return transpose(conj(a))
 end
 
-function product_operator(x, y)
+function product(x::AbstractNamedDimsArray, y::AbstractNamedDimsArray)
   c = codomain(x)
   d = domain(x)
   c′ = randname.(c)
@@ -107,26 +107,6 @@ function inds_map(a)
 end
 
 abstract type AbstractNamedDimsOperator{T,N} <: AbstractNamedDimsArray{T,N} end
-
-function apply(x::AbstractNamedDimsOperator, y::AbstractNamedDimsArray)
-  return apply_operator(x, y)
-end
-
-function apply_dag(x::AbstractNamedDimsArray, y::AbstractNamedDimsOperator)
-  return apply_operator_dag(x, y)
-end
-
-function product(x::AbstractNamedDimsOperator, y::AbstractNamedDimsOperator)
-  return product_operator(x, y)
-end
-
-function Base.transpose(a::AbstractNamedDimsOperator)
-  return transpose_operator(a)
-end
-
-function Base.adjoint(a::AbstractNamedDimsOperator)
-  return adjoint_operator(a)
-end
 
 struct NamedDimsOperator{T,N,P<:AbstractNamedDimsArray{T,N},D,C} <:
        AbstractNamedDimsOperator{T,N}
