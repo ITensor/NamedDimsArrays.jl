@@ -12,6 +12,7 @@ using NamedDimsArrays:
   NamedDimsMatrix,
   aligndims,
   aligneddims,
+  apply,
   dename,
   denamed,
   dim,
@@ -25,8 +26,11 @@ using NamedDimsArrays:
   nameddimsarray,
   nameddimsindices,
   namedoneto,
+  operator,
+  product,
   replacenameddimsindices,
   setnameddimsindices,
+  state,
   unname,
   unnamed
 using Test: @test, @test_throws, @testset
@@ -428,5 +432,22 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
     res = sprint(show, a)
     # Could be either one depending on the namespacing.
     @test (res == ref("")) || (res == ref("NamedDimsArrays."))
+  end
+
+  @testset "operator" begin
+    o = operator(randn(2, 2, 2, 2), ("i'", "j'"), ("i", "j"))
+    o² = product(o, o)
+    @test issetequal(dimnames(o²), ("i'", "j'", "i", "j"))
+    õ = replacenameddimsindices(
+      state(o), "i" => "i'", "j" => "j'", "i'" => "x", "j'" => "y"
+    )
+    o²′ = replacenameddimsindices(õ * o, "x" => "i'", "y" => "j'")
+    @test state(o²) ≈ o²′
+
+    o = operator(randn(2, 2, 2, 2), ("i'", "j'"), ("i", "j"))
+    v = NamedDimsArray(randn(2, 2), ("i", "j"))
+    ov = apply(o, v)
+    @test issetequal(dimnames(ov), ("i", "j"))
+    @test ov ≈ replacenameddimsindices(o * v, "i'" => "i", "j'" => "j")
   end
 end

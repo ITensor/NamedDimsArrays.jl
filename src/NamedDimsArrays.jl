@@ -1,6 +1,6 @@
 module NamedDimsArrays
 
-export NamedDimsArray, aligndims, named, nameddimsarray
+export NamedDimsArray, aligndims, named, nameddimsarray, operator
 using Compat: @compat
 @compat public to_nameddimsindices
 
@@ -16,5 +16,6 @@ include("abstractnameddimsarray.jl")
 include("adapt.jl")
 include("tensoralgebra.jl")
 include("nameddimsarray.jl")
+include("nameddimsoperator.jl")
 
 end
