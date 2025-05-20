@@ -157,8 +157,13 @@ function NamedDimsArrays.constructorof_nameddimsarray(type::Type{<:NamedDimsOper
 end
 
 state(a::NamedDimsOperator) = parent(a)
-function operator(a::NamedDimsArray, codomain_domain_pairs)
-  NamedDimsOperator(a, codomain_domain_pairs)
+function operator(a::NamedDimsArray, domain_codomain_pairs)
+  NamedDimsOperator(a, domain_codomain_pairs)
+end
+
+function operator(a::AbstractArray, codomain, domain)
+  na = nameddimsarray(a, (codomain..., domain...))
+  return operator(na, domain .=> codomain)
 end
 
 # TODO: Make abstract?
@@ -168,9 +173,9 @@ codomain(a::NamedDimsOperator) = codomain(inds_map(a))
 
 # TODO: Make abstract?
 function get_domain_ind(a::NamedDimsOperator, i)
-  return get(inds_map(a), i, i)
+  return get(inverse(inds_map(a)), i, i)
 end
 # TODO: Make abstract?
 function get_codomain_ind(a::NamedDimsOperator, i)
-  return get(inverse(inds_map(a)), i, i)
+  return get(inds_map(a), i, i)
 end
