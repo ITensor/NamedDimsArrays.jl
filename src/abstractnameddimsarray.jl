@@ -7,15 +7,21 @@ using TypeParameterAccessors: unspecify_type_parameters
 # https://github.com/mcabbott/NamedPlus.jl
 # https://pytorch.org/docs/stable/named_tensor.html
 
-abstract type AbstractNamedDimsArrayInterface <: AbstractArrayInterface end
+abstract type AbstractNamedDimsArrayInterface{N} <: AbstractArrayInterface{N} end
 
-struct NamedDimsArrayInterface <: AbstractNamedDimsArrayInterface end
+struct NamedDimsArrayInterface{N} <: AbstractNamedDimsArrayInterface{N} end
+NamedDimsArrayInterface(::Val{N}) where {N} = NamedDimsArrayInterface{N}()
+NamedDimsArrayInterface{M}(::Val{N}) where {M,N} = NamedDimsArrayInterface{N}()
+NamedDimsArrayInterface() = NamedDimsArrayInterface{Any}()
 
 abstract type AbstractNamedDimsArray{T,N} <: AbstractArray{T,N} end
 
 const AbstractNamedDimsVector{T} = AbstractNamedDimsArray{T,1}
 const AbstractNamedDimsMatrix{T} = AbstractNamedDimsArray{T,2}
 
+function DerivableInterfaces.interface(::Type{<:AbstractNamedDimsArray{N}}) where {N}
+  return NamedDimsArrayInterface{N}()
+end
 DerivableInterfaces.interface(::Type{<:AbstractNamedDimsArray}) = NamedDimsArrayInterface()
 
 # Output the dimension names.
