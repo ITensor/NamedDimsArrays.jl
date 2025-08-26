@@ -46,6 +46,23 @@ struct Name{Value} <: AbstractName
 end
 name(n::Name) = n.value
 
+"""
+    @names x y ...
+
+Short-hand notation for constructing "named symbols", i.e. objects that can be used as names.
+
+Evaluates to
+```julia
+x = Name(:x)
+y = Name(:y)
+...
+```
+"""
+macro names(symbols::Symbol...)
+  exs = map(symbol -> Expr(:(=), symbol, Name(symbol)), symbols)
+  return esc(Expr(:block, exs...))
+end
+
 # vcat that works with combinations of tuples
 # and vectors.
 generic_vcat(v1, v2) = vcat(v1, v2)
