@@ -50,17 +50,15 @@ name(n::Name) = n.value
     @names x y ...
 
 Short-hand notation for constructing "named symbols", i.e. objects that can be used as names.
+In other words, the following expressions are equivalent:
 
-Evaluates to
 ```julia
-x = Name(:x)
-y = Name(:y)
-...
+x, y, z = @names x y z
+x, y, z = Name.((:x, :y, :z))
 ```
 """
 macro names(symbols::Symbol...)
-  exs = map(symbol -> Expr(:(=), symbol, Name(symbol)), symbols)
-  return esc(Expr(:block, exs...))
+  return :($(Name).($symbols))
 end
 
 # vcat that works with combinations of tuples

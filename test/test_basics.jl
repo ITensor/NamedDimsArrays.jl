@@ -453,8 +453,8 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
   end
 
   @testset "@names" begin
-    @names x
-    @names y z
+    x = @names x
+    y, z = @names y z
     @test x == Name(:x)
     @test y == Name(:y)
     @test z == Name(:z)
