@@ -58,7 +58,11 @@ x, y, z = Name.((:x, :y, :z))
 ```
 """
 macro names(symbols::Symbol...)
-  return :($(Name).($symbols))
+  if length(symbols) == 1
+    return :($(Name)($(QuoteNode(only(symbols)))))
+  else
+    return :($(Name).($symbols))
+  end
 end
 
 # vcat that works with combinations of tuples
