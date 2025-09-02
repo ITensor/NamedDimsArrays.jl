@@ -3,6 +3,7 @@ module NamedDimsArrays
 export NamedDimsArray, aligndims, named, nameddimsarray, operator
 using Compat: @compat
 @compat public to_nameddimsindices
+@compat public @names
 
 include("isnamed.jl")
 include("randname.jl")

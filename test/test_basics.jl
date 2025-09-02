@@ -32,7 +32,8 @@ using NamedDimsArrays:
   setnameddimsindices,
   state,
   unname,
-  unnamed
+  unnamed,
+  @names
 using Test: @test, @test_throws, @testset
 
 const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
@@ -449,5 +450,13 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
     ov = apply(o, v)
     @test issetequal(dimnames(ov), ("i", "j"))
     @test ov ≈ replacenameddimsindices(o * v, "i'" => "i", "j'" => "j")
+  end
+
+  @testset "@names" begin
+    x = @names x
+    y, z = @names y z
+    @test x == Name(:x)
+    @test y == Name(:y)
+    @test z == Name(:z)
   end
 end

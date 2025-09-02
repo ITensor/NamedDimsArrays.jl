@@ -46,6 +46,25 @@ struct Name{Value} <: AbstractName
 end
 name(n::Name) = n.value
 
+"""
+    @names x y ...
+
+Short-hand notation for constructing "named symbols", i.e. objects that can be used as names.
+In other words, the following expressions are equivalent:
+
+```julia
+x, y, z = @names x y z
+x, y, z = Name.((:x, :y, :z))
+```
+"""
+macro names(symbols::Symbol...)
+  if length(symbols) == 1
+    return :($(Name)($(QuoteNode(only(symbols)))))
+  else
+    return :($(Name).($symbols))
+  end
+end
+
 # vcat that works with combinations of tuples
 # and vectors.
 generic_vcat(v1, v2) = vcat(v1, v2)
