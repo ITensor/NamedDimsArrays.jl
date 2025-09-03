@@ -455,8 +455,17 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
   @testset "@names" begin
     x = @names x
     y, z = @names y z
+    a, b, c = @names a[1:2] b[1:2, 1:2] c[2:3, [1,2]]
     @test x == Name(:x)
     @test y == Name(:y)
     @test z == Name(:z)
+    @test size(a) == (2,)
+    @test a == [Name(:a_1), Name(:a_2)]
+    @test size(b) == (2, 2)
+    @test b == [Name(:b_1_1) Name(:b_1_2);
+                Name(:b_2_1) Name(:b_2_2)]
+    @test size(c) == (2, 2)
+    @test c == [Name(:c_2_1) Name(:c_2_2);
+                Name(:c_3_1) Name(:c_3_2)]
   end
 end
