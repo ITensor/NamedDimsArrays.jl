@@ -4,7 +4,7 @@ using Test: @test, @testset
   exports = [
     :NamedDimsArrays, :NamedDimsArray, :aligndims, :named, :nameddimsarray, :operator
   ]
-  publics = [:to_nameddimsindices]
+  publics = [:to_nameddimsindices, Symbol("@names")]
   if VERSION ≥ v"1.11-"
     exports = [exports; publics]
   end
