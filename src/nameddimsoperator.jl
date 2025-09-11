@@ -108,12 +108,34 @@ end
 
 abstract type AbstractNamedDimsOperator{T,N} <: AbstractNamedDimsArray{T,N} end
 
+state(a::AbstractNamedDimsArray) = a
+
+nameddimsindices(a::AbstractNamedDimsOperator) = nameddimsindices(state(a))
+
+# TODO: Unify these two functions.
+function operator(a::AbstractNamedDimsArray, domain_codomain_pairs)
+  return NamedDimsOperator(a, domain_codomain_pairs)
+end
+function operator(a::AbstractArray, codomain, domain)
+  na = nameddimsarray(a, (codomain..., domain...))
+  return operator(na, domain .=> codomain)
+end
+
+# This helps preserve the NamedDimsArray type when multiplying,
+# for example when a NamedDimsOperator wraps an ITensor.
+Base.:*(a::AbstractNamedDimsOperator, b::AbstractNamedDimsOperator) = state(a) * state(b)
+Base.:*(a::AbstractNamedDimsOperator, b::AbstractNamedDimsArray) = state(a) * state(b)
+Base.:*(a::AbstractNamedDimsArray, b::AbstractNamedDimsOperator) = state(a) * state(b)
+
 struct NamedDimsOperator{T,N,P<:AbstractNamedDimsArray{T,N},D,C} <:
        AbstractNamedDimsOperator{T,N}
   parent::P
   domain_codomain_bijection::Bijection{D,C}
 end
 
+Base.parent(a::NamedDimsOperator) = getfield(a, :parent)
+state(a::NamedDimsOperator) = parent(a)
+dename(a::NamedDimsOperator) = dename(state(a))
 inds_map(a::NamedDimsOperator) = getfield(a, :domain_codomain_bijection)
 
 function NamedDimsOperator(a::AbstractNamedDimsArray, domain_codomain_pairs)
@@ -122,28 +144,13 @@ function NamedDimsOperator(a::AbstractNamedDimsArray, domain_codomain_pairs)
   return NamedDimsOperator(a, Bijection(domain .=> codomain))
 end
 
-Base.parent(a::NamedDimsOperator) = getfield(a, :parent)
-
 using TypeParameterAccessors: TypeParameterAccessors
 function TypeParameterAccessors.parenttype(type::Type{<:NamedDimsOperator})
-  fieldtype(type, :parent)
+  return fieldtype(type, :parent)
 end
-
-NamedDimsArrays.nameddimsindices(a::NamedDimsOperator) = nameddimsindices(parent(a))
-NamedDimsArrays.dename(a::NamedDimsOperator) = dename(parent(a))
 
 function NamedDimsArrays.constructorof_nameddimsarray(type::Type{<:NamedDimsOperator})
   return constructorof_nameddimsarray(parenttype(type))
-end
-
-state(a::NamedDimsOperator) = parent(a)
-function operator(a::NamedDimsArray, domain_codomain_pairs)
-  NamedDimsOperator(a, domain_codomain_pairs)
-end
-
-function operator(a::AbstractArray, codomain, domain)
-  na = nameddimsarray(a, (codomain..., domain...))
-  return operator(na, domain .=> codomain)
 end
 
 # TODO: Make abstract?
