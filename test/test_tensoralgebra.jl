@@ -1,5 +1,6 @@
 using LinearAlgebra: factorize, lq, norm, qr, svd
-using NamedDimsArrays: dename, nameddimsindices, namedoneto
+using NamedDimsArrays: NamedDimsArrays, dename, nameddimsindices, namedoneto
+using StableRNGs: StableRNG
 using TensorAlgebra:
   TensorAlgebra,
   contract,
@@ -14,6 +15,7 @@ using TensorAlgebra:
   right_polar,
   unmatricize
 using Test: @test, @testset, @test_broken
+
 elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
 @testset "TensorAlgebra (eltype=$(elt))" for elt in elts
   @testset "contract" begin
@@ -44,6 +46,21 @@ elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
     na_split = unmatricize(na, "a" => (k, i), "b" => (j, l))
     @test dename(na_split, ("k", "i", "j", "l")) ≈
       reshape(dename(na, ("a", "b")), (dename(k), dename(i), dename(j), dename(l)))
+  end
+  @testset "Matrix functions" begin
+    for f in NamedDimsArrays.MATRIX_FUNCTIONS
+      f == :cbrt && elt <: Complex && continue
+      f == :cbrt && VERSION < v"1.11-" && continue
+      @eval begin
+        i, j, k, l = namedoneto.((2, 2, 2, 2), ("i", "j", "k", "l"))
+        rng = StableRNG(123)
+        a = randn(rng, $elt, (i, j, k, l))
+        fa = $f(a, (j, l), (k, i))
+        m = dename(matricize(a, (j, l) => "a", (k, i) => "b"), ("a", "b"))
+        fm = dename(matricize(fa, (j, l) => "a", (k, i) => "b"), ("a", "b"))
+        @test fm ≈ $f(m)
+      end
+    end
   end
   @testset "qr/lq" begin
     dims = (2, 2, 2, 2)

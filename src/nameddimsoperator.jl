@@ -127,6 +127,15 @@ Base.:*(a::AbstractNamedDimsOperator, b::AbstractNamedDimsOperator) = state(a) *
 Base.:*(a::AbstractNamedDimsOperator, b::AbstractNamedDimsArray) = state(a) * state(b)
 Base.:*(a::AbstractNamedDimsArray, b::AbstractNamedDimsOperator) = state(a) * state(b)
 
+for f in MATRIX_FUNCTIONS
+  @eval begin
+    function Base.$f(a::AbstractNamedDimsOperator)
+      c = codomain(a)
+      d = domain(a)
+      return operator($f(state(a), c, d), c .=> d)
+    end
+  end
+end
 struct NamedDimsOperator{T,N,P<:AbstractNamedDimsArray{T,N},D,C} <:
        AbstractNamedDimsOperator{T,N}
   parent::P
