@@ -314,6 +314,14 @@ function Base.similar(a::AbstractNamedDimsArray)
   return similar(a, eltype(a))
 end
 
+# This is defined explicitly since the Base version expects the eltype
+# to be known at compile time, which isn't true for ITensors.
+function Base.similar(
+  a::AbstractArray, inds::Tuple{NamedDimsIndices,Vararg{NamedDimsIndices}}
+)
+  return similar(a, eltype(a), inds)
+end
+
 function Base.similar(
   a::AbstractArray, elt::Type, inds::Tuple{NamedDimsIndices,Vararg{NamedDimsIndices}}
 )
