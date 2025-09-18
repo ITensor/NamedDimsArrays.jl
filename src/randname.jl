@@ -2,9 +2,10 @@ using Random: Random, AbstractRNG, randstring
 
 # Generate a new random name, for example in matrix
 # factorizations.
+randname(type::Type; kwargs...) = randname(Random.default_rng(), type; kwargs...)
 randname(rng::AbstractRNG, type::Type) = rand(rng, type)
 
-randname(name; kwargs...) = randname(Random.default_rng(), name; kwargs...)
+randname(name; kwargs...) = randname(typeof(name); kwargs...)
 randname(rng::AbstractRNG, name; kwargs...) = randname(rng, typeof(name); kwargs...)
 
 randname(rng::AbstractRNG, ::Type{<:AbstractString}; length=8) = randstring(rng, length)
