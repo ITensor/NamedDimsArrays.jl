@@ -315,6 +315,12 @@ function Base.similar(a::AbstractNamedDimsArray)
 end
 
 function Base.similar(
+  a::AbstractArray, inds::Tuple{NamedDimsIndices,Vararg{NamedDimsIndices}}
+)
+  return similar(a, eltype(a), inds)
+end
+
+function Base.similar(
   a::AbstractArray, elt::Type, inds::Tuple{NamedDimsIndices,Vararg{NamedDimsIndices}}
 )
   return similar_nameddimsarray(a, elt, inds)
