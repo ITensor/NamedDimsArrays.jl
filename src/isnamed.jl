@@ -5,6 +5,7 @@ isnamed(::Type) = false
 
 # By default, the name of an object is itself.
 name(x) = x
+nametype(type::Type) = type
 
 @traitdef IsNamed{X}
 #! format: off
