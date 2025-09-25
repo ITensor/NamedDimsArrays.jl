@@ -4,6 +4,7 @@ using TensorAlgebra:
   blockedperm,
   contract,
   contract!,
+  contractadd!,
   eigen,
   eigvals,
   factorize,
@@ -25,14 +26,14 @@ using TensorAlgebra:
 using TensorAlgebra.BaseExtensions: BaseExtensions
 using TupleTools: TupleTools
 
-function TensorAlgebra.contract!(
+function TensorAlgebra.contractadd!(
   a_dest::AbstractNamedDimsArray,
   a1::AbstractNamedDimsArray,
   a2::AbstractNamedDimsArray,
-  α::Number=true,
-  β::Number=false,
+  α::Number,
+  β::Number,
 )
-  contract!(
+  contractadd!(
     dename(a_dest),
     nameddimsindices(a_dest),
     dename(a1),
@@ -43,6 +44,12 @@ function TensorAlgebra.contract!(
     β,
   )
   return a_dest
+end
+
+function TensorAlgebra.contract!(
+  a_dest::AbstractNamedDimsArray, a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray
+)
+  return contractadd!(a_dest, a1, a2, true, false)
 end
 
 function TensorAlgebra.contract(a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray)
@@ -79,10 +86,17 @@ function LinearAlgebra.mul!(
   a_dest::AbstractNamedDimsArray,
   a1::AbstractNamedDimsArray,
   a2::AbstractNamedDimsArray,
-  α::Number=true,
-  β::Number=false,
+  α::Number,
+  β::Number,
 )
-  contract!(a_dest, a1, a2, α, β)
+  contractadd!(a_dest, a1, a2, α, β)
+  return a_dest
+end
+
+function LinearAlgebra.mul!(
+  a_dest::AbstractNamedDimsArray, a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray
+)
+  contract!(a_dest, a1, a2)
   return a_dest
 end
 
@@ -300,4 +314,51 @@ function TensorAlgebra.right_null(a::AbstractNamedDimsArray, dimnames_codomain; 
   codomain = to_nameddimsindices(a, dimnames_codomain)
   domain = setdiff(nameddimsindices(a), codomain)
   return right_null(a, codomain, domain; kwargs...)
+end
+
+const MATRIX_FUNCTIONS = [
+  :exp,
+  :cis,
+  :log,
+  :sqrt,
+  :cbrt,
+  :cos,
+  :sin,
+  :tan,
+  :csc,
+  :sec,
+  :cot,
+  :cosh,
+  :sinh,
+  :tanh,
+  :csch,
+  :sech,
+  :coth,
+  :acos,
+  :asin,
+  :atan,
+  :acsc,
+  :asec,
+  :acot,
+  :acosh,
+  :asinh,
+  :atanh,
+  :acsch,
+  :asech,
+  :acoth,
+]
+
+for f in MATRIX_FUNCTIONS
+  @eval begin
+    function Base.$f(
+      a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
+    )
+      codomain = to_nameddimsindices(a, dimnames_codomain)
+      domain = to_nameddimsindices(a, dimnames_domain)
+      fa_unnamed = TensorAlgebra.$f(
+        dename(a), nameddimsindices(a), codomain, domain; kwargs...
+      )
+      return nameddimsarray(fa_unnamed, (codomain..., domain...))
+    end
+  end
 end

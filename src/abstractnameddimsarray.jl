@@ -309,6 +309,11 @@ function replacenameddimsindices(a::AbstractNamedDimsArray, replacements::Pair..
   new_nameddimsindices = named.(dename.(old_nameddimsindices), last.(replacements))
   return replacenameddimsindices(a, (old_nameddimsindices .=> new_nameddimsindices)...)
 end
+function replacenameddimsindices(a::AbstractNamedDimsArray, replacements::Dict)
+  return replacenameddimsindices(a) do name
+    return get(replacements, name, name)
+  end
+end
 function mapnameddimsindices(f, a::AbstractNamedDimsArray)
   return setnameddimsindices(a, map(f, nameddimsindices(a)))
 end
