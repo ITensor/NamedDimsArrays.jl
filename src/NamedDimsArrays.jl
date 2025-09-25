@@ -5,6 +5,7 @@ using Compat: @compat
 @compat public to_nameddimsindices
 @compat public @names
 
+include("naiveorderedset.jl")
 include("isnamed.jl")
 include("randname.jl")
 include("abstractnamedinteger.jl")
