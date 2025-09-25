@@ -77,7 +77,7 @@ function Base.iterate(r::AbstractNamedUnitRange, i)
 end
 
 function randname(rng::AbstractRNG, r::AbstractNamedUnitRange)
-  return named(dename(r), randname(name(r)))
+  return named(dename(r), randname(rng, name(r)))
 end
 
 function Base.show(io::IO, r::AbstractNamedUnitRange)

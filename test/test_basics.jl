@@ -395,6 +395,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
   @testset "NaiveOrderedSet" begin
     # Broadcasting
     s = NaiveOrderedSet((1, 2))
+    @test eltype(s) == Int
     @test s .+ [3, 4] == [4, 6]
     @test s .+ (3, 4) === (4, 6)
 
