@@ -1,6 +1,6 @@
 using TypeParameterAccessors: unspecify_type_parameters
 
-abstract type AbstractNamedInteger{Value,Name} <: Integer end
+abstract type AbstractNamedInteger{Value, Name} <: Integer end
 
 # Minimal interface.
 dename(i::AbstractNamedInteger) = throw(MethodError(dename, Tuple{typeof(i)}))
@@ -21,19 +21,19 @@ setvalue(i::AbstractNamedInteger, value) = named(value, name(i))
 
 # TODO: Use `TypeParameterAccessors`.
 denametype(::Type{<:AbstractNamedInteger{Value}}) where {Value} = Value
-nametype(::Type{<:AbstractNamedInteger{<:Any,Name}}) where {Name} = Name
+nametype(::Type{<:AbstractNamedInteger{<:Any, Name}}) where {Name} = Name
 
 # Traits
 isnamed(::Type{<:AbstractNamedInteger}) = true
 
 # TODO: Should they also have the same base type?
 function Base.:(==)(i1::AbstractNamedInteger, i2::AbstractNamedInteger)
-  return name(i1) == name(i2) && dename(i1) == dename(i2)
+    return name(i1) == name(i2) && dename(i1) == dename(i2)
 end
 function Base.hash(i::AbstractNamedInteger, h::UInt)
-  h = hash(Symbol(unspecify_type_parameters(typeof(i))), h)
-  h = hash(dename(i), h)
-  return hash(name(i), h)
+    h = hash(Symbol(unspecify_type_parameters(typeof(i))), h)
+    h = hash(dename(i), h)
+    return hash(name(i), h)
 end
 
 abstract type AbstractName end
@@ -42,7 +42,7 @@ abstract type AbstractName end
 Base.getindex(n::AbstractName, I) = named(I, name(n))
 
 struct Name{Value} <: AbstractName
-  value::Value
+    value::Value
 end
 name(n::Name) = n.value
 
@@ -59,25 +59,27 @@ x, y, z = Name.((:x, :y, :z))
 ```
 """
 macro names(exs...)
-  length(exs) == 1 && return esc(:($(_parse_name(only(exs)))))
-  syms_exs = map(_parse_name, exs)
-  return esc(:(($(syms_exs...),)))
+    length(exs) == 1 && return esc(:($(_parse_name(only(exs)))))
+    syms_exs = map(_parse_name, exs)
+    return esc(:(($(syms_exs...),)))
 end
 
 _parse_name(ex::Symbol) = :($(Name(ex)))
 function _parse_name(ex)
-  Meta.isexpr(ex, :ref) || throw(ArgumentError("invalid @names expression: $ex"))
-  length(ex.args) > 1 ||
-    throw(ArgumentError("@names indexing expression requires at least one set of indices"))
-  sym = QuoteNode(first(ex.args))
-  if length(ex.args) == 2
-    return :([$Name(Symbol($sym, :_, x)) for x in $(ex.args[2])])
-  else
-    return :([
-      $Name(Symbol($sym, Iterators.flatmap(y -> (:_, y), x)...)) for
-      x in Iterators.product($(ex.args[2:end]...))
-    ])
-  end
+    Meta.isexpr(ex, :ref) || throw(ArgumentError("invalid @names expression: $ex"))
+    length(ex.args) > 1 ||
+        throw(ArgumentError("@names indexing expression requires at least one set of indices"))
+    sym = QuoteNode(first(ex.args))
+    if length(ex.args) == 2
+        return :([$Name(Symbol($sym, :_, x)) for x in $(ex.args[2])])
+    else
+        return :(
+            [
+                $Name(Symbol($sym, Iterators.flatmap(y -> (:_, y), x)...)) for
+                    x in Iterators.product($(ex.args[2:end]...))
+            ]
+        )
+    end
 end
 
 # vcat that works with combinations of tuples
@@ -88,24 +90,24 @@ generic_vcat(v1, v2::Tuple) = vcat(v1, [v2...])
 generic_vcat(v1::Tuple, v2::Tuple) = (v1..., v2...)
 
 struct FusedNames{Names} <: AbstractName
-  names::Names
+    names::Names
 end
 fusednames(name1, name2) = FusedNames((name1, name2))
 function fusednames(name1::FusedNames, name2::FusedNames)
-  return FusedNames(generic_vcat(name1.names, name2.names))
+    return FusedNames(generic_vcat(name1.names, name2.names))
 end
 fusednames(name1, name2::FusedNames) = fusednames(FusedNames((name1,)), name2)
 fusednames(name1::FusedNames, name2) = fusednames(name1, FusedNames((name2,)))
 
 function Base.:(==)(n1::FusedNames, n2::FusedNames)
-  return mapreduce(==,&,n1.names,n2.names)
+    return mapreduce(==, &, n1.names, n2.names)
 end
 
 # Integer interface
 # TODO: Should this make a random name, or require defining a way
 # to combine names?
 function Base.:*(i1::AbstractNamedInteger, i2::AbstractNamedInteger)
-  return named(dename(i1) * dename(i2), fusednames(name(i1), name(i2)))
+    return named(dename(i1) * dename(i2), fusednames(name(i1), name(i2)))
 end
 Base.:-(i::AbstractNamedInteger) = setvalue(i, -dename(i))
 
@@ -129,27 +131,27 @@ Base.one(i::AbstractNamedInteger) = setvalue(i, one(dename(i)))
 Base.signbit(i::AbstractNamedInteger) = signbit(dename(i))
 Base.unsigned(i::AbstractNamedInteger) = setvalue(i, unsigned(dename(i)))
 function Base.string(i::AbstractNamedInteger; kwargs...)
-  return "named($(string(dename(i); kwargs...)), $(repr(name(i))))"
+    return "named($(string(dename(i); kwargs...)), $(repr(name(i))))"
 end
 
 Base.Int(i::AbstractNamedInteger) = Int(dename(i))
 
 struct NameMismatch <: Exception
-  message::String
+    message::String
 end
 NameMismatch() = NameMismatch("")
 
 function randname(rng::AbstractRNG, i::AbstractNamedInteger)
-  return named(dename(i), randname(name(i)))
+    return named(dename(i), randname(name(i)))
 end
 
 # Used in bounds checking when indexing with named dimensions.
 function Base.:<(i1::AbstractNamedInteger, i2::AbstractNamedInteger)
-  name(i1) == name(i2) || throw(NameMismatch("Mismatched names $(name(i1)), $(name(i2))"))
-  return dename(i1) < dename(i2)
+    name(i1) == name(i2) || throw(NameMismatch("Mismatched names $(name(i1)), $(name(i2))"))
+    return dename(i1) < dename(i2)
 end
 
 function Base.show(io::IO, r::AbstractNamedInteger)
-  print(io, "named(", dename(r), ", ", repr(name(r)), ")")
-  return nothing
+    print(io, "named(", dename(r), ", ", repr(name(r)), ")")
+    return nothing
 end

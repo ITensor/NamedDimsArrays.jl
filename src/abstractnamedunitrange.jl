@@ -1,7 +1,7 @@
 using TypeParameterAccessors: unspecify_type_parameters
 
-abstract type AbstractNamedUnitRange{T,Value<:AbstractUnitRange,Name} <:
-              AbstractUnitRange{T} end
+abstract type AbstractNamedUnitRange{T, Value <: AbstractUnitRange, Name} <:
+AbstractUnitRange{T} end
 
 # Minimal interface.
 dename(r::AbstractNamedUnitRange) = throw(MethodError(dename, Tuple{typeof(r)}))
@@ -19,21 +19,21 @@ named(r::AbstractUnitRange, name) = namedunitrange(r, name)
 setname(r::AbstractNamedUnitRange, name) = named(dename(r), name)
 
 # TODO: Use `TypeParameterAccessors`.
-denametype(::Type{<:AbstractNamedUnitRange{<:Any,Value}}) where {Value} = Value
-nametype(::Type{<:AbstractNamedUnitRange{<:Any,<:Any,Name}}) where {Name} = Name
+denametype(::Type{<:AbstractNamedUnitRange{<:Any, Value}}) where {Value} = Value
+nametype(::Type{<:AbstractNamedUnitRange{<:Any, <:Any, Name}}) where {Name} = Name
 
 # Traits.
 isnamed(::Type{<:AbstractNamedUnitRange}) = true
 
 # TODO: Should they also have the same base type?
 function Base.:(==)(r1::AbstractNamedUnitRange, r2::AbstractNamedUnitRange)
-  return name(r1) == name(r2) && dename(r1) == dename(r2)
+    return name(r1) == name(r2) && dename(r1) == dename(r2)
 end
 function Base.hash(r::AbstractNamedUnitRange, h::UInt)
-  h = hash(Symbol(unspecify_type_parameters(typeof(r))), h)
-  # TODO: Double check how this is handling blocking/sector information.
-  h = hash(dename(r), h)
-  return hash(name(r), h)
+    h = hash(Symbol(unspecify_type_parameters(typeof(r))), h)
+    # TODO: Double check how this is handling blocking/sector information.
+    h = hash(dename(r), h)
+    return hash(name(r), h)
 end
 
 # Unit range functionality.
@@ -46,67 +46,67 @@ Base.step(r::AbstractNamedUnitRange) = named(step(dename(r)), name(r))
 Base.getindex(r::AbstractNamedUnitRange, I::Int) = getindex_named(r, I)
 # Fix ambiguity error.
 function Base.getindex(r::AbstractNamedUnitRange, I::AbstractUnitRange{<:Integer})
-  return getindex_named(r, I)
+    return getindex_named(r, I)
 end
 # Fix ambiguity error.
 function Base.getindex(r::AbstractNamedUnitRange, I::Colon)
-  return getindex_named(r, I)
+    return getindex_named(r, I)
 end
 function Base.getindex(r::AbstractNamedUnitRange, I)
-  return getindex_named(r, I)
+    return getindex_named(r, I)
 end
 # Fixes `r[begin]`/`r[end]`, since `firstindex` and `lastindex`
 # returned named indices.
 function Base.getindex(r::AbstractNamedUnitRange, I::AbstractNamedInteger)
-  @assert name(r) == name(I)
-  return getindex_named(r, dename(I))
+    @assert name(r) == name(I)
+    return getindex_named(r, dename(I))
 end
 Base.isempty(r::AbstractNamedUnitRange) = isempty(dename(r))
 
 function Base.AbstractUnitRange{Int}(r::AbstractNamedUnitRange)
-  return AbstractUnitRange{Int}(dename(r))
+    return AbstractUnitRange{Int}(dename(r))
 end
 
 Base.oneto(length::AbstractNamedInteger) = named(Base.OneTo(dename(length)), name(length))
 namedoneto(length::Integer, name) = Base.oneto(named(length, name))
 Base.iterate(r::AbstractNamedUnitRange) = isempty(r) ? nothing : (first(r), first(r))
 function Base.iterate(r::AbstractNamedUnitRange, i)
-  i == last(r) && return nothing
-  next = named(dename(i) + dename(step(r)), name(r))
-  return (next, next)
+    i == last(r) && return nothing
+    next = named(dename(i) + dename(step(r)), name(r))
+    return (next, next)
 end
 
 function randname(rng::AbstractRNG, r::AbstractNamedUnitRange)
-  return named(dename(r), randname(rng, name(r)))
+    return named(dename(r), randname(rng, name(r)))
 end
 
 function Base.show(io::IO, r::AbstractNamedUnitRange)
-  print(io, "named(", dename(r), ", ", repr(name(r)), ")")
-  return nothing
+    print(io, "named(", dename(r), ", ", repr(name(r)), ")")
+    return nothing
 end
 
 struct NamedColon{Name} <: Function
-  name::Name
+    name::Name
 end
 dename(c::NamedColon) = Colon()
 name(c::NamedColon) = c.name
 named(::Colon, name) = NamedColon(name)
 
-struct FirstIndex{Arr<:AbstractArray,Dim}
-  array::Arr
-  dim::Dim
+struct FirstIndex{Arr <: AbstractArray, Dim}
+    array::Arr
+    dim::Dim
 end
 Base.to_index(i::FirstIndex) = Int(first(axes(i.array, i.dim)))
 
-struct LastIndex{Arr<:AbstractArray,Dim}
-  array::Arr
-  dim::Dim
+struct LastIndex{Arr <: AbstractArray, Dim}
+    array::Arr
+    dim::Dim
 end
 Base.to_index(i::LastIndex) = Int(last(axes(i.array, i.dim)))
 
 function Base.getindex(r::AbstractNamedUnitRange, I::FirstIndex)
-  return first(r)
+    return first(r)
 end
 function Base.getindex(r::AbstractNamedUnitRange, I::LastIndex)
-  return last(r)
+    return last(r)
 end

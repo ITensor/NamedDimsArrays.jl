@@ -1,7 +1,7 @@
 using Base.Broadcast: AbstractArrayStyle, Broadcasted, Style
 
 struct NaiveOrderedSet{Values}
-  values::Values
+    values::Values
 end
 Base.values(s::NaiveOrderedSet) = s.values
 Base.Tuple(s::NaiveOrderedSet) = Tuple(values(s))
@@ -25,20 +25,20 @@ Base.Broadcast.broadcastable(s::NaiveOrderedSet) = s
 Base.to_shape(s::NaiveOrderedSet) = s
 
 function Base.copy(
-  bc::Broadcasted{Style{NaiveOrderedSet},<:Any,<:Any,<:Tuple{<:NaiveOrderedSet}}
-)
-  return NaiveOrderedSet(bc.f.(values(only(bc.args))))
+        bc::Broadcasted{Style{NaiveOrderedSet}, <:Any, <:Any, <:Tuple{<:NaiveOrderedSet}}
+    )
+    return NaiveOrderedSet(bc.f.(values(only(bc.args))))
 end
 # Multiple arguments not supported.
 function Base.copy(bc::Broadcasted{Style{NaiveOrderedSet}})
-  return error("This broadcasting expression of `NaiveOrderedSet` is not supported.")
+    return error("This broadcasting expression of `NaiveOrderedSet` is not supported.")
 end
 function Base.map(f::Function, s::NaiveOrderedSet)
-  return NaiveOrderedSet(map(f, values(s)))
+    return NaiveOrderedSet(map(f, values(s)))
 end
-function Base.replace(f::Union{Function,Type}, s::NaiveOrderedSet; kwargs...)
-  return NaiveOrderedSet(replace(f, values(s); kwargs...))
+function Base.replace(f::Union{Function, Type}, s::NaiveOrderedSet; kwargs...)
+    return NaiveOrderedSet(replace(f, values(s); kwargs...))
 end
 function Base.replace(s::NaiveOrderedSet, replacements::Pair...; kwargs...)
-  return NaiveOrderedSet(replace(values(s), replacements...; kwargs...))
+    return NaiveOrderedSet(replace(values(s), replacements...; kwargs...))
 end
