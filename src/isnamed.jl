@@ -12,5 +12,5 @@ nametype(type::Type) = type
 @traitimpl IsNamed{X} <- isnamed(X)
 #! format: on
 
-@traitfn unname(x::X) where {X;IsNamed{X}} = dename(x)
-@traitfn unname(x::X) where {X;!IsNamed{X}} = x
+@traitfn unname(x::X) where {{X; IsNamed{X}}} = dename(x)
+@traitfn unname(x::X) where {{X; !IsNamed{X}}} = x
