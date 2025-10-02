@@ -1,6 +1,7 @@
 module NamedDimsArraysSparseArraysBaseExt
 
-using NamedDimsArrays: AbstractNamedDimsArray, constructorof_nameddimsarray, dename, nameddimsindices
+using NamedDimsArrays:
+    AbstractNamedDimsArray, constructorof_nameddimsarray, dename, nameddimsindices
 using SparseArraysBase: SparseArraysBase, dense
 
 function SparseArraysBase.dense(a::AbstractNamedDimsArray)
