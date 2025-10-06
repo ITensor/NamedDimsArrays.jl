@@ -1,7 +1,7 @@
 name = "NamedDimsArrays"
 uuid = "60cbd0c0-df58-4cb7-918c-6f5607b73fde"
 authors = ["ITensor developers <support@itensor.org> and contributors"]
-version = "0.7.22"
+version = "0.8.0"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
@@ -16,6 +16,7 @@ SimpleTraits = "699a6c99-e7fa-54fc-8d76-47d257e15c1d"
 TensorAlgebra = "68bd88dc-f39d-4e12-b2ca-f046b68fcc6a"
 TupleTools = "9d95972d-f1c8-5527-a6e0-b4b365fa01f6"
 TypeParameterAccessors = "7e5a90cf-f82e-492e-a09b-e3e26432c138"
+VectorInterface = "409d34a3-91d5-4945-b6ec-7529ddf182d8"
 
 [weakdeps]
 BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
@@ -43,4 +44,5 @@ SparseArraysBase = "0.7.5"
 TensorAlgebra = "0.4.1"
 TupleTools = "1.6.0"
 TypeParameterAccessors = "0.4"
+VectorInterface = "0.5.0"
 julia = "1.10"

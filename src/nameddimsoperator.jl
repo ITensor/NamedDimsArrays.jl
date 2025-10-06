@@ -23,7 +23,7 @@ get_codomain_ind(a, i) = throw(MethodError(get_codomain_ind, (a, i)))
 # TODO: Should this be `adjoint`?
 function dag(a::AbstractNamedDimsArray, inds_map)
     a = conj(a)
-    a′ = mapnameddimsindices(a) do i
+    a′ = mapinds(a) do i
         return get(inds_map, i, i)
     end
     return a′
@@ -31,14 +31,14 @@ end
 
 function apply(x::AbstractNamedDimsArray, y::AbstractNamedDimsArray)
     xy = x * y
-    return mapnameddimsindices(xy) do i
+    return mapinds(xy) do i
         return get_domain_ind(x, i)
     end
 end
 
 function apply_dag(x::AbstractNamedDimsArray, y::AbstractNamedDimsArray)
     xy = x * y
-    return mapnameddimsindices(xy) do i
+    return mapinds(xy) do i
         return get_codomain_ind(y, i)
     end
 end
@@ -47,7 +47,7 @@ function Base.transpose(a::AbstractNamedDimsArray)
     c = codomain(a)
     d = domain(a)
     a_map = merge(Dict(c .=> d), Dict(d .=> c))
-    a′ = mapnameddimsindices(state(a)) do i
+    a′ = mapinds(state(a)) do i
         return get(a_map, i, i)
     end
     return operator(a′, c .=> d)
@@ -62,12 +62,12 @@ function product(x::AbstractNamedDimsArray, y::AbstractNamedDimsArray)
     d = domain(x)
     c′ = randname.(c)
     x′_map = merge(Dict(c .=> c′), Dict(d .=> c))
-    x′ = mapnameddimsindices(parent(x)) do i
+    x′ = mapinds(parent(x)) do i
         return get(x′_map, i, i)
     end
     x′y = x′ * parent(y)
     x′y_map = Dict(c′ .=> c)
-    xy = mapnameddimsindices(x′y) do i
+    xy = mapinds(x′y) do i
         return get(x′y_map, i, i)
     end
     return operator(xy, c .=> d)
@@ -110,14 +110,14 @@ abstract type AbstractNamedDimsOperator{T, N} <: AbstractNamedDimsArray{T, N} en
 
 state(a::AbstractNamedDimsArray) = a
 
-nameddimsindices(a::AbstractNamedDimsOperator) = nameddimsindices(state(a))
+inds(a::AbstractNamedDimsOperator) = inds(state(a))
 
 # TODO: Unify these two functions.
 function operator(a::AbstractNamedDimsArray, domain_codomain_pairs)
     return NamedDimsOperator(a, domain_codomain_pairs)
 end
 function operator(a::AbstractArray, codomain, domain)
-    na = nameddimsarray(a, (codomain..., domain...))
+    na = nameddims(a, (codomain..., domain...))
     return operator(na, domain .=> codomain)
 end
 
@@ -148,8 +148,8 @@ dename(a::NamedDimsOperator) = dename(state(a))
 inds_map(a::NamedDimsOperator) = getfield(a, :domain_codomain_bijection)
 
 function NamedDimsOperator(a::AbstractNamedDimsArray, domain_codomain_pairs)
-    domain = to_nameddimsindices(a, first.(domain_codomain_pairs))
-    codomain = to_nameddimsindices(a, last.(domain_codomain_pairs))
+    domain = to_inds(a, first.(domain_codomain_pairs))
+    codomain = to_inds(a, last.(domain_codomain_pairs))
     return NamedDimsOperator(a, Bijection(domain .=> codomain))
 end
 
@@ -158,8 +158,8 @@ function TypeParameterAccessors.parenttype(type::Type{<:NamedDimsOperator})
     return fieldtype(type, :parent)
 end
 
-function NamedDimsArrays.constructorof_nameddimsarray(type::Type{<:NamedDimsOperator})
-    return constructorof_nameddimsarray(parenttype(type))
+function NamedDimsArrays.constructorof_nameddims(type::Type{<:NamedDimsOperator})
+    return constructorof_nameddims(parenttype(type))
 end
 
 # TODO: Make abstract?

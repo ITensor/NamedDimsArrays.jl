@@ -20,28 +20,29 @@ using NamedDimsArrays:
     dims,
     fusednames,
     isnamed,
-    mapnameddimsindices,
+    mapinds,
     name,
     named,
-    nameddimsarray,
-    nameddimsindices,
+    nameddims,
+    inds,
     namedoneto,
     operator,
     product,
-    replacenameddimsindices,
-    setnameddimsindices,
+    replaceinds,
+    setinds,
     state,
     unname,
     unnamed,
     @names
 using Test: @test, @test_throws, @testset
+using VectorInterface: scalartype
 
 const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
 @testset "NamedDimsArrays.jl" begin
     @testset "Basic functionality (eltype=$elt)" for elt in elts
         a = randn(elt, 3, 4)
         @test !isnamed(a)
-        na = nameddimsarray(a, ("i", "j"))
+        na = nameddims(a, ("i", "j"))
         @test na isa NamedDimsMatrix{elt, Matrix{elt}}
         @test na isa AbstractNamedDimsMatrix{elt}
         @test na isa NamedDimsArray{elt}
@@ -62,9 +63,9 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         @test name(ai) == i
         @test name(aj) == j
         @test isnamed(na)
-        @test nameddimsindices(na) == (i, j)
-        @test nameddimsindices(na, 1) == i
-        @test nameddimsindices(na, 2) == j
+        @test inds(na) == (i, j)
+        @test inds(na, 1) == i
+        @test inds(na, 2) == j
         @test dimnames(na) == ("i", "j")
         @test dimnames(na, 1) == "i"
         @test dimnames(na, 2) == "j"
@@ -77,33 +78,35 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         @test_throws ErrorException NamedDimsArray(randn(2, 2), namedoneto.((2, 3), ("i", "j")))
 
         a = randn(elt, 3, 4)
-        na = nameddimsarray(a, ("i", "j"))
+        na = nameddims(a, ("i", "j"))
+        @test eltype(na) ≡ elt
+        @test scalartype(na) ≡ elt
         a′ = Array(na)
-        @test eltype(a′) === elt
+        @test eltype(a′) ≡ elt
         @test a′ isa Matrix{elt}
         @test a′ == a
 
         if elt <: Real
             a = randn(elt, 3, 4)
-            na = nameddimsarray(a, ("i", "j"))
+            na = nameddims(a, ("i", "j"))
             for a′ in (Array{Float32}(na), Matrix{Float32}(na))
-                @test eltype(a′) === Float32
+                @test eltype(a′) ≡ Float32
                 @test a′ isa Matrix{Float32}
                 @test a′ == Float32.(a)
             end
         end
 
         a = randn(elt, 2, 2, 2)
-        na = nameddimsarray(a, ("i", "j", "k"))
+        na = nameddims(a, ("i", "j", "k"))
         b = randn(elt, 2, 2, 2)
-        nb = nameddimsarray(b, ("k", "i", "j"))
+        nb = nameddims(b, ("k", "i", "j"))
         copyto!(na, nb)
         @test na == nb
         @test dename(na) == dename(nb, ("i", "j", "k"))
         @test dename(na) == permutedims(dename(nb), (2, 3, 1))
 
         a = randn(elt, 3, 4)
-        na = nameddimsarray(a, ("i", "j"))
+        na = nameddims(a, ("i", "j"))
         i = namedoneto(3, "i")
         j = namedoneto(4, "j")
         ai, aj = axes(na)
@@ -117,13 +120,13 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
                 similar(a, Float32, (aj, ai)),
                 similar(a, Float32, NaiveOrderedSet((aj, ai))),
             )
-            @test eltype(na′) === Float32
-            @test all(nameddimsindices(na′) .== (j, i))
+            @test eltype(na′) ≡ Float32
+            @test all(inds(na′) .== (j, i))
             @test na′ ≠ na
         end
 
         a = randn(elt, 3, 4)
-        na = nameddimsarray(a, ("i", "j"))
+        na = nameddims(a, ("i", "j"))
         i = namedoneto(3, "i")
         j = namedoneto(4, "j")
         ai, aj = axes(na)
@@ -137,8 +140,8 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
                 similar(a, (aj, ai)),
                 similar(a, NaiveOrderedSet((aj, ai))),
             )
-            @test eltype(na′) === eltype(na)
-            @test all(nameddimsindices(na′) .== (j, i))
+            @test eltype(na′) ≡ eltype(na)
+            @test all(inds(na′) .== (j, i))
             @test na′ ≠ na
         end
 
@@ -148,7 +151,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         @test a[i, j] == na
         @test @view(a[i, j]) == na
         @test na[j[1], i[2]] == a[2, 1]
-        @test nameddimsindices(na[j, i]) == (named(1:3, "i"), named(1:4, "j"))
+        @test inds(na[j, i]) == (named(1:3, "i"), named(1:4, "j"))
         @test na[j, i] == na
         @test @view(na[j, i]) == na
         @test i[axes(a, 1)] == named(1:3, "i")
@@ -171,7 +174,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         a = randn(elt, 3, 3)
         na = NamedDimsArray(a, ("i", "j"))
         for na′ in (na[named(2:3, "i"), named(2:3, "j")], na["i" => 2:3, "j" => 2:3])
-            @test nameddimsindices(na′) == (named(2:3, "i"), named(2:3, "j"))
+            @test inds(na′) == (named(2:3, "i"), named(2:3, "j"))
             @test dename(na′) == a[2:3, 2:3]
             @test dename(na′) isa typeof(a)
         end
@@ -181,9 +184,9 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         na = NamedDimsArray(a, ("i", "j"))
         for na′ in
             (@view(na[named(2:3, "i"), named(2:3, "j")]), @view(na["i" => 2:3, "j" => 2:3]))
-            @test nameddimsindices(na′) == (named(2:3, "i"), named(2:3, "j"))
+            @test inds(na′) == (named(2:3, "i"), named(2:3, "j"))
             @test copy(dename(na′)) == a[2:3, 2:3]
-            @test dename(na′) === @view(a[2:3, 2:3])
+            @test dename(na′) ≡ @view(a[2:3, 2:3])
             @test dename(na′) isa SubArray{elt, 2}
         end
 
@@ -215,7 +218,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         @test a′[2, 1] ≠ 21
 
         a = randn(elt, 3, 4)
-        na = nameddimsarray(a, ("i", "j"))
+        na = nameddims(a, ("i", "j"))
         a′ = dename(na)
         @test a′ isa Matrix{elt}
         @test a′ == a
@@ -227,22 +230,22 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
             @test a′ isa PermutedDimsArray{elt}
             @test a′ == transpose(a)
         end
-        nb = setnameddimsindices(na, ("k", "j"))
-        @test nameddimsindices(nb) == (named(1:3, "k"), named(1:4, "j"))
+        nb = setinds(na, ("k", "j"))
+        @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
         @test dename(nb) == a
-        nb = replacenameddimsindices(na, "i" => "k")
-        @test nameddimsindices(nb) == (named(1:3, "k"), named(1:4, "j"))
+        nb = replaceinds(na, "i" => "k")
+        @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
         @test dename(nb) == a
-        nb = replacenameddimsindices(na, named(1:3, "i") => named(1:3, "k"))
-        @test nameddimsindices(nb) == (named(1:3, "k"), named(1:4, "j"))
+        nb = replaceinds(na, named(1:3, "i") => named(1:3, "k"))
+        @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
         @test dename(nb) == a
-        nb = replacenameddimsindices(n -> n == named(1:3, "i") ? named(1:3, "k") : n, na)
-        @test nameddimsindices(nb) == (named(1:3, "k"), named(1:4, "j"))
+        nb = replaceinds(n -> n == named(1:3, "i") ? named(1:3, "k") : n, na)
+        @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
         @test dename(nb) == a
-        nb = mapnameddimsindices(n -> n == named(1:3, "i") ? named(1:3, "k") : n, na)
-        @test nameddimsindices(nb) == (named(1:3, "k"), named(1:4, "j"))
+        nb = mapinds(n -> n == named(1:3, "i") ? named(1:3, "k") : n, na)
+        @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
         @test dename(nb) == a
-        nb = setnameddimsindices(na, named(3, "i") => named(3, "k"))
+        nb = setinds(na, named(3, "i") => named(3, "k"))
         na[1, 1] = 11
         @test na[1, 1] == 11
         @test Tuple(size(na)) == (named(3, named(1:3, "i")), named(4, named(1:4, "j")))
@@ -269,12 +272,12 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         @test unname(na′) isa PermutedDimsArray{elt}
         @test a == permutedims(unname(na′), (2, 1))
 
-        na = nameddimsarray(randn(elt, 2, 3), (:i, :j))
-        nb = nameddimsarray(randn(elt, 3, 2), (:j, :i))
+        na = nameddims(randn(elt, 2, 3), (:i, :j))
+        nb = nameddims(randn(elt, 3, 2), (:j, :i))
         nc = zeros(elt, named.((2, 3), (:i, :j)))
         Is = eachindex(na, nb)
         @test Is isa NamedDimsCartesianIndices{2}
-        @test issetequal(nameddimsindices(Is), (named(1:2, :i), named(1:3, :j)))
+        @test issetequal(inds(Is), (named(1:2, :i), named(1:3, :j)))
         for I in Is
             @test I isa NamedDimsCartesianIndex{2}
             @test issetequal(name.(Tuple(I)), (:i, :j))
@@ -282,25 +285,25 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         end
         @test dename(nc, (:i, :j)) ≈ dename(na, (:i, :j)) + dename(nb, (:i, :j))
 
-        a = nameddimsarray(randn(elt, 2, 3), (:i, :j))
-        b = nameddimsarray(randn(elt, 3, 2), (:j, :i))
+        a = nameddims(randn(elt, 2, 3), (:i, :j))
+        b = nameddims(randn(elt, 3, 2), (:j, :i))
         c = a + b
         @test dename(c, (:i, :j)) ≈ dename(a, (:i, :j)) + dename(b, (:i, :j))
         c = a .+ b
         @test dename(c, (:i, :j)) ≈ dename(a, (:i, :j)) + dename(b, (:i, :j))
         c = map(+, a, b)
         @test dename(c, (:i, :j)) ≈ dename(a, (:i, :j)) + dename(b, (:i, :j))
-        c = nameddimsarray(Array{elt}(undef, 2, 3), (:i, :j))
+        c = nameddims(Array{elt}(undef, 2, 3), (:i, :j))
         c = map!(+, c, a, b)
         @test dename(c, (:i, :j)) ≈ dename(a, (:i, :j)) + dename(b, (:i, :j))
         c = a .+ 2 .* b
         @test dename(c, (:i, :j)) ≈ dename(a, (:i, :j)) + 2 * dename(b, (:i, :j))
-        c = nameddimsarray(Array{elt}(undef, 2, 3), (:i, :j))
+        c = nameddims(Array{elt}(undef, 2, 3), (:i, :j))
         c .= a .+ 2 .* b
         @test dename(c, (:i, :j)) ≈ dename(a, (:i, :j)) + 2 * dename(b, (:i, :j))
 
         # Regression test for proper permutations.
-        a = nameddimsarray(randn(elt, 2, 3, 4), (:i, :j, :k))
+        a = nameddims(randn(elt, 2, 3, 4), (:i, :j, :k))
         I = (:i => 2, :j => 3, :k => 4)
         for I′ in Combinatorics.permutations(I)
             @test a[I′...] == a[2, 3, 4]
@@ -344,28 +347,28 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         i, j = named.((2, 2), ("i", "j"))
         value = rand(elt)
         for na in (zeros(elt, i, j), zeros(elt, (i, j)))
-            @test eltype(na) === elt
+            @test eltype(na) ≡ elt
             @test na isa NamedDimsArray
-            @test nameddimsindices(na) == Base.oneto.((i, j))
+            @test inds(na) == Base.oneto.((i, j))
             @test iszero(na)
         end
         for na in (fill(value, i, j), fill(value, (i, j)))
-            @test eltype(na) === elt
+            @test eltype(na) ≡ elt
             @test na isa NamedDimsArray
-            @test nameddimsindices(na) == Base.oneto.((i, j))
+            @test inds(na) == Base.oneto.((i, j))
             @test all(isequal(value), na)
         end
         for na in (rand(elt, i, j), rand(elt, (i, j)))
-            @test eltype(na) === elt
+            @test eltype(na) ≡ elt
             @test na isa NamedDimsArray
-            @test nameddimsindices(na) == Base.oneto.((i, j))
+            @test inds(na) == Base.oneto.((i, j))
             @test !iszero(na)
             @test all(x -> real(x) > 0, na)
         end
         for na in (randn(elt, i, j), randn(elt, (i, j)))
-            @test eltype(na) === elt
+            @test eltype(na) ≡ elt
             @test na isa NamedDimsArray
-            @test nameddimsindices(na) == Base.oneto.((i, j))
+            @test inds(na) == Base.oneto.((i, j))
             @test !iszero(na)
         end
     end
@@ -373,22 +376,22 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         i, j = named.((2, 2), ("i", "j"))
         default_elt = Float64
         for na in (zeros(i, j), zeros((i, j)))
-            @test eltype(na) === default_elt
+            @test eltype(na) ≡ default_elt
             @test na isa NamedDimsArray
-            @test nameddimsindices(na) == Base.oneto.((i, j))
+            @test inds(na) == Base.oneto.((i, j))
             @test iszero(na)
         end
         for na in (rand(i, j), rand((i, j)))
-            @test eltype(na) === default_elt
+            @test eltype(na) ≡ default_elt
             @test na isa NamedDimsArray
-            @test nameddimsindices(na) == Base.oneto.((i, j))
+            @test inds(na) == Base.oneto.((i, j))
             @test !iszero(na)
             @test all(x -> real(x) > 0, na)
         end
         for na in (randn(i, j), randn((i, j)))
-            @test eltype(na) === default_elt
+            @test eltype(na) ≡ default_elt
             @test na isa NamedDimsArray
-            @test nameddimsindices(na) == Base.oneto.((i, j))
+            @test inds(na) == Base.oneto.((i, j))
             @test !iszero(na)
         end
     end
@@ -397,7 +400,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         s = NaiveOrderedSet((1, 2))
         @test eltype(s) == Int
         @test s .+ [3, 4] == [4, 6]
-        @test s .+ (3, 4) === (4, 6)
+        @test s .+ (3, 4) ≡ (4, 6)
 
         s = NaiveOrderedSet(("a", "b", "c"))
         @test all(s .== ("a", "b", "c"))
@@ -440,17 +443,17 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         o = operator(randn(2, 2, 2, 2), ("i'", "j'"), ("i", "j"))
         o² = product(o, o)
         @test issetequal(dimnames(o²), ("i'", "j'", "i", "j"))
-        õ = replacenameddimsindices(
+        õ = replaceinds(
             state(o), "i" => "i'", "j" => "j'", "i'" => "x", "j'" => "y"
         )
-        o²′ = replacenameddimsindices(õ * o, "x" => "i'", "y" => "j'")
+        o²′ = replaceinds(õ * o, "x" => "i'", "y" => "j'")
         @test state(o²) ≈ o²′
 
         o = operator(randn(2, 2, 2, 2), ("i'", "j'"), ("i", "j"))
         v = NamedDimsArray(randn(2, 2), ("i", "j"))
         ov = apply(o, v)
         @test issetequal(dimnames(ov), ("i", "j"))
-        @test ov ≈ replacenameddimsindices(o * v, "i'" => "i", "j'" => "j")
+        @test ov ≈ replaceinds(o * v, "i'" => "i", "j'" => "j")
     end
 
     @testset "@names" begin

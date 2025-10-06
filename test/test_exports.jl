@@ -2,9 +2,9 @@ using NamedDimsArrays: NamedDimsArrays
 using Test: @test, @testset
 @testset "Test exports" begin
     exports = [
-        :NamedDimsArrays, :NamedDimsArray, :aligndims, :named, :nameddimsarray, :operator,
+        :NamedDimsArrays, :NamedDimsArray, :aligndims, :named, :nameddims, :operator,
     ]
-    publics = [:to_nameddimsindices, Symbol("@names")]
+    publics = [:to_inds, Symbol("@names")]
     if VERSION ≥ v"1.11-"
         exports = [exports; publics]
     end

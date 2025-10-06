@@ -1,7 +1,7 @@
 using Adapt: adapt
 using DiagonalArrays: DiagonalArray
 using JLArrays: JLArray
-using NamedDimsArrays: dename, nameddimsarray, nameddimsindices
+using NamedDimsArrays: dename, nameddims, inds
 using SparseArraysBase: sparsezeros, dense
 using Test: @test, @testset
 
@@ -12,19 +12,19 @@ using Test: @test, @testset
 
     @testset "SparseArrayDOK" begin
         s = sparsezeros(elt, 3, 4)
-        a = nameddimsarray(s, (:a, :b))
+        a = nameddims(s, (:a, :b))
         b = dense(a)
         @test dename(b) == dense(dename(a))
         @test dename(b) isa Array{elt, 2}
-        @test nameddimsindices(b) == nameddimsindices(a)
+        @test inds(b) == inds(a)
     end
 
     @testset "DiagonalArrays" begin
         s = dev(DiagonalArray(randn(elt, 3), (3, 3)))
-        a = nameddimsarray(s, (:a, :b))
+        a = nameddims(s, (:a, :b))
         b = dense(a)
         @test dename(b) == dense(dename(a))
         @test dename(b) isa arrayt{elt, 2}
-        @test nameddimsindices(b) == nameddimsindices(a)
+        @test inds(b) == inds(a)
     end
 end
