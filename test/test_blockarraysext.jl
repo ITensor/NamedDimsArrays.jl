@@ -1,6 +1,6 @@
 using BlockArrays: Block
 using BlockSparseArrays: BlockSparseArray
-using NamedDimsArrays: dename, nameddims, nameddimsindices
+using NamedDimsArrays: dename, nameddims, inds
 using Test: @test, @testset
 
 @testset "NamedDimsArraysBlockArraysExt" begin
@@ -10,7 +10,7 @@ using Test: @test, @testset
     a[Block(2, 1)] = randn(elt, 3, 2)
     a[Block(1, 2)] = randn(elt, 2, 3)
     n = nameddims(a, ("i", "j"))
-    i, j = nameddimsindices(n)
+    i, j = inds(n)
     @test dename(n[i[Block(2)], j[Block(1)]]) == a[Block(2, 1)]
     @test dename(n[Block(2), Block(1)]) == a[Block(2, 1)]
     @test dename(n[Block(2, 1)]) == a[Block(2, 1)]

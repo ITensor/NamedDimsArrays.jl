@@ -10,14 +10,14 @@ aligns the dimensions (currently `a[j, i]` doesn't align the dimensions).
 It could be written in terms of `align_getindex`/`align_view`.
 - `svd`, `eigen` (including tensor versions)
 - `reshape`, `vec`, including fused dimension names.
-- Dimension name set logic, i.e. `setdiffnameddimsindices(a::AbstractNamedDimsArray, b::AbstractNamedDimsArray)`, etc.
-- `swapnameddimsindices` (written in terms of `mapnameddimsindices`/`replacenameddimsindices`).
-- `mapnameddimsindices(f, a::AbstractNamedDimsArray)` (rename `replacenameddimsindices(f, a)` to `mapnameddimsindices(f, a)`, or have both?)
+- Dimension name set logic, i.e. `setdiffinds(a::AbstractNamedDimsArray, b::AbstractNamedDimsArray)`, etc.
+- `swapinds` (written in terms of `mapinds`/`replaceinds`).
+- `mapinds(f, a::AbstractNamedDimsArray)` (rename `replaceinds(f, a)` to `mapinds(f, a)`, or have both?)
 - `cat` (define `CatName` as a combination of the input names?).
 - `canonize`/`flatten_array_wrappers` (https://github.com/mcabbott/NamedPlus.jl/blob/v0.0.5/src/permute.jl#L207)
-  - `nameddims(PermutedDimsArray(a, perm), nameddimsindices)` -> `nameddims(a, nameddimsindices[invperm(perm)])`
-  - `nameddims(transpose(a), nameddimsindices)` -> `nameddims(a, reverse(nameddimsindices))`
-  - `Transpose(nameddims(a, nameddimsindices))` -> `nameddims(a, reverse(nameddimsindices))`
+  - `nameddims(PermutedDimsArray(a, perm), inds)` -> `nameddims(a, inds[invperm(perm)])`
+  - `nameddims(transpose(a), inds)` -> `nameddims(a, reverse(inds))`
+  - `Transpose(nameddims(a, inds))` -> `nameddims(a, reverse(inds))`
   - etc.
 - `MappedName(old_name, name)`, acts like `Name(name)` but keeps track of the old name.
   - `nameddimsmap(a, ::Pair...)`: `namedmap(named(randn(2, 2, 2, 2), i, j, k, l), i => k, j => l)`
@@ -27,7 +27,7 @@ It could be written in terms of `align_getindex`/`align_view`.
   `Name(:i)' = prime(:i)`, etc.
     - Also `prime(f, a::AbstractNamedDimsArray)` where `f` is a filter function to determine
       which dimensions to filter.
-- `transpose`/`adjoint` based on `swapnameddimsindices` and `MappedName(old_name, new_name)`.
+- `transpose`/`adjoint` based on `swapinds` and `MappedName(old_name, new_name)`.
   - `adjoint` could make use of a lazy `ConjArray`.
   - `transpose(a, dimname1 => dimname1′, dimname2 => dimname2′)` like `https://github.com/mcabbott/NamedPlus.jl`.
     - Same as `replacedims(a, dimname1 => dimname1′, dimname1′ => dimname1, dimname2 => dimname2′, dimname2′ => dimname2)`.

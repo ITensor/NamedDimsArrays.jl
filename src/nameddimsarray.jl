@@ -1,15 +1,15 @@
 using TypeParameterAccessors: TypeParameterAccessors, parenttype
 
-# nameddimsindices should be a named slice.
+# inds should be a named slice.
 struct NamedDimsArray{T, N, Parent <: AbstractArray{T, N}, DimNames} <:
     AbstractNamedDimsArray{T, N}
     parent::Parent
-    nameddimsindices::DimNames
+    inds::DimNames
     function NamedDimsArray(parent::AbstractArray, dims)
         # This checks the shapes of the inputs.
-        nameddimsindices = to_nameddimsindices(parent, dims)
-        return new{eltype(parent), ndims(parent), typeof(parent), typeof(nameddimsindices)}(
-            parent, nameddimsindices
+        inds = to_inds(parent, dims)
+        return new{eltype(parent), ndims(parent), typeof(parent), typeof(inds)}(
+            parent, inds
         )
     end
 end
@@ -22,16 +22,16 @@ const NamedDimsMatrix{T, Parent <: AbstractMatrix{T}, DimNames} = NamedDimsArray
 }
 
 # TODO: Delete this, and just wrap the input naively.
-function NamedDimsArray(a::AbstractNamedDimsArray, nameddimsindices)
+function NamedDimsArray(a::AbstractNamedDimsArray, inds)
     return error("Already named.")
 end
 
 function NamedDimsArray(a::AbstractNamedDimsArray)
-    return NamedDimsArray(dename(a), nameddimsindices(a))
+    return NamedDimsArray(dename(a), inds(a))
 end
 
 # Minimal interface.
-nameddimsindices(a::NamedDimsArray) = getfield(a, :nameddimsindices)
+inds(a::NamedDimsArray) = getfield(a, :inds)
 Base.parent(a::NamedDimsArray) = getfield(a, :parent)
 dename(a::NamedDimsArray) = parent(a)
 

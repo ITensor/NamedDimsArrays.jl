@@ -1,5 +1,5 @@
 using LinearAlgebra: factorize, lq, norm, qr, svd
-using NamedDimsArrays: NamedDimsArrays, dename, nameddimsindices, namedoneto
+using NamedDimsArrays: NamedDimsArrays, dename, inds, namedoneto
 using StableRNGs: StableRNG
 using TensorAlgebra:
     TensorAlgebra,
@@ -111,11 +111,11 @@ elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         a = randn(elt, i, j, k, l)
         # TODO: Add support for specifying new name.
         for n in (left_null(a, (i, k), (j, l)), left_null(a, (i, k)))
-            @test (i, k) ⊆ nameddimsindices(n)
+            @test (i, k) ⊆ inds(n)
             @test norm(n * a) ≈ 0
         end
         for n in (right_null(a, (i, k), (j, l)), right_null(a, (i, k)))
-            @test (j, l) ⊆ nameddimsindices(n)
+            @test (j, l) ⊆ inds(n)
             @test norm(n * a) ≈ 0
         end
     end

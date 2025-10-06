@@ -20,16 +20,16 @@ using NamedDimsArrays:
     dims,
     fusednames,
     isnamed,
-    mapnameddimsindices,
+    mapinds,
     name,
     named,
     nameddims,
-    nameddimsindices,
+    inds,
     namedoneto,
     operator,
     product,
-    replacenameddimsindices,
-    setnameddimsindices,
+    replaceinds,
+    setinds,
     state,
     unname,
     unnamed,
@@ -62,9 +62,9 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         @test name(ai) == i
         @test name(aj) == j
         @test isnamed(na)
-        @test nameddimsindices(na) == (i, j)
-        @test nameddimsindices(na, 1) == i
-        @test nameddimsindices(na, 2) == j
+        @test inds(na) == (i, j)
+        @test inds(na, 1) == i
+        @test inds(na, 2) == j
         @test dimnames(na) == ("i", "j")
         @test dimnames(na, 1) == "i"
         @test dimnames(na, 2) == "j"
@@ -118,7 +118,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
                 similar(a, Float32, NaiveOrderedSet((aj, ai))),
             )
             @test eltype(na′) === Float32
-            @test all(nameddimsindices(na′) .== (j, i))
+            @test all(inds(na′) .== (j, i))
             @test na′ ≠ na
         end
 
@@ -138,7 +138,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
                 similar(a, NaiveOrderedSet((aj, ai))),
             )
             @test eltype(na′) === eltype(na)
-            @test all(nameddimsindices(na′) .== (j, i))
+            @test all(inds(na′) .== (j, i))
             @test na′ ≠ na
         end
 
@@ -148,7 +148,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         @test a[i, j] == na
         @test @view(a[i, j]) == na
         @test na[j[1], i[2]] == a[2, 1]
-        @test nameddimsindices(na[j, i]) == (named(1:3, "i"), named(1:4, "j"))
+        @test inds(na[j, i]) == (named(1:3, "i"), named(1:4, "j"))
         @test na[j, i] == na
         @test @view(na[j, i]) == na
         @test i[axes(a, 1)] == named(1:3, "i")
@@ -171,7 +171,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         a = randn(elt, 3, 3)
         na = NamedDimsArray(a, ("i", "j"))
         for na′ in (na[named(2:3, "i"), named(2:3, "j")], na["i" => 2:3, "j" => 2:3])
-            @test nameddimsindices(na′) == (named(2:3, "i"), named(2:3, "j"))
+            @test inds(na′) == (named(2:3, "i"), named(2:3, "j"))
             @test dename(na′) == a[2:3, 2:3]
             @test dename(na′) isa typeof(a)
         end
@@ -181,7 +181,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         na = NamedDimsArray(a, ("i", "j"))
         for na′ in
             (@view(na[named(2:3, "i"), named(2:3, "j")]), @view(na["i" => 2:3, "j" => 2:3]))
-            @test nameddimsindices(na′) == (named(2:3, "i"), named(2:3, "j"))
+            @test inds(na′) == (named(2:3, "i"), named(2:3, "j"))
             @test copy(dename(na′)) == a[2:3, 2:3]
             @test dename(na′) === @view(a[2:3, 2:3])
             @test dename(na′) isa SubArray{elt, 2}
@@ -227,22 +227,22 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
             @test a′ isa PermutedDimsArray{elt}
             @test a′ == transpose(a)
         end
-        nb = setnameddimsindices(na, ("k", "j"))
-        @test nameddimsindices(nb) == (named(1:3, "k"), named(1:4, "j"))
+        nb = setinds(na, ("k", "j"))
+        @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
         @test dename(nb) == a
-        nb = replacenameddimsindices(na, "i" => "k")
-        @test nameddimsindices(nb) == (named(1:3, "k"), named(1:4, "j"))
+        nb = replaceinds(na, "i" => "k")
+        @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
         @test dename(nb) == a
-        nb = replacenameddimsindices(na, named(1:3, "i") => named(1:3, "k"))
-        @test nameddimsindices(nb) == (named(1:3, "k"), named(1:4, "j"))
+        nb = replaceinds(na, named(1:3, "i") => named(1:3, "k"))
+        @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
         @test dename(nb) == a
-        nb = replacenameddimsindices(n -> n == named(1:3, "i") ? named(1:3, "k") : n, na)
-        @test nameddimsindices(nb) == (named(1:3, "k"), named(1:4, "j"))
+        nb = replaceinds(n -> n == named(1:3, "i") ? named(1:3, "k") : n, na)
+        @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
         @test dename(nb) == a
-        nb = mapnameddimsindices(n -> n == named(1:3, "i") ? named(1:3, "k") : n, na)
-        @test nameddimsindices(nb) == (named(1:3, "k"), named(1:4, "j"))
+        nb = mapinds(n -> n == named(1:3, "i") ? named(1:3, "k") : n, na)
+        @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
         @test dename(nb) == a
-        nb = setnameddimsindices(na, named(3, "i") => named(3, "k"))
+        nb = setinds(na, named(3, "i") => named(3, "k"))
         na[1, 1] = 11
         @test na[1, 1] == 11
         @test Tuple(size(na)) == (named(3, named(1:3, "i")), named(4, named(1:4, "j")))
@@ -274,7 +274,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         nc = zeros(elt, named.((2, 3), (:i, :j)))
         Is = eachindex(na, nb)
         @test Is isa NamedDimsCartesianIndices{2}
-        @test issetequal(nameddimsindices(Is), (named(1:2, :i), named(1:3, :j)))
+        @test issetequal(inds(Is), (named(1:2, :i), named(1:3, :j)))
         for I in Is
             @test I isa NamedDimsCartesianIndex{2}
             @test issetequal(name.(Tuple(I)), (:i, :j))
@@ -346,26 +346,26 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         for na in (zeros(elt, i, j), zeros(elt, (i, j)))
             @test eltype(na) === elt
             @test na isa NamedDimsArray
-            @test nameddimsindices(na) == Base.oneto.((i, j))
+            @test inds(na) == Base.oneto.((i, j))
             @test iszero(na)
         end
         for na in (fill(value, i, j), fill(value, (i, j)))
             @test eltype(na) === elt
             @test na isa NamedDimsArray
-            @test nameddimsindices(na) == Base.oneto.((i, j))
+            @test inds(na) == Base.oneto.((i, j))
             @test all(isequal(value), na)
         end
         for na in (rand(elt, i, j), rand(elt, (i, j)))
             @test eltype(na) === elt
             @test na isa NamedDimsArray
-            @test nameddimsindices(na) == Base.oneto.((i, j))
+            @test inds(na) == Base.oneto.((i, j))
             @test !iszero(na)
             @test all(x -> real(x) > 0, na)
         end
         for na in (randn(elt, i, j), randn(elt, (i, j)))
             @test eltype(na) === elt
             @test na isa NamedDimsArray
-            @test nameddimsindices(na) == Base.oneto.((i, j))
+            @test inds(na) == Base.oneto.((i, j))
             @test !iszero(na)
         end
     end
@@ -375,20 +375,20 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         for na in (zeros(i, j), zeros((i, j)))
             @test eltype(na) === default_elt
             @test na isa NamedDimsArray
-            @test nameddimsindices(na) == Base.oneto.((i, j))
+            @test inds(na) == Base.oneto.((i, j))
             @test iszero(na)
         end
         for na in (rand(i, j), rand((i, j)))
             @test eltype(na) === default_elt
             @test na isa NamedDimsArray
-            @test nameddimsindices(na) == Base.oneto.((i, j))
+            @test inds(na) == Base.oneto.((i, j))
             @test !iszero(na)
             @test all(x -> real(x) > 0, na)
         end
         for na in (randn(i, j), randn((i, j)))
             @test eltype(na) === default_elt
             @test na isa NamedDimsArray
-            @test nameddimsindices(na) == Base.oneto.((i, j))
+            @test inds(na) == Base.oneto.((i, j))
             @test !iszero(na)
         end
     end
@@ -440,17 +440,17 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         o = operator(randn(2, 2, 2, 2), ("i'", "j'"), ("i", "j"))
         o² = product(o, o)
         @test issetequal(dimnames(o²), ("i'", "j'", "i", "j"))
-        õ = replacenameddimsindices(
+        õ = replaceinds(
             state(o), "i" => "i'", "j" => "j'", "i'" => "x", "j'" => "y"
         )
-        o²′ = replacenameddimsindices(õ * o, "x" => "i'", "y" => "j'")
+        o²′ = replaceinds(õ * o, "x" => "i'", "y" => "j'")
         @test state(o²) ≈ o²′
 
         o = operator(randn(2, 2, 2, 2), ("i'", "j'"), ("i", "j"))
         v = NamedDimsArray(randn(2, 2), ("i", "j"))
         ov = apply(o, v)
         @test issetequal(dimnames(ov), ("i", "j"))
-        @test ov ≈ replacenameddimsindices(o * v, "i'" => "i", "j'" => "j")
+        @test ov ≈ replaceinds(o * v, "i'" => "i", "j'" => "j")
     end
 
     @testset "@names" begin
