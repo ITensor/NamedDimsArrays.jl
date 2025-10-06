@@ -7,5 +7,5 @@ using Test: @test, @testset
     na = nameddims(randn(2, 2), ("i", "j"))
     na_complex = adapt(Array{complex(elt)}, na)
     @test na ≈ na_complex
-    @test eltype(na_complex) === complex(elt)
+    @test eltype(na_complex) ≡ complex(elt)
 end

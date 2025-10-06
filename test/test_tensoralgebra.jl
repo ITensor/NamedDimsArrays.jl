@@ -25,7 +25,7 @@ elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         na1 = randn(elt, i, j)
         na2 = randn(elt, j, k)
         na_dest = contract(na1, na2)
-        @test eltype(na_dest) === elt
+        @test eltype(na_dest) ≡ elt
         @test dename(na_dest, (i, k)) ≈ dename(na1) * dename(na2)
     end
     @testset "matricize" begin

@@ -240,6 +240,10 @@ Base.ndims(a::AbstractNamedDimsArray) = ndims(dename(a))
 # Circumvent issue when eltype isn't known at compile time.
 Base.eltype(a::AbstractNamedDimsArray) = eltype(dename(a))
 
+using VectorInterface: VectorInterface, scalartype
+# Circumvent issue when eltype isn't known at compile time.
+VectorInterface.scalartype(a::AbstractNamedDimsArray) = scalartype(dename(a))
+
 Base.axes(a::AbstractNamedDimsArray, dimname::Name) = axes(a, dim(a, dimname))
 Base.size(a::AbstractNamedDimsArray, dimname::Name) = size(a, dim(a, dimname))
 

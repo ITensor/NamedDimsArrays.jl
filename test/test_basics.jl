@@ -35,6 +35,7 @@ using NamedDimsArrays:
     unnamed,
     @names
 using Test: @test, @test_throws, @testset
+using VectorInterface: scalartype
 
 const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
 @testset "NamedDimsArrays.jl" begin
@@ -78,8 +79,10 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
 
         a = randn(elt, 3, 4)
         na = nameddims(a, ("i", "j"))
+        @test eltype(na) ≡ elt
+        @test scalartype(na) ≡ elt
         a′ = Array(na)
-        @test eltype(a′) === elt
+        @test eltype(a′) ≡ elt
         @test a′ isa Matrix{elt}
         @test a′ == a
 
@@ -87,7 +90,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
             a = randn(elt, 3, 4)
             na = nameddims(a, ("i", "j"))
             for a′ in (Array{Float32}(na), Matrix{Float32}(na))
-                @test eltype(a′) === Float32
+                @test eltype(a′) ≡ Float32
                 @test a′ isa Matrix{Float32}
                 @test a′ == Float32.(a)
             end
@@ -117,7 +120,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
                 similar(a, Float32, (aj, ai)),
                 similar(a, Float32, NaiveOrderedSet((aj, ai))),
             )
-            @test eltype(na′) === Float32
+            @test eltype(na′) ≡ Float32
             @test all(inds(na′) .== (j, i))
             @test na′ ≠ na
         end
@@ -137,7 +140,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
                 similar(a, (aj, ai)),
                 similar(a, NaiveOrderedSet((aj, ai))),
             )
-            @test eltype(na′) === eltype(na)
+            @test eltype(na′) ≡ eltype(na)
             @test all(inds(na′) .== (j, i))
             @test na′ ≠ na
         end
@@ -183,7 +186,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
             (@view(na[named(2:3, "i"), named(2:3, "j")]), @view(na["i" => 2:3, "j" => 2:3]))
             @test inds(na′) == (named(2:3, "i"), named(2:3, "j"))
             @test copy(dename(na′)) == a[2:3, 2:3]
-            @test dename(na′) === @view(a[2:3, 2:3])
+            @test dename(na′) ≡ @view(a[2:3, 2:3])
             @test dename(na′) isa SubArray{elt, 2}
         end
 
@@ -344,26 +347,26 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         i, j = named.((2, 2), ("i", "j"))
         value = rand(elt)
         for na in (zeros(elt, i, j), zeros(elt, (i, j)))
-            @test eltype(na) === elt
+            @test eltype(na) ≡ elt
             @test na isa NamedDimsArray
             @test inds(na) == Base.oneto.((i, j))
             @test iszero(na)
         end
         for na in (fill(value, i, j), fill(value, (i, j)))
-            @test eltype(na) === elt
+            @test eltype(na) ≡ elt
             @test na isa NamedDimsArray
             @test inds(na) == Base.oneto.((i, j))
             @test all(isequal(value), na)
         end
         for na in (rand(elt, i, j), rand(elt, (i, j)))
-            @test eltype(na) === elt
+            @test eltype(na) ≡ elt
             @test na isa NamedDimsArray
             @test inds(na) == Base.oneto.((i, j))
             @test !iszero(na)
             @test all(x -> real(x) > 0, na)
         end
         for na in (randn(elt, i, j), randn(elt, (i, j)))
-            @test eltype(na) === elt
+            @test eltype(na) ≡ elt
             @test na isa NamedDimsArray
             @test inds(na) == Base.oneto.((i, j))
             @test !iszero(na)
@@ -373,20 +376,20 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         i, j = named.((2, 2), ("i", "j"))
         default_elt = Float64
         for na in (zeros(i, j), zeros((i, j)))
-            @test eltype(na) === default_elt
+            @test eltype(na) ≡ default_elt
             @test na isa NamedDimsArray
             @test inds(na) == Base.oneto.((i, j))
             @test iszero(na)
         end
         for na in (rand(i, j), rand((i, j)))
-            @test eltype(na) === default_elt
+            @test eltype(na) ≡ default_elt
             @test na isa NamedDimsArray
             @test inds(na) == Base.oneto.((i, j))
             @test !iszero(na)
             @test all(x -> real(x) > 0, na)
         end
         for na in (randn(i, j), randn((i, j)))
-            @test eltype(na) === default_elt
+            @test eltype(na) ≡ default_elt
             @test na isa NamedDimsArray
             @test inds(na) == Base.oneto.((i, j))
             @test !iszero(na)
@@ -397,7 +400,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         s = NaiveOrderedSet((1, 2))
         @test eltype(s) == Int
         @test s .+ [3, 4] == [4, 6]
-        @test s .+ (3, 4) === (4, 6)
+        @test s .+ (3, 4) ≡ (4, 6)
 
         s = NaiveOrderedSet(("a", "b", "c"))
         @test all(s .== ("a", "b", "c"))
