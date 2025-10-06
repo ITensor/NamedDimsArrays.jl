@@ -14,10 +14,10 @@ include("abstractnamedarray.jl")
 include("namedarray.jl")
 include("abstractnamedunitrange.jl")
 include("namedunitrange.jl")
-include("abstractnameddims.jl")
+include("abstractnameddimsarray.jl")
 include("adapt.jl")
 include("tensoralgebra.jl")
-include("nameddims.jl")
+include("nameddimsarray.jl")
 include("nameddimsoperator.jl")
 
 end
