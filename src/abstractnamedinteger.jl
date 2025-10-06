@@ -134,7 +134,7 @@ function Base.string(i::AbstractNamedInteger; kwargs...)
     return "named($(string(dename(i); kwargs...)), $(repr(name(i))))"
 end
 
-Base.Int(i::AbstractNamedInteger) = Int(dename(i))
+(type::Type{<:Number})(i::AbstractNamedInteger) = type(dename(i))
 
 struct NameMismatch <: Exception
     message::String
