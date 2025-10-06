@@ -23,7 +23,7 @@ using NamedDimsArrays:
     mapnameddimsindices,
     name,
     named,
-    nameddimsarray,
+    nameddims,
     nameddimsindices,
     namedoneto,
     operator,
@@ -41,7 +41,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
     @testset "Basic functionality (eltype=$elt)" for elt in elts
         a = randn(elt, 3, 4)
         @test !isnamed(a)
-        na = nameddimsarray(a, ("i", "j"))
+        na = nameddims(a, ("i", "j"))
         @test na isa NamedDimsMatrix{elt, Matrix{elt}}
         @test na isa AbstractNamedDimsMatrix{elt}
         @test na isa NamedDimsArray{elt}
@@ -77,7 +77,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         @test_throws ErrorException NamedDimsArray(randn(2, 2), namedoneto.((2, 3), ("i", "j")))
 
         a = randn(elt, 3, 4)
-        na = nameddimsarray(a, ("i", "j"))
+        na = nameddims(a, ("i", "j"))
         a′ = Array(na)
         @test eltype(a′) === elt
         @test a′ isa Matrix{elt}
@@ -85,7 +85,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
 
         if elt <: Real
             a = randn(elt, 3, 4)
-            na = nameddimsarray(a, ("i", "j"))
+            na = nameddims(a, ("i", "j"))
             for a′ in (Array{Float32}(na), Matrix{Float32}(na))
                 @test eltype(a′) === Float32
                 @test a′ isa Matrix{Float32}
@@ -94,16 +94,16 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         end
 
         a = randn(elt, 2, 2, 2)
-        na = nameddimsarray(a, ("i", "j", "k"))
+        na = nameddims(a, ("i", "j", "k"))
         b = randn(elt, 2, 2, 2)
-        nb = nameddimsarray(b, ("k", "i", "j"))
+        nb = nameddims(b, ("k", "i", "j"))
         copyto!(na, nb)
         @test na == nb
         @test dename(na) == dename(nb, ("i", "j", "k"))
         @test dename(na) == permutedims(dename(nb), (2, 3, 1))
 
         a = randn(elt, 3, 4)
-        na = nameddimsarray(a, ("i", "j"))
+        na = nameddims(a, ("i", "j"))
         i = namedoneto(3, "i")
         j = namedoneto(4, "j")
         ai, aj = axes(na)
@@ -123,7 +123,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         end
 
         a = randn(elt, 3, 4)
-        na = nameddimsarray(a, ("i", "j"))
+        na = nameddims(a, ("i", "j"))
         i = namedoneto(3, "i")
         j = namedoneto(4, "j")
         ai, aj = axes(na)
@@ -215,7 +215,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         @test a′[2, 1] ≠ 21
 
         a = randn(elt, 3, 4)
-        na = nameddimsarray(a, ("i", "j"))
+        na = nameddims(a, ("i", "j"))
         a′ = dename(na)
         @test a′ isa Matrix{elt}
         @test a′ == a
@@ -269,8 +269,8 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         @test unname(na′) isa PermutedDimsArray{elt}
         @test a == permutedims(unname(na′), (2, 1))
 
-        na = nameddimsarray(randn(elt, 2, 3), (:i, :j))
-        nb = nameddimsarray(randn(elt, 3, 2), (:j, :i))
+        na = nameddims(randn(elt, 2, 3), (:i, :j))
+        nb = nameddims(randn(elt, 3, 2), (:j, :i))
         nc = zeros(elt, named.((2, 3), (:i, :j)))
         Is = eachindex(na, nb)
         @test Is isa NamedDimsCartesianIndices{2}
@@ -282,25 +282,25 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         end
         @test dename(nc, (:i, :j)) ≈ dename(na, (:i, :j)) + dename(nb, (:i, :j))
 
-        a = nameddimsarray(randn(elt, 2, 3), (:i, :j))
-        b = nameddimsarray(randn(elt, 3, 2), (:j, :i))
+        a = nameddims(randn(elt, 2, 3), (:i, :j))
+        b = nameddims(randn(elt, 3, 2), (:j, :i))
         c = a + b
         @test dename(c, (:i, :j)) ≈ dename(a, (:i, :j)) + dename(b, (:i, :j))
         c = a .+ b
         @test dename(c, (:i, :j)) ≈ dename(a, (:i, :j)) + dename(b, (:i, :j))
         c = map(+, a, b)
         @test dename(c, (:i, :j)) ≈ dename(a, (:i, :j)) + dename(b, (:i, :j))
-        c = nameddimsarray(Array{elt}(undef, 2, 3), (:i, :j))
+        c = nameddims(Array{elt}(undef, 2, 3), (:i, :j))
         c = map!(+, c, a, b)
         @test dename(c, (:i, :j)) ≈ dename(a, (:i, :j)) + dename(b, (:i, :j))
         c = a .+ 2 .* b
         @test dename(c, (:i, :j)) ≈ dename(a, (:i, :j)) + 2 * dename(b, (:i, :j))
-        c = nameddimsarray(Array{elt}(undef, 2, 3), (:i, :j))
+        c = nameddims(Array{elt}(undef, 2, 3), (:i, :j))
         c .= a .+ 2 .* b
         @test dename(c, (:i, :j)) ≈ dename(a, (:i, :j)) + 2 * dename(b, (:i, :j))
 
         # Regression test for proper permutations.
-        a = nameddimsarray(randn(elt, 2, 3, 4), (:i, :j, :k))
+        a = nameddims(randn(elt, 2, 3, 4), (:i, :j, :k))
         I = (:i => 2, :j => 3, :k => 4)
         for I′ in Combinatorics.permutations(I)
             @test a[I′...] == a[2, 3, 4]

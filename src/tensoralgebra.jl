@@ -56,7 +56,7 @@ function TensorAlgebra.contract(a1::AbstractNamedDimsArray, a2::AbstractNamedDim
     a_dest, nameddimsindices_dest = contract(
         dename(a1), nameddimsindices(a1), dename(a2), nameddimsindices(a2)
     )
-    nameddimstype = combine_nameddimsarraytype(
+    nameddimstype = combine_nameddimstype(
         constructorof(typeof(a1)), constructorof(typeof(a2))
     )
     return nameddimstype(a_dest, nameddimsindices_dest)
@@ -129,7 +129,7 @@ function TensorAlgebra.matricize(na::AbstractNamedDimsArray, fusions::Vararg{Pai
     end
     perm = blockedperm(na, nameddimsindices_fuse...)
     a_fused = matricize(dename(na), perm)
-    return nameddimsarray(a_fused, nameddimsindices_fused)
+    return nameddims(a_fused, nameddimsindices_fused)
 end
 
 function TensorAlgebra.unmatricize(na::AbstractNamedDimsArray, splitters::Vararg{Pair, 2})
@@ -151,7 +151,7 @@ function TensorAlgebra.unmatricize(na::AbstractNamedDimsArray, splitters::Vararg
         names_split[fused_dim] = split_names
     end
     names_split = reduce((x, y) -> (x..., y...), names_split)
-    return nameddimsarray(a_split, names_split)
+    return nameddims(a_split, names_split)
 end
 
 for f in [
@@ -170,8 +170,8 @@ for f in [
             namedindices_y = named(first(axes(y_unnamed)), name_y)
             nameddimsindices_x = (codomain..., namedindices_x)
             nameddimsindices_y = (namedindices_y, domain...)
-            x = nameddimsarray(x_unnamed, nameddimsindices_x)
-            y = nameddimsarray(y_unnamed, nameddimsindices_y)
+            x = nameddims(x_unnamed, nameddimsindices_x)
+            y = nameddims(y_unnamed, nameddimsindices_y)
             return x, y
         end
         function TensorAlgebra.$f(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
@@ -212,9 +212,9 @@ function TensorAlgebra.svd(
     nameddimsindices_u = (codomain..., namedindices_u)
     nameddimsindices_s = (namedindices_u, namedindices_v)
     nameddimsindices_v = (namedindices_v, domain...)
-    u = nameddimsarray(u_unnamed, nameddimsindices_u)
-    s = nameddimsarray(s_unnamed, nameddimsindices_s)
-    v = nameddimsarray(v_unnamed, nameddimsindices_v)
+    u = nameddims(u_unnamed, nameddimsindices_u)
+    s = nameddims(s_unnamed, nameddimsindices_s)
+    v = nameddims(v_unnamed, nameddimsindices_v)
     return u, s, v
 end
 function TensorAlgebra.svd(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
@@ -263,8 +263,8 @@ function TensorAlgebra.eigen(
     namedindices_v = named(last(axes(v_unnamed)), name_v)
     nameddimsindices_d = (namedindices_d′, namedindices_d)
     nameddimsindices_v = (domain..., namedindices_v)
-    d = nameddimsarray(d_unnamed, nameddimsindices_d)
-    v = nameddimsarray(v_unnamed, nameddimsindices_v)
+    d = nameddims(d_unnamed, nameddimsindices_d)
+    v = nameddims(v_unnamed, nameddimsindices_v)
     return d, v
 end
 function LinearAlgebra.eigen(a::AbstractNamedDimsArray, args...; kwargs...)
@@ -291,7 +291,7 @@ function TensorAlgebra.left_null(
     name_n = randname(dimnames(a, 1))
     namedindices_n = named(last(axes(n_unnamed)), name_n)
     nameddimsindices_n = (codomain..., namedindices_n)
-    return nameddimsarray(n_unnamed, nameddimsindices_n)
+    return nameddims(n_unnamed, nameddimsindices_n)
 end
 function TensorAlgebra.left_null(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
     codomain = to_nameddimsindices(a, dimnames_codomain)
@@ -308,7 +308,7 @@ function TensorAlgebra.right_null(
     name_n = randname(dimnames(a, 1))
     namedindices_n = named(first(axes(n_unnamed)), name_n)
     nameddimsindices_n = (namedindices_n, domain...)
-    return nameddimsarray(n_unnamed, nameddimsindices_n)
+    return nameddims(n_unnamed, nameddimsindices_n)
 end
 function TensorAlgebra.right_null(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
     codomain = to_nameddimsindices(a, dimnames_codomain)
@@ -358,7 +358,7 @@ for f in MATRIX_FUNCTIONS
             fa_unnamed = TensorAlgebra.$f(
                 dename(a), nameddimsindices(a), codomain, domain; kwargs...
             )
-            return nameddimsarray(fa_unnamed, (codomain..., domain...))
+            return nameddims(fa_unnamed, (codomain..., domain...))
         end
     end
 end

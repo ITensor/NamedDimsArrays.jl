@@ -117,7 +117,7 @@ function operator(a::AbstractNamedDimsArray, domain_codomain_pairs)
     return NamedDimsOperator(a, domain_codomain_pairs)
 end
 function operator(a::AbstractArray, codomain, domain)
-    na = nameddimsarray(a, (codomain..., domain...))
+    na = nameddims(a, (codomain..., domain...))
     return operator(na, domain .=> codomain)
 end
 
@@ -158,8 +158,8 @@ function TypeParameterAccessors.parenttype(type::Type{<:NamedDimsOperator})
     return fieldtype(type, :parent)
 end
 
-function NamedDimsArrays.constructorof_nameddimsarray(type::Type{<:NamedDimsOperator})
-    return constructorof_nameddimsarray(parenttype(type))
+function NamedDimsArrays.constructorof_nameddims(type::Type{<:NamedDimsOperator})
+    return constructorof_nameddims(parenttype(type))
 end
 
 # TODO: Make abstract?
