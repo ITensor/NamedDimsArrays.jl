@@ -409,6 +409,7 @@ end
 # TODO: Use `mapreduce(==, &&, a1, a2)`?
 # TODO: Handle `missing` values properly.
 function Base.:(==)(a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray)
+    issetequal(inds(a1), inds(a2)) || return false
     return all(eachindex(a1, a2)) do I
         a1[I] == a2[I]
     end
