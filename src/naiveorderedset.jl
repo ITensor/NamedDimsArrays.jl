@@ -24,6 +24,10 @@ Base.Broadcast.BroadcastStyle(s1::AbstractArrayStyle, s2::Style{NaiveOrderedSet}
 Base.Broadcast.broadcastable(s::NaiveOrderedSet) = s
 Base.to_shape(s::NaiveOrderedSet) = s
 
+# Needed for functionality such as `CartesianIndices(::AbstractNamedDimsArray)`,
+# `pairs(::AbstractNamedDimsArray)`, etc.
+Base.CartesianIndices(s::NaiveOrderedSet) = CartesianIndices(values(s))
+
 function Base.copy(
         bc::Broadcasted{Style{NaiveOrderedSet}, <:Any, <:Any, <:Tuple{<:NaiveOrderedSet}}
     )

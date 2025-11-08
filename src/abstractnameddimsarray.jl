@@ -400,9 +400,8 @@ end
 # Base version ignores dimension names.
 # TODO: Use `mapreduce(isequal, &&, a1, a2)`?
 function Base.isequal(a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray)
-    return all(eachindex(a1, a2)) do I
-        isequal(a1[I], a2[I])
-    end
+    issetequal(inds(a1), inds(a2)) || return false
+    return isequal(unname(a1), unnamed(a2, inds(a1)))
 end
 
 # Base version ignores dimension names.
@@ -410,9 +409,17 @@ end
 # TODO: Handle `missing` values properly.
 function Base.:(==)(a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray)
     issetequal(inds(a1), inds(a2)) || return false
-    return all(eachindex(a1, a2)) do I
-        a1[I] == a2[I]
+    return unname(a1) == unnamed(a2, inds(a1))
+end
+
+function Base.hash(a::AbstractNamedDimsArray, h::UInt64)
+    h = hash(:NamedDimsArray, h)
+    a′ = aligneddims(a, sort(dimnames(a)))
+    h = hash(dename(a′), h)
+    for i in inds(a′)
+        h = hash(i, h)
     end
+    return h
 end
 
 # Indexing.
@@ -674,6 +681,7 @@ function aligndims(a::AbstractArray, dims)
     return constructorof(typeof(a))(permutedims(dename(a), perm), new_inds)
 end
 
+using DerivableInterfaces: permuteddims
 function aligneddims(a::AbstractArray, dims)
     new_inds = to_inds(a, dims)
     perm = getperm(inds(a), new_inds)
@@ -683,7 +691,7 @@ function aligneddims(a::AbstractArray, dims)
         ),
     )
     return constructorof_nameddims(typeof(a))(
-        PermutedDimsArray(dename(a), perm), new_inds
+        permuteddims(dename(a), perm), new_inds
     )
 end
 
