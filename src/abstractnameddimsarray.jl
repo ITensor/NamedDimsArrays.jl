@@ -412,9 +412,14 @@ function Base.:(==)(a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray)
     return unname(a1) == unnamed(a2, inds(a1))
 end
 
+# Generalization of `Base.sort` to Tuples for Julia v1.10 compatibility.
+# TODO: Remove when we drop support for Julia v1.10.
+_sort(x; kwargs...) = sort(x; kwargs...)
+_sort(x::NTuple{N}; kwargs...) where {N} = NTuple{N}(sort(collect(x); kwargs...))
+
 function Base.hash(a::AbstractNamedDimsArray, h::UInt64)
     h = hash(:NamedDimsArray, h)
-    a′ = aligneddims(a, sort(dimnames(a)))
+    a′ = aligneddims(a, _sort(dimnames(a)))
     h = hash(dename(a′), h)
     for i in inds(a′)
         h = hash(i, h)
