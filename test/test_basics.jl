@@ -1,39 +1,9 @@
 using Combinatorics: Combinatorics
-using NamedDimsArrays:
-    NamedDimsArrays,
-    AbstractNamedDimsArray,
-    AbstractNamedDimsMatrix,
-    NaiveOrderedSet,
-    Name,
-    NameMismatch,
-    NamedDimsCartesianIndex,
-    NamedDimsCartesianIndices,
-    NamedDimsArray,
-    NamedDimsMatrix,
-    aligndims,
-    aligneddims,
-    apply,
-    dename,
-    denamed,
-    dim,
-    dimnames,
-    dims,
-    fusednames,
-    isnamed,
-    mapinds,
-    name,
-    named,
-    nameddims,
-    inds,
-    namedoneto,
-    operator,
-    product,
-    replaceinds,
-    setinds,
-    state,
-    unname,
-    unnamed,
-    @names
+using NamedDimsArrays: NamedDimsArrays, AbstractNamedDimsArray, AbstractNamedDimsMatrix,
+    NaiveOrderedSet, Name, NameMismatch, NamedDimsCartesianIndex, NamedDimsCartesianIndices,
+    NamedDimsArray, NamedDimsMatrix, aligndims, aligneddims, apply, dename, denamed, dim,
+    dimnames, dims, fusednames, isnamed, mapinds, name, named, nameddims, inds, namedoneto,
+    operator, product, replaceinds, setinds, state, unname, unnamed, @names
 using Test: @test, @test_throws, @testset
 using VectorInterface: scalartype
 
@@ -73,6 +43,26 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         @test dim(na, "j") == 2
         @test dims(na, ("j", "i")) == (2, 1)
         @test na[1, 1] == a[1, 1]
+
+        # equals (==)/isequal
+        a = randn(elt, 3, 4)
+        na = nameddims(a, ("i", "j"))
+        @test na == na
+        @test na == aligndims(na, ("j", "i"))
+        @test isequal(na, na)
+        @test isequal(na, aligndims(na, ("j", "i")))
+        @test hash(na) == hash(aligndims(na, ("j", "i")))
+        # Regression test that NamedDimsArrays
+        # with different names are not equal (as opposed to
+        # erroring).
+        @test na ≠ nameddims(a, ("j", "k"))
+        @test !isequal(na, nameddims(a, ("j", "k")))
+        @test hash(na) ≠ hash(nameddims(a, ("j", "k")))
+
+        a = randn(elt, 2, 2)
+        na = nameddims(a, ("i", "j"))
+        @test CartesianIndices(na) == CartesianIndices(a)
+        @test collect(pairs(na)) == (CartesianIndices(a) .=> a)
 
         @test_throws ErrorException NamedDimsArray(randn(4), namedoneto.((2, 2), ("i", "j")))
         @test_throws ErrorException NamedDimsArray(randn(2, 2), namedoneto.((2, 3), ("i", "j")))

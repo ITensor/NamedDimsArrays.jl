@@ -1,7 +1,7 @@
 name = "NamedDimsArrays"
 uuid = "60cbd0c0-df58-4cb7-918c-6f5607b73fde"
 authors = ["ITensor developers <support@itensor.org> and contributors"]
-version = "0.8.3"
+version = "0.8.4"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
@@ -19,16 +19,19 @@ TypeParameterAccessors = "7e5a90cf-f82e-492e-a09b-e3e26432c138"
 VectorInterface = "409d34a3-91d5-4945-b6ec-7529ddf182d8"
 
 [weakdeps]
+AbstractTrees = "1520ce14-60c1-5f80-bbc7-55ef81b5835c"
 BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
 GradedArrays = "bc96ca6e-b7c8-4bb6-888e-c93f838762c2"
 SparseArraysBase = "0d5efcca-f356-4864-8770-e1ed8d78f208"
 
 [extensions]
+NamedDimsArraysAbstractTreesExt = "AbstractTrees"
 NamedDimsArraysBlockArraysExt = "BlockArrays"
 NamedDimsArraysGradedArraysExt = "GradedArrays"
 NamedDimsArraysSparseArraysBaseExt = "SparseArraysBase"
 
 [compat]
+AbstractTrees = "0.4.5"
 Adapt = "4.1.1"
 ArrayLayouts = "1.11"
 BlockArrays = "1.3"
