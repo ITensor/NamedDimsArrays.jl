@@ -26,7 +26,7 @@ using Test: @test, @testset
     a[Block(2, 1)] = randn(elt, 3, 2)
     a[Block(1, 2)] = randn(elt, 2, 3)
     a[Block(2, 2)] = randn(elt, 3, 3)
-    b = BlockSparseArray{elt}(undef, [2, 3], [2, 3])
+    b = BlockArray{elt}(undef, [2, 3], [2, 3])
     b[Block(1, 1)] = randn(elt, 2, 2)
     b[Block(2, 1)] = randn(elt, 3, 2)
     b[Block(1, 2)] = randn(elt, 2, 3)
