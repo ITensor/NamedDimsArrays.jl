@@ -1,7 +1,7 @@
 name = "NamedDimsArrays"
 uuid = "60cbd0c0-df58-4cb7-918c-6f5607b73fde"
 authors = ["ITensor developers <support@itensor.org> and contributors"]
-version = "0.9.0"
+version = "0.10.0"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
@@ -21,12 +21,10 @@ VectorInterface = "409d34a3-91d5-4945-b6ec-7529ddf182d8"
 [weakdeps]
 AbstractTrees = "1520ce14-60c1-5f80-bbc7-55ef81b5835c"
 BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
-SparseArraysBase = "0d5efcca-f356-4864-8770-e1ed8d78f208"
 
 [extensions]
 NamedDimsArraysAbstractTreesExt = "AbstractTrees"
 NamedDimsArraysBlockArraysExt = "BlockArrays"
-NamedDimsArraysSparseArraysBaseExt = "SparseArraysBase"
 
 [compat]
 AbstractTrees = "0.4.5"
@@ -40,7 +38,6 @@ LinearAlgebra = "1.10"
 MapBroadcast = "0.1.6"
 Random = "1.10"
 SimpleTraits = "0.9.4"
-SparseArraysBase = "0.7.5"
 TensorAlgebra = "0.4.1, 0.5, 0.6"
 TupleTools = "1.6"
 TypeParameterAccessors = "0.4"
