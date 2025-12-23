@@ -153,13 +153,17 @@ function NamedDimsOperator(a::AbstractNamedDimsArray, domain_codomain_pairs)
     return NamedDimsOperator(a, Bijection(domain .=> codomain))
 end
 
-using TypeParameterAccessors: TypeParameterAccessors
+using TypeParameterAccessors: TypeParameterAccessors, parenttype
 function TypeParameterAccessors.parenttype(type::Type{<:NamedDimsOperator})
     return fieldtype(type, :parent)
 end
+statetype(type::Type{<:NamedDimsOperator}) = parenttype(type)
 
-function NamedDimsArrays.constructorof_nameddims(type::Type{<:NamedDimsOperator})
-    return constructorof_nameddims(parenttype(type))
+function nameddimsof(a::NamedDimsOperator, b::AbstractArray)
+    return NamedDimsOperator(nameddimsof(state(a), b), inds_map(a))
+end
+function nameddimsconstructorof(type::Type{<:NamedDimsOperator})
+    return nameddimsconstructorof(statetype(type))
 end
 
 # TODO: Make abstract?

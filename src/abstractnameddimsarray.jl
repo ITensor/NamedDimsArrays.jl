@@ -24,6 +24,13 @@ function DerivableInterfaces.interface(::Type{<:AbstractNamedDimsArray{N}}) wher
 end
 DerivableInterfaces.interface(::Type{<:AbstractNamedDimsArray}) = NamedDimsArrayInterface()
 
+const NamedDimsIndices = Union{
+    AbstractNamedUnitRange{<:Integer}, AbstractNamedArray{<:Integer},
+}
+const NamedDimsAxis = AbstractNamedUnitRange{
+    <:Integer, <:AbstractUnitRange, <:NamedDimsIndices,
+}
+
 # Output the dimension names.
 inds(a::AbstractArray) = throw(MethodError(inds, Tuple{typeof(a)}))
 # Unwrapping the names (`NamedDimsArrays.jl` interface).
@@ -127,6 +134,57 @@ function to_inds(a::AbstractNamedDimsArray, dims)
     return map(dim -> to_dimname(a, dim), dims)
 end
 
+# Generic construction of named dims arrays.
+
+"""
+    nameddims(a::AbstractArray, inds)
+
+Construct a named dimensions array from an unnamed array `a` and named dimensions `inds`.
+"""
+function nameddims(a::AbstractArray, inds)
+    return nameddimsconstructor(a, inds)(a, inds)
+end
+
+#=
+    nameddimsof(a::AbstractNamedDimsArray, b::AbstractArray)
+
+Construct a named dimensions array with the dimension names of `a`
+and based on the type of `a` but with the data from `b`.
+=#
+function nameddimsof(a::AbstractNamedDimsArray, b::AbstractArray)
+    return nameddimsconstructorof(a)(b, inds(a))
+end
+
+# Interface inspired by
+# [ConstructionBase.constructorof](https://github.com/JuliaObjects/ConstructionBase.jl).
+nameddimsconstructorof(a::AbstractNamedDimsArray) = nameddimsconstructorof(typeof(a))
+function nameddimsconstructorof(type::Type{<:AbstractNamedDimsArray})
+    return unspecify_type_parameters(type)
+end
+
+# Output a constructor for a named dims array (that should accept and unnamed array and
+# a set of named dimensions/axes/indices) based on the dimension names.
+function nameddimsconstructor(a::AbstractArray, inds)
+    inds′ = to_inds(a, inds)
+    isempty(inds′) && return NamedDimsArray
+    return mapreduce(nameddimsconstructor, combine_nameddimsconstructors, inds′)
+end
+
+nameddimsconstructor(nameddim) = nameddimsconstructor(typeof(nameddim))
+# Can overload this to get custom named dims array wrapper
+# depending on the dimension name types, for example
+# output an `ITensor` if the dimension names are `IndexName`s.
+nameddimsconstructor(nameddimtype::Type) = NamedDimsArray
+function nameddimsconstructor(nameddimtype::Type{<:NamedDimsIndices})
+    return nameddimsconstructor(nametype(nameddimtype))
+end
+function combine_nameddimsconstructors(
+        ::Type{<:AbstractNamedDimsArray}, ::Type{<:AbstractNamedDimsArray}
+    )
+    return NamedDimsArray
+end
+combine_nameddimsconstructors(::Type{T}, ::Type{T}) where {T <: AbstractNamedDimsArray} = T
+
 # TODO: Move to `utils.jl` file.
 # TODO: Use `Base.indexin`?
 function getperm(x, y; isequal = isequal)
@@ -147,9 +205,7 @@ function checked_indexin(x::AbstractUnitRange, y::AbstractUnitRange)
     return findfirst(==(first(x)), y):findfirst(==(last(x)), y)
 end
 
-function Base.copy(a::AbstractNamedDimsArray)
-    return constructorof(typeof(a))(copy(dename(a)), inds(a))
-end
+Base.copy(a::AbstractNamedDimsArray) = nameddimsof(a, copy(dename(a)))
 
 function Base.copyto!(a_dest::AbstractNamedDimsArray, a_src::AbstractNamedDimsArray)
     a′_dest = dename(a_dest)
@@ -162,11 +218,14 @@ end
 # Conversion
 
 # Copied from `Base` (defined in abstractarray.jl).
-@noinline _checkaxs(axd, axs) =
+@noinline function _checkaxs(axd, axs)
     axd == axs || throw(DimensionMismatch("axes must agree, got $axd and $axs"))
+    return nothing
+end
 function copyto_axcheck!(dest, src)
     _checkaxs(axes(dest), axes(src))
-    return copyto!(dest, src)
+    copyto!(dest, src)
+    return dest
 end
 
 # These are defined since the Base versions assume the eltype and ndims are known
@@ -180,38 +239,6 @@ function Base.AbstractArray{T, N}(a::AbstractNamedDimsArray) where {T, N}
     copyto_axcheck!(dename(dest), dename(a))
     return dest
 end
-
-const NamedDimsIndices = Union{
-    AbstractNamedUnitRange{<:Integer}, AbstractNamedArray{<:Integer},
-}
-const NamedDimsAxis = AbstractNamedUnitRange{
-    <:Integer, <:AbstractUnitRange, <:NamedDimsIndices,
-}
-
-# Generic constructor.
-function nameddims(a::AbstractArray, inds)
-    if iszero(ndims(a))
-        return constructorof_nameddims(typeof(a))(a, inds)
-    end
-    # TODO: Check the shape of `inds` matches the shape of `a`.
-    arrtype = mapreduce(nameddimstype, combine_nameddimstype, inds)
-    return arrtype(a, to_inds(a, inds))
-end
-
-# Can overload this to get custom named dims array wrapper
-# depending on the dimension name types, for example
-# output an `ITensor` if the dimension names are `IndexName`s.
-nameddimstype(nameddim) = nameddimstype(typeof(nameddim))
-nameddimstype(nameddimtype::Type) = NamedDimsArray
-function nameddimstype(nameddimtype::Type{<:NamedDimsIndices})
-    return nameddimstype(nametype(nameddimtype))
-end
-function combine_nameddimstype(
-        ::Type{<:AbstractNamedDimsArray}, ::Type{<:AbstractNamedDimsArray}
-    )
-    return NamedDimsArray
-end
-combine_nameddimstype(::Type{T}, ::Type{T}) where {T <: AbstractNamedDimsArray} = T
 
 function Base.axes(a::AbstractNamedDimsArray)
     return NaiveOrderedSet(map(named, axes(dename(a)), inds(a)))
@@ -251,27 +278,22 @@ to_nameddimsaxes(dims) = map(to_nameddimsaxis, dims)
 to_nameddimsaxis(ax::NamedDimsAxis) = ax
 to_nameddimsaxis(I::NamedDimsIndices) = named(dename(only(axes(I))), I)
 
-# Interface inspired by [ConstructionBase.constructorof](https://github.com/JuliaObjects/ConstructionBase.jl).
-constructorof(type::Type{<:AbstractArray}) = unspecify_type_parameters(type)
-
-constructorof_nameddims(type::Type{<:AbstractNamedDimsArray}) = constructorof(type)
-constructorof_nameddims(type::Type{<:AbstractArray}) = NamedDimsArray
-
 function similar_nameddims(a::AbstractNamedDimsArray, elt::Type, inds)
     ax = to_nameddimsaxes(inds)
-    return constructorof(typeof(a))(similar(dename(a), elt, dename.(Tuple(ax))), name.(ax))
+    return nameddimsconstructorof(a)(similar(dename(a), elt, dename.(Tuple(ax))), name.(ax))
 end
-
 function similar_nameddims(a::AbstractArray, elt::Type, inds)
     ax = to_nameddimsaxes(inds)
-    return constructorof_nameddims(typeof(a))(
-        similar(a, elt, dename.(Tuple(ax))), name.(ax)
-    )
+    return nameddims(similar(a, elt, dename.(Tuple(ax))), name.(ax))
 end
 
 # Base.similar gets the eltype at compile time.
-function Base.similar(a::AbstractNamedDimsArray)
-    return similar(a, eltype(a))
+Base.similar(a::AbstractNamedDimsArray) = similar(a, eltype(a))
+function Base.similar(a::AbstractNamedDimsArray, elt::Type)
+    return similar_nameddims(a, elt)
+end
+function similar_nameddims(a::AbstractNamedDimsArray, elt::Type)
+    return nameddimsof(a, similar(dename(a), elt))
 end
 
 # This is defined explicitly since the Base version expects the eltype
@@ -297,7 +319,7 @@ function Base.similar(a::AbstractArray, elt::Type, inds::NaiveOrderedSet)
 end
 
 function setinds(a::AbstractNamedDimsArray, inds)
-    return constructorof(typeof(a))(dename(a), inds)
+    return nameddimsconstructorof(a)(dename(a), inds)
 end
 function replaceinds(f, a::AbstractNamedDimsArray)
     return setinds(a, replace(f, inds(a)))
@@ -601,7 +623,7 @@ function Base.view(a::AbstractNamedDimsArray, I1::NamedViewIndex, Irest::NamedVi
     subinds = map(inds(a), I) do dimname, i
         return checked_indexin(dename(i), dename(dimname))
     end
-    return constructorof_nameddims(typeof(a))(
+    return nameddimsconstructorof(a)(
         view(dename(a), subinds...), sub_inds
     )
 end
@@ -620,10 +642,10 @@ end
 # Repeated definition of `Base.ViewIndex`.
 const ViewIndex = Union{Real, AbstractArray}
 
-function view_nameddims(a::AbstractArray, I...)
+function view_nameddims(a::AbstractNamedDimsArray, I...)
     sub_dims = filter(dim -> !(I[dim] isa Real), ntuple(identity, ndims(a)))
     sub_inds = map(dim -> inds(a, dim)[I[dim]], sub_dims)
-    return constructorof(typeof(a))(view(dename(a), I...), sub_inds)
+    return nameddimsconstructorof(a)(view(dename(a), I...), sub_inds)
 end
 
 function Base.view(a::AbstractNamedDimsArray, I::ViewIndex...)
@@ -654,7 +676,7 @@ function Base.setindex!(
         Irest::NamedViewIndex...,
     )
     I = (I1, Irest...)
-    setindex!(a, constructorof(typeof(a))(value, I), I...)
+    a[I...] = nameddimsconstructorof(a)(value, I)
     return a
 end
 function Base.setindex!(
@@ -683,7 +705,7 @@ function aligndims(a::AbstractArray, dims)
             "Dimension name mismatch $(inds(a)), $(new_inds)."
         ),
     )
-    return constructorof(typeof(a))(permutedims(dename(a), perm), new_inds)
+    return nameddimsconstructorof(a)(permutedims(dename(a), perm), new_inds)
 end
 
 using DerivableInterfaces: permuteddims
@@ -695,7 +717,7 @@ function aligneddims(a::AbstractArray, dims)
             "Dimension name mismatch $(inds(a)), $(new_inds)."
         ),
     )
-    return constructorof_nameddims(typeof(a))(
+    return nameddimsconstructorof(a)(
         permuteddims(dename(a), perm), new_inds
     )
 end
@@ -822,7 +844,7 @@ NamedDimsArrayStyle{M}(::Val{N}) where {M, N} = NamedDimsArrayStyle{N, NamedDims
 NamedDimsArrayStyle{M, NDA}(::Val{N}) where {M, N, NDA} = NamedDimsArrayStyle{N, NDA}()
 
 function Broadcast.BroadcastStyle(arraytype::Type{<:AbstractNamedDimsArray})
-    return NamedDimsArrayStyle{ndims(arraytype), constructorof(arraytype)}()
+    return NamedDimsArrayStyle{ndims(arraytype), nameddimsconstructorof(arraytype)}()
 end
 
 function Broadcast.combine_axes(
@@ -915,10 +937,8 @@ using FillArrays: Fill
 
 function MapBroadcast.tile(a::AbstractNamedDimsArray, ax)
     axes(a) == ax && return a
-    if iszero(ndims(a))
-        return constructorof(typeof(a))(Fill(a[], dename.(Tuple(ax))), name.(ax))
-    end
-    return error("Not implemented.")
+    !iszero(ndims(a)) && return error("Not implemented.")
+    return nameddimsconstructorof(a)(Fill(a[], dename.(Tuple(ax))), name.(ax))
 end
 
 function Base.similar(bc::Broadcasted{<:AbstractNamedDimsArrayStyle}, elt::Type, ax)

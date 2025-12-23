@@ -1,9 +1,11 @@
 using Combinatorics: Combinatorics
-using NamedDimsArrays: NamedDimsArrays, AbstractNamedDimsArray, AbstractNamedDimsMatrix,
-    NaiveOrderedSet, Name, NameMismatch, NamedDimsCartesianIndex, NamedDimsCartesianIndices,
-    NamedDimsArray, NamedDimsMatrix, aligndims, aligneddims, apply, dename, denamed, dim,
-    dimnames, dims, fusednames, isnamed, mapinds, name, named, nameddims, inds, namedoneto,
-    operator, product, replaceinds, setinds, state, unname, unnamed, @names
+import NamedDimsArrays as NDA
+using NamedDimsArrays: AbstractNamedDimsArray, AbstractNamedDimsMatrix, NaiveOrderedSet,
+    Name, NameMismatch, NamedDimsCartesianIndex, NamedDimsCartesianIndices, NamedDimsArray,
+    NamedDimsMatrix, NamedDimsOperator
+using NamedDimsArrays: aligndims, aligneddims, apply, dename, denamed, dim, dimnames, dims,
+    fusednames, isnamed, mapinds, name, named, nameddims, inds, namedoneto, operator,
+    product, replaceinds, setinds, state, unname, unnamed, @names
 using Test: @test, @test_throws, @testset
 using VectorInterface: scalartype
 
@@ -431,6 +433,27 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
 
     @testset "operator" begin
         o = operator(randn(2, 2, 2, 2), ("i'", "j'"), ("i", "j"))
+        @test o isa NamedDimsOperator{Float64}
+        @test eltype(o) ≡ Float64
+        @test issetequal(NDA.domain(o), namedoneto.((2, 2), ("i", "j")))
+        @test issetequal(NDA.codomain(o), namedoneto.((2, 2), ("i'", "j'")))
+
+        o = operator(randn(2, 2, 2, 2), ("i'", "j'"), ("i", "j"))
+        õ = similar(o)
+        @test õ isa NamedDimsOperator{Float64}
+        @test eltype(õ) ≡ Float64
+        @test issetequal(NDA.domain(õ), namedoneto.((2, 2), ("i", "j")))
+        @test issetequal(NDA.codomain(õ), namedoneto.((2, 2), ("i'", "j'")))
+
+        o = operator(randn(2, 2, 2, 2), ("i'", "j'"), ("i", "j"))
+        õ = similar(o, Float32)
+        @test õ isa NamedDimsOperator{Float32}
+        @test eltype(õ) ≡ Float32
+        @test issetequal(NDA.domain(õ), namedoneto.((2, 2), ("i", "j")))
+        @test issetequal(NDA.codomain(õ), namedoneto.((2, 2), ("i'", "j'")))
+
+        o = operator(randn(2, 2, 2, 2), ("i'", "j'"), ("i", "j"))
+        @test o isa NamedDimsOperator
         o² = product(o, o)
         @test issetequal(dimnames(o²), ("i'", "j'", "i", "j"))
         õ = replaceinds(

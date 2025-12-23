@@ -56,8 +56,8 @@ function TensorAlgebra.contract(a1::AbstractNamedDimsArray, a2::AbstractNamedDim
     a_dest, inds_dest = contract(
         dename(a1), inds(a1), dename(a2), inds(a2)
     )
-    nameddimstype = combine_nameddimstype(
-        constructorof(typeof(a1)), constructorof(typeof(a2))
+    nameddimstype = combine_nameddimsconstructors(
+        nameddimsconstructor(a1), nameddimsconstructor(a2)
     )
     return nameddimstype(a_dest, inds_dest)
 end
