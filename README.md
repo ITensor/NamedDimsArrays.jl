@@ -67,7 +67,7 @@ a2 = randn(j, k)
 @test a1[j[2], i[1]] == a1[1, 2]
 
 # Tensor contraction
-a_dest = contract(a1, a2)
+a_dest = a1 * a2
 
 @test issetequal(inds(a_dest), (i, k))
 # `unname` removes the names and returns an `Array`
@@ -88,7 +88,7 @@ b2 = a2[j => 1:1, k => 1:2]
 @test inds(b1) == (i[1:2], j[1:1])
 @test inds(b2) == (j[1:1], k[1:2])
 
-b_dest = contract(b1, b2)
+b_dest = b1 * b2
 
 @test issetequal(inds(b_dest), (i, k))
 
