@@ -1,69 +1,16 @@
-using LinearAlgebra: LinearAlgebra
-using TensorAlgebra:
-    TensorAlgebra,
-    blockedperm,
-    contract,
-    contract!,
-    contractadd!,
-    eigen,
-    eigvals,
-    factorize,
-    left_null,
-    left_orth,
-    left_polar,
-    lq,
-    matricize,
-    orth,
-    permmortar,
-    polar,
-    qr,
-    right_null,
-    right_orth,
-    right_polar,
-    svd,
-    svdvals,
-    unmatricize
-using TensorAlgebra.BaseExtensions: BaseExtensions
+import LinearAlgebra as LA
+import TensorAlgebra as TA
 using TupleTools: TupleTools
 
-function TensorAlgebra.contractadd!(
-        a_dest::AbstractNamedDimsArray,
-        a1::AbstractNamedDimsArray,
-        a2::AbstractNamedDimsArray,
-        α::Number,
-        β::Number,
-    )
-    contractadd!(
-        dename(a_dest),
-        inds(a_dest),
-        dename(a1),
-        inds(a1),
-        dename(a2),
-        inds(a2),
-        α,
-        β,
-    )
-    return a_dest
-end
-
-function TensorAlgebra.contract!(
-        a_dest::AbstractNamedDimsArray, a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray
-    )
-    return contractadd!(a_dest, a1, a2, true, false)
-end
-
-function TensorAlgebra.contract(a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray)
-    a_dest, inds_dest = contract(
+Base.:*(a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray) = mul_nameddims(a1, a2)
+function mul_nameddims(a1::AbstractArray, a2::AbstractArray)
+    a_dest, inds_dest = TA.contract(
         dename(a1), inds(a1), dename(a2), inds(a2)
     )
     nameddimstype = combine_nameddimsconstructors(
         nameddimsconstructorof(a1), nameddimsconstructorof(a2)
     )
     return nameddimstype(a_dest, inds_dest)
-end
-
-function Base.:*(a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray)
-    return contract(a1, a2)
 end
 
 # Left associative fold/reduction.
@@ -74,39 +21,60 @@ end
 # ```
 # that optimize matrix multiplication sequence.
 function Base.:*(
-        a1::AbstractNamedDimsArray,
-        a2::AbstractNamedDimsArray,
-        a3::AbstractNamedDimsArray,
-        a_rest::AbstractNamedDimsArray...,
+        a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray,
+        a3::AbstractNamedDimsArray, a_rest::AbstractNamedDimsArray...,
+    )
+    return mul_nameddims(a1, a2, a3, a_rest...)
+end
+function mul_nameddims(
+        a1::AbstractArray, a2::AbstractArray,
+        a3::AbstractArray, a_rest::AbstractArray...,
     )
     return *(*(a1, a2), a3, a_rest...)
 end
 
 function LinearAlgebra.mul!(
         a_dest::AbstractNamedDimsArray,
-        a1::AbstractNamedDimsArray,
-        a2::AbstractNamedDimsArray,
-        α::Number,
-        β::Number,
+        a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray,
+        α::Number, β::Number,
     )
-    contractadd!(a_dest, a1, a2, α, β)
+    return mul!_nameddims(a_dest, a1, a2, α, β)
+end
+function mul!_nameddims(
+        a_dest::AbstractArray,
+        a1::AbstractArray, a2::AbstractArray,
+        α::Number, β::Number,
+    )
+    TA.contractadd!(
+        dename(a_dest), inds(a_dest), dename(a1), inds(a1), dename(a2), inds(a2), α, β
+    )
     return a_dest
 end
 
 function LinearAlgebra.mul!(
-        a_dest::AbstractNamedDimsArray, a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray
+        a_dest::AbstractNamedDimsArray,
+        a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray,
     )
-    contract!(a_dest, a1, a2)
+    return mul!_nameddims(a_dest, a1, a2)
+end
+function mul!_nameddims(
+        a_dest::AbstractArray,
+        a1::AbstractArray, a2::AbstractArray,
+    )
+    TA.contract!(dename(a_dest), inds(a_dest), dename(a1), inds(a1), dename(a2), inds(a2))
     return a_dest
 end
 
-function TensorAlgebra.blockedperm(na::AbstractNamedDimsArray, nameddim_blocks::Tuple...)
+function TA.blockedperm(na::AbstractNamedDimsArray, nameddim_blocks::Tuple...)
+    return blockedperm_nameddims(na, nameddim_blocks...)
+end
+function blockedperm_nameddims(na::AbstractArray, nameddim_blocks::Tuple...)
     dimname_blocks = map(group -> to_inds(na, group), nameddim_blocks)
     inds_a = inds(na)
     perms = map(dimname_blocks) do dimname_block
-        return BaseExtensions.indexin(dimname_block, inds_a)
+        return TA.BaseExtensions.indexin(dimname_block, inds_a)
     end
-    return permmortar(perms)
+    return TA.permmortar(perms)
 end
 
 # i, j, k, l = named.((2, 2, 2, 2), ("i", "j", "k", "l"))
@@ -114,7 +82,10 @@ end
 # matricize(a, (i, k) => "a")
 # matricize(a, (i, k) => "a", (j, l) => "b")
 # TODO: Rewrite in terms of `matricize(a, .., (1, 3))` interface.
-function TensorAlgebra.matricize(na::AbstractNamedDimsArray, fusions::Vararg{Pair, 2})
+function TA.matricize(a::AbstractNamedDimsArray, fusions::Vararg{Pair, 2})
+    return matricize_nameddims(a, fusions...)
+end
+function matricize_nameddims(na::AbstractArray, fusions::Vararg{Pair, 2})
     inds_fuse = map(group -> to_inds(na, group), first.(fusions))
     inds_fused = last.(fusions)
     if sum(length, inds_fuse) < ndims(na)
@@ -127,12 +98,15 @@ function TensorAlgebra.matricize(na::AbstractNamedDimsArray, fusions::Vararg{Pai
             inds_unspecified, collect(inds_fused)
         )
     end
-    perm = blockedperm(na, inds_fuse...)
-    a_fused = matricize(dename(na), perm)
+    perm = TA.blockedperm(na, inds_fuse...)
+    a_fused = TA.matricize(dename(na), perm)
     return nameddims(a_fused, inds_fused)
 end
 
-function TensorAlgebra.unmatricize(na::AbstractNamedDimsArray, splitters::Vararg{Pair, 2})
+function TA.unmatricize(na::AbstractNamedDimsArray, splitters::Vararg{Pair, 2})
+    return unmatricize_nameddims(na, splitters...)
+end
+function unmatricize_nameddims(na::AbstractArray, splitters::Vararg{Pair, 2})
     splitters = to_inds(na, first.(splitters)) .=> last.(splitters)
     split_namedlengths = last.(splitters)
     splitters_unnamed = map(splitters) do splitter
@@ -142,7 +116,7 @@ function TensorAlgebra.unmatricize(na::AbstractNamedDimsArray, splitters::Vararg
         return fused_dim => split_lengths
     end
     blocked_axes = last.(TupleTools.sort(splitters_unnamed; by = first))
-    a_split = unmatricize(dename(na), blocked_axes...)
+    a_split = TA.unmatricize(dename(na), blocked_axes...)
     names_split = Any[tuple.(inds(na))...]
     for splitter in splitters
         fused_name, split_namedlengths = splitter
@@ -155,15 +129,22 @@ function TensorAlgebra.unmatricize(na::AbstractNamedDimsArray, splitters::Vararg
 end
 
 for f in [
-        :factorize, :left_orth, :left_polar, :lq, :orth, :polar, :qr, :right_orth, :right_polar,
+        :factorize, :left_orth, :left_polar, :lq, :orth, :polar, :qr, :right_orth,
+        :right_polar,
     ]
+    f_nameddims = Symbol(f, "_nameddims")
     @eval begin
-        function TensorAlgebra.$f(
+        function TA.$f(
                 a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
+            )
+            return $f_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
+        end
+        function $f_nameddims(
+                a::AbstractArray, dimnames_codomain, dimnames_domain; kwargs...
             )
             codomain = to_inds(a, dimnames_codomain)
             domain = to_inds(a, dimnames_domain)
-            x_unnamed, y_unnamed = $f(dename(a), inds(a), codomain, domain; kwargs...)
+            x_unnamed, y_unnamed = TA.$f(dename(a), inds(a), codomain, domain; kwargs...)
             name_x = randname(dimnames(a, 1))
             name_y = name_x
             namedindices_x = named(last(axes(x_unnamed)), name_x)
@@ -174,35 +155,43 @@ for f in [
             y = nameddims(y_unnamed, inds_y)
             return x, y
         end
-        function TensorAlgebra.$f(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
+        function TA.$f(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
+            return $f_nameddims(a, dimnames_codomain; kwargs...)
+        end
+        function $f_nameddims(a::AbstractArray, dimnames_codomain; kwargs...)
             codomain = to_inds(a, dimnames_codomain)
             domain = setdiff(inds(a), codomain)
-            return $f(a, codomain, domain; kwargs...)
+            return TA.$f(a, codomain, domain; kwargs...)
         end
     end
 end
 
 # Overload LinearAlgebra functions where relevant.
-function LinearAlgebra.qr(a::AbstractNamedDimsArray, args...; kwargs...)
-    return TensorAlgebra.qr(a, args...; kwargs...)
+function LA.qr(a::AbstractNamedDimsArray, args...; kwargs...)
+    return TA.qr(a, args...; kwargs...)
 end
-function LinearAlgebra.lq(a::AbstractNamedDimsArray, args...; kwargs...)
-    return TensorAlgebra.lq(a, args...; kwargs...)
+function LA.lq(a::AbstractNamedDimsArray, args...; kwargs...)
+    return TA.lq(a, args...; kwargs...)
 end
-function LinearAlgebra.factorize(a::AbstractNamedDimsArray, args...; kwargs...)
-    return TensorAlgebra.factorize(a, args...; kwargs...)
+function LA.factorize(a::AbstractNamedDimsArray, args...; kwargs...)
+    return TA.factorize(a, args...; kwargs...)
 end
 
 #
 # Non-binary factorizations.
 #
 
-function TensorAlgebra.svd(
+function TA.svd(
         a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
+    )
+    return svd_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
+end
+function svd_nameddims(
+        a::AbstractArray, dimnames_codomain, dimnames_domain; kwargs...
     )
     codomain = to_inds(a, dimnames_codomain)
     domain = to_inds(a, dimnames_domain)
-    u_unnamed, s_unnamed, v_unnamed = svd(
+    u_unnamed, s_unnamed, v_unnamed = TA.svd(
         dename(a), inds(a), codomain, domain; kwargs...
     )
     name_u = randname(dimnames(a, 1))
@@ -217,22 +206,30 @@ function TensorAlgebra.svd(
     v = nameddims(v_unnamed, inds_v)
     return u, s, v
 end
-function TensorAlgebra.svd(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
-    return svd(
+function TA.svd(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
+    return svd_nameddims(a, dimnames_codomain; kwargs...)
+end
+function svd_nameddims(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
+    return TA.svd(
         a,
         dimnames_codomain,
         setdiff(inds(a), to_inds(a, dimnames_codomain));
         kwargs...,
     )
 end
-function LinearAlgebra.svd(a::AbstractNamedDimsArray, args...; kwargs...)
-    return TensorAlgebra.svd(a, args...; kwargs...)
+function LA.svd(a::AbstractNamedDimsArray, args...; kwargs...)
+    return TA.svd(a, args...; kwargs...)
 end
 
-function TensorAlgebra.svdvals(
+function TA.svdvals(
         a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
     )
-    return svdvals(
+    return svdvals_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
+end
+function svdvals_nameddims(
+        a::AbstractArray, dimnames_codomain, dimnames_domain; kwargs...
+    )
+    return TA.svdvals(
         dename(a),
         inds(a),
         to_inds(a, dimnames_codomain),
@@ -240,21 +237,31 @@ function TensorAlgebra.svdvals(
         kwargs...,
     )
 end
-function TensorAlgebra.svdvals(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
+
+function TA.svdvals(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
+    return svdvals_nameddims(a, dimnames_codomain; kwargs...)
+end
+function svdvals_nameddims(a::AbstractArray, dimnames_codomain; kwargs...)
     codomain = to_inds(a, dimnames_codomain)
     domain = setdiff(inds(a), codomain)
-    return svdvals(a, codomain, domain; kwargs...)
-end
-function LinearAlgebra.svdvals(a::AbstractNamedDimsArray, args...; kwargs...)
-    return TensorAlgebra.svdvals(a, args...; kwargs...)
+    return TA.svdvals(a, codomain, domain; kwargs...)
 end
 
-function TensorAlgebra.eigen(
+function LA.svdvals(a::AbstractNamedDimsArray, args...; kwargs...)
+    return TA.svdvals(a, args...; kwargs...)
+end
+
+function TA.eigen(
         a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
+    )
+    return eigen_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
+end
+function eigen_nameddims(
+        a::AbstractArray, dimnames_codomain, dimnames_domain; kwargs...
     )
     codomain = to_inds(a, dimnames_codomain)
     domain = to_inds(a, dimnames_domain)
-    d_unnamed, v_unnamed = eigen(dename(a), inds(a), codomain, domain; kwargs...)
+    d_unnamed, v_unnamed = TA.eigen(dename(a), inds(a), codomain, domain; kwargs...)
     name_d = randname(dimnames(a, 1))
     name_d′ = randname(name_d)
     name_v = name_d
@@ -267,95 +274,100 @@ function TensorAlgebra.eigen(
     v = nameddims(v_unnamed, inds_v)
     return d, v
 end
-function LinearAlgebra.eigen(a::AbstractNamedDimsArray, args...; kwargs...)
-    return TensorAlgebra.eigen(a, args...; kwargs...)
+
+function LA.eigen(a::AbstractNamedDimsArray, args...; kwargs...)
+    return TA.eigen(a, args...; kwargs...)
 end
 
-function TensorAlgebra.eigvals(
+function TA.eigvals(
         a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
+    )
+    return eigvals_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
+end
+function eigvals_nameddims(
+        a::AbstractArray, dimnames_codomain, dimnames_domain; kwargs...
     )
     codomain = to_inds(a, dimnames_codomain)
     domain = to_inds(a, dimnames_domain)
-    return eigvals(dename(a), inds(a), codomain, domain; kwargs...)
-end
-function LinearAlgebra.eigvals(a::AbstractNamedDimsArray, args...; kwargs...)
-    return TensorAlgebra.eigvals(a, args...; kwargs...)
+    return TA.eigvals(dename(a), inds(a), codomain, domain; kwargs...)
 end
 
-function TensorAlgebra.left_null(
+function LA.eigvals(a::AbstractNamedDimsArray, args...; kwargs...)
+    return TA.eigvals(a, args...; kwargs...)
+end
+
+function TA.left_null(
         a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
+    )
+    return left_null_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
+end
+function left_null_nameddims(
+        a::AbstractArray, dimnames_codomain, dimnames_domain; kwargs...
     )
     codomain = to_inds(a, dimnames_codomain)
     domain = to_inds(a, dimnames_domain)
-    n_unnamed = left_null(dename(a), inds(a), codomain, domain; kwargs...)
+    n_unnamed = TA.left_null(dename(a), inds(a), codomain, domain; kwargs...)
     name_n = randname(dimnames(a, 1))
     namedindices_n = named(last(axes(n_unnamed)), name_n)
     inds_n = (codomain..., namedindices_n)
     return nameddims(n_unnamed, inds_n)
 end
-function TensorAlgebra.left_null(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
+
+function TA.left_null(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
+    return left_null_nameddims(a, dimnames_codomain; kwargs...)
+end
+function left_null_nameddims(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
     codomain = to_inds(a, dimnames_codomain)
     domain = setdiff(inds(a), codomain)
-    return left_null(a, codomain, domain; kwargs...)
+    return TA.left_null(a, codomain, domain; kwargs...)
 end
 
-function TensorAlgebra.right_null(
+function TA.right_null(
         a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
+    )
+    return right_null_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
+end
+function right_null_nameddims(
+        a::AbstractArray, dimnames_codomain, dimnames_domain; kwargs...
     )
     codomain = to_inds(a, dimnames_codomain)
     domain = to_inds(a, dimnames_domain)
-    n_unnamed = right_null(dename(a), inds(a), codomain, domain; kwargs...)
+    n_unnamed = TA.right_null(dename(a), inds(a), codomain, domain; kwargs...)
     name_n = randname(dimnames(a, 1))
     namedindices_n = named(first(axes(n_unnamed)), name_n)
     inds_n = (namedindices_n, domain...)
     return nameddims(n_unnamed, inds_n)
 end
-function TensorAlgebra.right_null(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
+
+function TA.right_null(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
+    return right_null_nameddims(a, dimnames_codomain; kwargs...)
+end
+function right_null_nameddims(a::AbstractArray, dimnames_codomain; kwargs...)
     codomain = to_inds(a, dimnames_codomain)
     domain = setdiff(inds(a), codomain)
-    return right_null(a, codomain, domain; kwargs...)
+    return TA.right_null(a, codomain, domain; kwargs...)
 end
 
 const MATRIX_FUNCTIONS = [
-    :exp,
-    :cis,
-    :log,
-    :sqrt,
-    :cbrt,
-    :cos,
-    :sin,
-    :tan,
-    :csc,
-    :sec,
-    :cot,
-    :cosh,
-    :sinh,
-    :tanh,
-    :csch,
-    :sech,
-    :coth,
-    :acos,
-    :asin,
-    :atan,
-    :acsc,
-    :asec,
-    :acot,
-    :acosh,
-    :asinh,
-    :atanh,
-    :acsch,
-    :asech,
-    :acoth,
+    :exp, :cis, :log, :sqrt, :cbrt, :cos, :sin, :tan, :csc, :sec, :cot, :cosh, :sinh, :tanh,
+    :csch, :sech, :coth, :acos, :asin, :atan, :acsc, :asec, :acot, :acosh, :asinh, :atanh,
+    :acsch, :asech, :acoth,
 ]
 
 for f in MATRIX_FUNCTIONS
+    f_nameddims = Symbol(f, "_nameddims")
     @eval begin
         function Base.$f(
                 a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
             )
+            return $f_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
+        end
+        function $f_nameddims(
+                a::AbstractArray, dimnames_codomain, dimnames_domain; kwargs...
+            )
             codomain = to_inds(a, dimnames_codomain)
             domain = to_inds(a, dimnames_domain)
-            fa_unnamed = TensorAlgebra.$f(
+            fa_unnamed = TA.$f(
                 dename(a), inds(a), codomain, domain; kwargs...
             )
             return nameddims(fa_unnamed, (codomain..., domain...))
