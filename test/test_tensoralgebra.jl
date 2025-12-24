@@ -1,19 +1,8 @@
 using LinearAlgebra: factorize, lq, norm, qr, svd
 using NamedDimsArrays: NamedDimsArrays, dename, inds, namedoneto
 using StableRNGs: StableRNG
-using TensorAlgebra:
-    TensorAlgebra,
-    contract,
-    left_null,
-    left_orth,
-    left_polar,
-    matricize,
-    orth,
-    polar,
-    right_null,
-    right_orth,
-    right_polar,
-    unmatricize
+using TensorAlgebra: TensorAlgebra, contract, left_null, left_orth, left_polar, matricize,
+    orth, polar, right_null, right_orth, right_polar, unmatricize
 using Test: @test, @testset, @test_broken
 
 elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
@@ -24,7 +13,7 @@ elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         k = namedoneto(2, "k")
         na1 = randn(elt, i, j)
         na2 = randn(elt, j, k)
-        na_dest = contract(na1, na2)
+        na_dest = na1 * na2
         @test eltype(na_dest) ≡ elt
         @test dename(na_dest, (i, k)) ≈ dename(na1) * dename(na2)
     end
