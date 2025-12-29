@@ -1,4 +1,4 @@
-using DerivableInterfaces: DerivableInterfaces, @derive, AbstractArrayInterface
+using FunctionImplementations: FunctionImplementations as FI
 using TypeParameterAccessors: unspecify_type_parameters
 
 # Some of the interface is inspired by:
@@ -7,22 +7,21 @@ using TypeParameterAccessors: unspecify_type_parameters
 # https://github.com/mcabbott/NamedPlus.jl
 # https://pytorch.org/docs/stable/named_tensor.html
 
-abstract type AbstractNamedDimsArrayInterface{N} <: AbstractArrayInterface{N} end
+abstract type AbstractNamedDimsArrayStyle{N} <: FI.AbstractArrayStyle{N} end
 
-struct NamedDimsArrayInterface{N} <: AbstractNamedDimsArrayInterface{N} end
-NamedDimsArrayInterface(::Val{N}) where {N} = NamedDimsArrayInterface{N}()
-NamedDimsArrayInterface{M}(::Val{N}) where {M, N} = NamedDimsArrayInterface{N}()
-NamedDimsArrayInterface() = NamedDimsArrayInterface{Any}()
+struct NamedDimsArrayStyle{N} <: AbstractNamedDimsArrayStyle{N} end
+NamedDimsArrayStyle(::Val{N}) where {N} = NamedDimsArrayStyle{N}()
+NamedDimsArrayStyle{M}(::Val{N}) where {M, N} = NamedDimsArrayStyle{N}()
+NamedDimsArrayStyle() = NamedDimsArrayStyle{Any}()
 
 abstract type AbstractNamedDimsArray{T, N} <: AbstractArray{T, N} end
 
 const AbstractNamedDimsVector{T} = AbstractNamedDimsArray{T, 1}
 const AbstractNamedDimsMatrix{T} = AbstractNamedDimsArray{T, 2}
 
-function DerivableInterfaces.interface(::Type{<:AbstractNamedDimsArray{N}}) where {N}
-    return NamedDimsArrayInterface{N}()
+function FI.Style(type::Type{<:AbstractNamedDimsArray})
+    return NamedDimsArrayStyle{ndims(type)}()
 end
-DerivableInterfaces.interface(::Type{<:AbstractNamedDimsArray}) = NamedDimsArrayInterface()
 
 const NamedDimsIndices = Union{
     AbstractNamedUnitRange{<:Integer}, AbstractNamedArray{<:Integer},
@@ -708,7 +707,6 @@ function aligndims(a::AbstractArray, dims)
     return nameddimsconstructorof(a)(permutedims(dename(a), perm), new_inds)
 end
 
-using DerivableInterfaces: permuteddims
 function aligneddims(a::AbstractArray, dims)
     new_inds = to_inds(a, dims)
     perm = getperm(inds(a), new_inds)
@@ -718,7 +716,7 @@ function aligneddims(a::AbstractArray, dims)
         ),
     )
     return nameddimsconstructorof(a)(
-        permuteddims(dename(a), perm), new_inds
+        FI.permuteddims(dename(a), perm), new_inds
     )
 end
 
@@ -726,6 +724,7 @@ end
 
 using Random: Random, AbstractRNG
 
+# Like `Base.rand` but supports axes, not just size.
 # TODO: Come up with a better name for this.
 _rand(args...) = Base.rand(args...)
 function _rand(
@@ -734,6 +733,7 @@ function _rand(
     return Base.rand(rng, elt, length.(dims))
 end
 
+# Like `Base.randn` but supports axes, not just size.
 # TODO: Come up with a better name for this.
 _randn(args...) = Base.randn(args...)
 function _randn(
@@ -827,51 +827,46 @@ end
 
 # Broadcasting
 
-using Base.Broadcast:
-    AbstractArrayStyle,
-    Broadcasted,
-    broadcast_shape,
-    broadcasted,
-    check_broadcast_shape,
-    combine_axes
+using Base.Broadcast: Broadcast as BC, Broadcasted, broadcast_shape, broadcasted,
+    check_broadcast_shape, combine_axes
 using MapBroadcast: MapBroadcast, Mapped, mapped, tile
 
-abstract type AbstractNamedDimsArrayStyle{N} <: AbstractArrayStyle{N} end
+abstract type AbstractNamedDimsArrayStyle{N} <: BC.AbstractArrayStyle{N} end
 
 struct NamedDimsArrayStyle{N, NDA} <: AbstractNamedDimsArrayStyle{N} end
 NamedDimsArrayStyle(::Val{N}) where {N} = NamedDimsArrayStyle{N, NamedDimsArray}()
 NamedDimsArrayStyle{M}(::Val{N}) where {M, N} = NamedDimsArrayStyle{N, NamedDimsArray}()
 NamedDimsArrayStyle{M, NDA}(::Val{N}) where {M, N, NDA} = NamedDimsArrayStyle{N, NDA}()
 
-function Broadcast.BroadcastStyle(arraytype::Type{<:AbstractNamedDimsArray})
+function BC.BroadcastStyle(arraytype::Type{<:AbstractNamedDimsArray})
     return NamedDimsArrayStyle{ndims(arraytype), nameddimsconstructorof(arraytype)}()
 end
 
-function Broadcast.combine_axes(
+function BC.combine_axes(
         a1::AbstractNamedDimsArray, a_rest::AbstractNamedDimsArray...
     )
     return broadcast_shape(axes(a1), combine_axes(a_rest...))
 end
-function Broadcast.combine_axes(a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray)
+function BC.combine_axes(a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray)
     return broadcast_shape(axes(a1), axes(a2))
 end
-Broadcast.combine_axes(a::AbstractNamedDimsArray) = axes(a)
+BC.combine_axes(a::AbstractNamedDimsArray) = axes(a)
 
-function Broadcast.broadcast_shape(
+function BC.broadcast_shape(
         ax1::NaiveOrderedSet, ax2::NaiveOrderedSet, ax_rest::NaiveOrderedSet...
     )
     return broadcast_shape(broadcast_shape(ax1, ax2), ax_rest...)
 end
 
-function Broadcast.broadcast_shape(ax1::NaiveOrderedSet, ax2::NaiveOrderedSet)
+function BC.broadcast_shape(ax1::NaiveOrderedSet, ax2::NaiveOrderedSet)
     return promote_shape(ax1, ax2)
 end
 
 # Handle scalar values.
-function Broadcast.broadcast_shape(ax1::Tuple{}, ax2::NaiveOrderedSet)
+function BC.broadcast_shape(ax1::Tuple{}, ax2::NaiveOrderedSet)
     return ax2
 end
-function Broadcast.broadcast_shape(ax1::NaiveOrderedSet, ax2::Tuple{})
+function BC.broadcast_shape(ax1::NaiveOrderedSet, ax2::Tuple{})
     return ax1
 end
 
@@ -907,7 +902,7 @@ function set_promote_shape(
     return ax1
 end
 
-function Broadcast.check_broadcast_shape(ax1::NaiveOrderedSet, ax2::NaiveOrderedSet)
+function BC.check_broadcast_shape(ax1::NaiveOrderedSet, ax2::NaiveOrderedSet)
     return set_check_broadcast_shape(Tuple(ax1), Tuple(ax2))
 end
 
