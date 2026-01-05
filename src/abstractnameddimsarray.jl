@@ -7,12 +7,9 @@ using TypeParameterAccessors: unspecify_type_parameters
 # https://github.com/mcabbott/NamedPlus.jl
 # https://pytorch.org/docs/stable/named_tensor.html
 
-abstract type AbstractNamedDimsArrayStyle{N} <: FI.AbstractArrayStyle{N} end
+abstract type AbstractNamedDimsArrayStyle <: FI.AbstractArrayStyle end
 
-struct NamedDimsArrayStyle{N} <: AbstractNamedDimsArrayStyle{N} end
-NamedDimsArrayStyle(::Val{N}) where {N} = NamedDimsArrayStyle{N}()
-NamedDimsArrayStyle{M}(::Val{N}) where {M, N} = NamedDimsArrayStyle{N}()
-NamedDimsArrayStyle() = NamedDimsArrayStyle{Any}()
+struct NamedDimsArrayStyle <: AbstractNamedDimsArrayStyle end
 
 abstract type AbstractNamedDimsArray{T, N} <: AbstractArray{T, N} end
 
@@ -20,7 +17,7 @@ const AbstractNamedDimsVector{T} = AbstractNamedDimsArray{T, 1}
 const AbstractNamedDimsMatrix{T} = AbstractNamedDimsArray{T, 2}
 
 function FI.Style(type::Type{<:AbstractNamedDimsArray})
-    return NamedDimsArrayStyle{ndims(type)}()
+    return NamedDimsArrayStyle()
 end
 
 const NamedDimsIndices = Union{
