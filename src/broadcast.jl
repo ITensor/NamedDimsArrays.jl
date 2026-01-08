@@ -58,7 +58,7 @@ function set_promote_shape(
     ) where {N}
     perm = getperm(ax2, ax1)
     ax2_aligned = map(i -> ax2[i], perm)
-    ax_promoted = promote_shape(dename.(ax1), dename.(ax2_aligned))
+    ax_promoted = promote_shape(denamed.(ax1), denamed.(ax2_aligned))
     return named.(ax_promoted, name.(ax1))
 end
 
@@ -90,7 +90,7 @@ function set_check_broadcast_shape(
     ) where {N}
     perm = getperm(ax2, ax1)
     ax2_aligned = map(i -> ax2[i], perm)
-    check_broadcast_shape(dename.(ax1), dename.(ax2_aligned))
+    check_broadcast_shape(denamed.(ax1), denamed.(ax2_aligned))
     return nothing
 end
 set_check_broadcast_shape(ax1::Tuple{}, ax2::Tuple{}) = nothing
@@ -111,7 +111,7 @@ using FillArrays: Fill
 function MapBroadcast.tile(a::AbstractNamedDimsArray, ax)
     axes(a) == ax && return a
     !iszero(ndims(a)) && return error("Not implemented.")
-    return nameddimsconstructorof(a)(Fill(a[], dename.(Tuple(ax))), name.(ax))
+    return nameddimsconstructorof(a)(Fill(a[], denamed.(Tuple(ax))), name.(ax))
 end
 
 function Base.similar(bc::Broadcasted{<:AbstractNamedDimsArrayStyle}, elt::Type, ax)
@@ -122,7 +122,7 @@ function Base.similar(bc::Broadcasted{<:AbstractNamedDimsArrayStyle}, elt::Type,
     # can lose information.
     # Call it as `nameddimstype(bc.style)`.
     return nameddimstype(bc.style)(
-        similar(m′, elt, dename.(Tuple(ax))), inds
+        similar(m′, elt, denamed.(Tuple(ax))), inds
     )
 end
 

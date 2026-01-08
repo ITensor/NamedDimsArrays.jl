@@ -42,7 +42,7 @@ julia> Pkg.add("NamedDimsArrays")
 ## Examples
 
 ````julia
-using NamedDimsArrays: aligndims, dimnames, inds, named, namedoneto, unname
+using NamedDimsArrays: aligndims, dename, dimnames, inds, named, namedoneto
 using TensorAlgebra: contract
 using Test: @test
 
@@ -70,8 +70,8 @@ a2 = randn(j, k)
 a_dest = a1 * a2
 
 @test issetequal(inds(a_dest), (i, k))
-# `unname` removes the names and returns an `Array`
-@test unname(a_dest, (i, k)) ≈ unname(a1, (i, j)) * unname(a2, (j, k))
+# `dename` removes the names and returns an `Array`
+@test dename(a_dest, (i, k)) ≈ dename(a1, (i, j)) * dename(a2, (j, k))
 
 # Permute dimensions (like `ITensors.permute`)
 a1′ = aligndims(a1, (j, i))
@@ -95,7 +95,7 @@ b_dest = b1 * b2
 # Non-contiguous slicing
 c1 = a1[i[[2, 1]], j[[2, 1]]]
 @test inds(c1) == (i[[2, 1]], j[[2, 1]])
-@test unname(c1, (i[[2, 1]], j[[2, 1]])) == unname(a1, (i, j))[[2, 1], [2, 1]]
+@test dename(c1, (i[[2, 1]], j[[2, 1]])) == dename(a1, (i, j))[[2, 1], [2, 1]]
 @test c1[i[2], j[1]] == a1[i[2], j[1]]
 @test c1[2, 1] == a1[1, 2]
 

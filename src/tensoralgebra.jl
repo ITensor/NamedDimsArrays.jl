@@ -112,7 +112,7 @@ function unmatricize_nameddims(na::AbstractArray, splitters::Vararg{Pair, 2})
     splitters_denamed = map(splitters) do splitter
         fused_name, split_namedlengths = splitter
         fused_dim = findfirst(isequal(fused_name), inds(na))
-        split_lengths = dename.(split_namedlengths)
+        split_lengths = denamed.(split_namedlengths)
         return fused_dim => split_lengths
     end
     blocked_axes = last.(TupleTools.sort(splitters_denamed; by = first))
