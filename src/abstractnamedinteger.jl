@@ -3,7 +3,7 @@ using TypeParameterAccessors: unspecify_type_parameters
 abstract type AbstractNamedInteger{Value, Name} <: Integer end
 
 # Minimal interface.
-dename(i::AbstractNamedInteger) = throw(MethodError(dename, Tuple{typeof(i)}))
+denamed(i::AbstractNamedInteger) = throw(MethodError(dename, Tuple{typeof(i)}))
 name(i::AbstractNamedInteger) = throw(MethodError(name, Tuple{typeof(i)}))
 
 # This can be customized to output different named integer types,
@@ -15,7 +15,7 @@ named(i::Integer, name) = namedinteger(i, name)
 
 # Derived interface.
 # TODO: Use `Accessors.@set`?
-setname(i::AbstractNamedInteger, name) = named(dename(i), name)
+setname(i::AbstractNamedInteger, name) = named(denamed(i), name)
 # TODO: Use `Accessors.@set`?
 setvalue(i::AbstractNamedInteger, value) = named(value, name(i))
 
@@ -28,11 +28,11 @@ isnamed(::Type{<:AbstractNamedInteger}) = true
 
 # TODO: Should they also have the same base type?
 function Base.:(==)(i1::AbstractNamedInteger, i2::AbstractNamedInteger)
-    return name(i1) == name(i2) && dename(i1) == dename(i2)
+    return name(i1) == name(i2) && denamed(i1) == denamed(i2)
 end
 function Base.hash(i::AbstractNamedInteger, h::UInt)
     h = hash(Symbol(unspecify_type_parameters(typeof(i))), h)
-    h = hash(dename(i), h)
+    h = hash(denamed(i), h)
     return hash(name(i), h)
 end
 
@@ -107,34 +107,34 @@ end
 # TODO: Should this make a random name, or require defining a way
 # to combine names?
 function Base.:*(i1::AbstractNamedInteger, i2::AbstractNamedInteger)
-    return named(dename(i1) * dename(i2), fusednames(name(i1), name(i2)))
+    return named(denamed(i1) * denamed(i2), fusednames(name(i1), name(i2)))
 end
-Base.:-(i::AbstractNamedInteger) = setvalue(i, -dename(i))
+Base.:-(i::AbstractNamedInteger) = setvalue(i, -denamed(i))
 
 ## TODO: Support this, we need to define `NamedFloat`, `NamedReal`, `NamedNumber`, etc.
 ## This is used in `LinearAlgebra.norm`, for now we just overload that directly.
 ## Here, named numbers are treated as unitful, so multiplying them
-## with unnamed numbers means the result inherits the name.
+## with denamed numbers means the result inherits the name.
 ## function Base.:*(i1::AbstractNamedInteger, i2::Number)
-##   return named(dename(i1) * i2, name(i1))
+##   return named(denamed(i1) * i2, name(i1))
 ## end
 
 # For the sake of generic code, the name is ignored.
 # Used in `AbstractArray` `Base.show`.
 # TODO: See if we can delete this.
-Base.:+(i1::Int, i2::AbstractNamedInteger) = i1 + dename(i2)
+Base.:+(i1::Int, i2::AbstractNamedInteger) = i1 + denamed(i2)
 
-Base.:*(i1::Int, i2::AbstractNamedInteger) = named(i1 * dename(i2), name(i2))
+Base.:*(i1::Int, i2::AbstractNamedInteger) = named(i1 * denamed(i2), name(i2))
 
-Base.zero(i::AbstractNamedInteger) = setvalue(i, zero(dename(i)))
-Base.one(i::AbstractNamedInteger) = setvalue(i, one(dename(i)))
-Base.signbit(i::AbstractNamedInteger) = signbit(dename(i))
-Base.unsigned(i::AbstractNamedInteger) = setvalue(i, unsigned(dename(i)))
+Base.zero(i::AbstractNamedInteger) = setvalue(i, zero(denamed(i)))
+Base.one(i::AbstractNamedInteger) = setvalue(i, one(denamed(i)))
+Base.signbit(i::AbstractNamedInteger) = signbit(denamed(i))
+Base.unsigned(i::AbstractNamedInteger) = setvalue(i, unsigned(denamed(i)))
 function Base.string(i::AbstractNamedInteger; kwargs...)
-    return "named($(string(dename(i); kwargs...)), $(repr(name(i))))"
+    return "named($(string(denamed(i); kwargs...)), $(repr(name(i))))"
 end
 
-(type::Type{<:Number})(i::AbstractNamedInteger) = type(dename(i))
+(type::Type{<:Number})(i::AbstractNamedInteger) = type(denamed(i))
 
 struct NameMismatch <: Exception
     message::String
@@ -142,16 +142,16 @@ end
 NameMismatch() = NameMismatch("")
 
 function randname(rng::AbstractRNG, i::AbstractNamedInteger)
-    return named(dename(i), randname(name(i)))
+    return named(denamed(i), randname(name(i)))
 end
 
 # Used in bounds checking when indexing with named dimensions.
 function Base.:<(i1::AbstractNamedInteger, i2::AbstractNamedInteger)
     name(i1) == name(i2) || throw(NameMismatch("Mismatched names $(name(i1)), $(name(i2))"))
-    return dename(i1) < dename(i2)
+    return denamed(i1) < denamed(i2)
 end
 
 function Base.show(io::IO, r::AbstractNamedInteger)
-    print(io, "named(", dename(r), ", ", repr(name(r)), ")")
+    print(io, "named(", denamed(r), ", ", repr(name(r)), ")")
     return nothing
 end
