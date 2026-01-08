@@ -20,7 +20,7 @@ setname(i::AbstractNamedInteger, name) = named(denamed(i), name)
 setvalue(i::AbstractNamedInteger, value) = named(value, name(i))
 
 # TODO: Use `TypeParameterAccessors`.
-denametype(::Type{<:AbstractNamedInteger{Value}}) where {Value} = Value
+denamedtype(::Type{<:AbstractNamedInteger{Value}}) where {Value} = Value
 nametype(::Type{<:AbstractNamedInteger{<:Any, Name}}) where {Name} = Name
 
 # Traits

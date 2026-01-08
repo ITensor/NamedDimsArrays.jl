@@ -5,5 +5,5 @@ struct NamedArray{T, N, Value <: AbstractArray{T, N}, Name} <:
 end
 
 # Minimal interface.
-dename(a::NamedArray) = a.value
+denamed(a::NamedArray) = a.value
 name(a::NamedArray) = a.name

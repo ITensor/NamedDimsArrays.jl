@@ -5,5 +5,5 @@ struct NamedUnitRange{T, Value <: AbstractUnitRange{T}, Name} <:
 end
 
 # Minimal interface.
-dename(i::NamedUnitRange) = i.value
+denamed(i::NamedUnitRange) = i.value
 name(i::NamedUnitRange) = i.name

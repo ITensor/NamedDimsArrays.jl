@@ -4,5 +4,5 @@ struct NamedInteger{Value <: Integer, Name} <: AbstractNamedInteger{Value, Name}
 end
 
 # Minimal interface.
-dename(i::NamedInteger) = i.value
+denamed(i::NamedInteger) = i.value
 name(i::NamedInteger) = i.name

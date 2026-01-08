@@ -144,7 +144,7 @@ end
 
 Base.parent(a::NamedDimsOperator) = getfield(a, :parent)
 state(a::NamedDimsOperator) = parent(a)
-dename(a::NamedDimsOperator) = dename(state(a))
+denamed(a::NamedDimsOperator) = denamed(state(a))
 inds_map(a::NamedDimsOperator) = getfield(a, :domain_codomain_bijection)
 
 function NamedDimsOperator(a::AbstractNamedDimsArray, domain_codomain_pairs)

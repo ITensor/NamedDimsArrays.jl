@@ -31,7 +31,7 @@ const NamedDimsAxis = AbstractNamedUnitRange{
 inds(a::AbstractArray) = throw(MethodError(inds, Tuple{typeof(a)}))
 # Unwrapping the names (`NamedDimsArrays.jl` interface).
 # TODO: Use `IsNamed` trait?
-denamed(a::AbstractNamedDimsArray) = throw(MethodError(dename, Tuple{typeof(a)}))
+denamed(a::AbstractNamedDimsArray) = throw(MethodError(denamed, Tuple{typeof(a)}))
 function dename(a::AbstractNamedDimsArray, inds)
     return denamed(aligndims(a, inds))
 end
