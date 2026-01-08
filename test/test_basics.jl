@@ -5,7 +5,7 @@ using NamedDimsArrays: AbstractNamedDimsArray, AbstractNamedDimsMatrix, NaiveOrd
     NamedDimsMatrix, NamedDimsOperator
 using NamedDimsArrays: aligndims, aligneddims, apply, dename, denamed, dim, dimnames, dims,
     fusednames, isnamed, mapinds, name, named, nameddims, inds, namedoneto, operator,
-    product, replaceinds, setinds, state, unname, unnamed, @names
+    product, replaceinds, setinds, state, @names
 using Test: @test, @test_throws, @testset
 using VectorInterface: scalartype
 
@@ -19,13 +19,10 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         @test na isa AbstractNamedDimsMatrix{elt}
         @test na isa NamedDimsArray{elt}
         @test na isa AbstractNamedDimsArray{elt}
-        @test_throws MethodError dename(a)
+        @test_throws MethodError denamed(a)
         @test_throws MethodError dename(a, ("i", "j"))
         @test_throws MethodError denamed(a, ("i", "j"))
-        @test_throws MethodError unname(a, ("i", "j"))
-        @test_throws MethodError unnamed(a, ("i", "j"))
-        @test unname(a) == a
-        @test dename(na) == a
+        @test denamed(na) == a
         si, sj = size(na)
         ai, aj = axes(na)
         i = namedoneto(3, "i")
@@ -94,8 +91,8 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         nb = nameddims(b, ("k", "i", "j"))
         copyto!(na, nb)
         @test na == nb
-        @test dename(na) == dename(nb, ("i", "j", "k"))
-        @test dename(na) == permutedims(dename(nb), (2, 3, 1))
+        @test denamed(na) == dename(nb, ("i", "j", "k"))
+        @test denamed(na) == permutedims(denamed(nb), (2, 3, 1))
 
         a = randn(elt, 3, 4)
         na = nameddims(a, ("i", "j"))
@@ -160,15 +157,15 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         na = a[i]
         @test na isa NamedDimsArray{elt}
         @test dimnames(na) == ("i",)
-        @test dename(na) == a
+        @test denamed(na) == a
 
         # slicing
         a = randn(elt, 3, 3)
         na = NamedDimsArray(a, ("i", "j"))
         for na′ in (na[named(2:3, "i"), named(2:3, "j")], na["i" => 2:3, "j" => 2:3])
             @test inds(na′) == (named(2:3, "i"), named(2:3, "j"))
-            @test dename(na′) == a[2:3, 2:3]
-            @test dename(na′) isa typeof(a)
+            @test denamed(na′) == a[2:3, 2:3]
+            @test denamed(na′) isa typeof(a)
         end
 
         # view slicing
@@ -177,9 +174,9 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         for na′ in
             (@view(na[named(2:3, "i"), named(2:3, "j")]), @view(na["i" => 2:3, "j" => 2:3]))
             @test inds(na′) == (named(2:3, "i"), named(2:3, "j"))
-            @test copy(dename(na′)) == a[2:3, 2:3]
-            @test dename(na′) ≡ @view(a[2:3, 2:3])
-            @test dename(na′) isa SubArray{elt, 2}
+            @test copy(denamed(na′)) == a[2:3, 2:3]
+            @test denamed(na′) ≡ @view(a[2:3, 2:3])
+            @test denamed(na′) isa SubArray{elt, 2}
         end
 
         # aliasing
@@ -211,32 +208,30 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
 
         a = randn(elt, 3, 4)
         na = nameddims(a, ("i", "j"))
-        a′ = dename(na)
+        a′ = denamed(na)
         @test a′ isa Matrix{elt}
         @test a′ == a
-        for a′ in (dename(na, ("j", "i")), unname(na, ("j", "i")))
-            @test a′ isa Matrix{elt}
-            @test a′ == transpose(a)
-        end
-        for a′ in (denamed(na, ("j", "i")), unnamed(na, ("j", "i")))
-            @test a′ isa PermutedDimsArray{elt}
-            @test a′ == transpose(a)
-        end
+        a′ = dename(na, ("j", "i"))
+        @test a′ isa Matrix{elt}
+        @test a′ == transpose(a)
+        a′ = denamed(na, ("j", "i"))
+        @test a′ isa PermutedDimsArray{elt}
+        @test a′ == transpose(a)
         nb = setinds(na, ("k", "j"))
         @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
-        @test dename(nb) == a
+        @test denamed(nb) == a
         nb = replaceinds(na, "i" => "k")
         @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
-        @test dename(nb) == a
+        @test denamed(nb) == a
         nb = replaceinds(na, named(1:3, "i") => named(1:3, "k"))
         @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
-        @test dename(nb) == a
+        @test denamed(nb) == a
         nb = replaceinds(n -> n == named(1:3, "i") ? named(1:3, "k") : n, na)
         @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
-        @test dename(nb) == a
+        @test denamed(nb) == a
         nb = mapinds(n -> n == named(1:3, "i") ? named(1:3, "k") : n, na)
         @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
-        @test dename(nb) == a
+        @test denamed(nb) == a
         nb = setinds(na, named(3, "i") => named(3, "k"))
         na[1, 1] = 11
         @test na[1, 1] == 11
@@ -252,17 +247,17 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         na[j => 1, i => 2] = 21
         @test na[2, 1] == 21
         na′ = aligndims(na, ("j", "i"))
-        @test unname(na′) isa Matrix{elt}
-        @test a == permutedims(unname(na′), (2, 1))
+        @test denamed(na′) isa Matrix{elt}
+        @test a == permutedims(denamed(na′), (2, 1))
         na′ = aligneddims(na, ("j", "i"))
-        @test unname(na′) isa PermutedDimsArray{elt}
-        @test a == permutedims(unname(na′), (2, 1))
+        @test denamed(na′) isa PermutedDimsArray{elt}
+        @test a == permutedims(denamed(na′), (2, 1))
         na′ = aligndims(na, (j, i))
-        @test unname(na′) isa Matrix{elt}
-        @test a == permutedims(unname(na′), (2, 1))
+        @test denamed(na′) isa Matrix{elt}
+        @test a == permutedims(denamed(na′), (2, 1))
         na′ = aligneddims(na, (j, i))
-        @test unname(na′) isa PermutedDimsArray{elt}
-        @test a == permutedims(unname(na′), (2, 1))
+        @test denamed(na′) isa PermutedDimsArray{elt}
+        @test a == permutedims(denamed(na′), (2, 1))
 
         na = nameddims(randn(elt, 2, 3), (:i, :j))
         nb = nameddims(randn(elt, 3, 2), (:j, :i))
