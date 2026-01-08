@@ -1,5 +1,5 @@
 using LinearAlgebra: factorize, lq, norm, qr, svd
-using NamedDimsArrays: NamedDimsArrays, dename, inds, namedoneto
+using NamedDimsArrays: NamedDimsArrays, dename, denamed, inds, namedoneto
 using StableRNGs: StableRNG
 using TensorAlgebra: TensorAlgebra, contract, left_null, left_orth, left_polar, matricize,
     orth, polar, right_null, right_orth, right_polar, unmatricize
@@ -15,7 +15,7 @@ elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         na2 = randn(elt, j, k)
         na_dest = na1 * na2
         @test eltype(na_dest) ≡ elt
-        @test dename(na_dest, (i, k)) ≈ dename(na1) * dename(na2)
+        @test dename(na_dest, (i, k)) ≈ denamed(na1) * denamed(na2)
     end
     @testset "matricize" begin
         i, j, k, l = namedoneto.((2, 3, 4, 5), ("i", "j", "k", "l"))
@@ -24,7 +24,7 @@ elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         # Fuse all dimensions.
         @test dename(na_fused, ("a", "b")) ≈ reshape(
             dename(na, (k, i, j, l)),
-            (dename(length(k)) * dename(length(i)), dename(length(j)) * dename(length(l))),
+            (denamed(length(k)) * denamed(length(i)), denamed(length(j)) * denamed(length(l))),
         )
     end
     @testset "unmatricize" begin
@@ -34,7 +34,7 @@ elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         # Split all dimensions.
         na_split = unmatricize(na, "a" => (k, i), "b" => (j, l))
         @test dename(na_split, ("k", "i", "j", "l")) ≈
-            reshape(dename(na, ("a", "b")), (dename(k), dename(i), dename(j), dename(l)))
+            reshape(dename(na, ("a", "b")), (denamed(k), denamed(i), denamed(j), denamed(l)))
     end
     @testset "Matrix functions" begin
         for f in NamedDimsArrays.MATRIX_FUNCTIONS
