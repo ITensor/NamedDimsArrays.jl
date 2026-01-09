@@ -188,7 +188,10 @@ function Base.copyto!(
     end
     return dest
 end
+
 # Linear operations.
+# TODO: Define `AbstractSummedArrayStyle` that defines these rules
+# and make `AbstractNamedDimsArrayStyle` a subtype of it.
 function BC.broadcasted(::AbstractNamedDimsArrayStyle, ::typeof(+), a1, a2)
     return Summed(a1) + Summed(a2)
 end
