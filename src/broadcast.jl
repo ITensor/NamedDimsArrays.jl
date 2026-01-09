@@ -234,10 +234,10 @@ function BC.broadcasted(
     return BC.broadcasted(style, *, f.args[1], a)
 end
 function BC.broadcasted(
-            style::AbstractNamedDimsArrayStyle,
-            f::MapFunction{typeof(*), <:Tuple{MapBroadcast.Arg, <:Number}},
-            a,
-        )
+        style::AbstractNamedDimsArrayStyle,
+        f::MapFunction{typeof(*), <:Tuple{MapBroadcast.Arg, <:Number}},
+        a,
+    )
     return BC.broadcasted(style, *, a, f.args[2])
 end
 function BC.broadcasted(
