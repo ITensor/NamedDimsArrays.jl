@@ -141,39 +141,7 @@ function Base.similar(bc::Summed{<:AbstractNamedDimsArrayStyle}, elt::Type, ax)
     return similar(Broadcasted(bc), elt, ax)
 end
 
-# TODO: Move to TensorAlgebra.jl.
-"""
-    add!(dest, src, α, β)
-
-`dest = β * dest + α * src`.
-"""
-function add!(dest::AbstractArray, src::AbstractArray, α::Number, β::Number)
-    if iszero(β)
-        dest .= α .* src
-    else
-        dest .= β .* dest .+ α .* src
-    end
-    return dest
-end
-
-# TODO: Move to TensorAlgebra.jl.
-using FunctionImplementations: permuteddims
-using Strided: StridedView, isstrided
-maybestrided(as::AbstractArray...) = all(isstrided, as) ? StridedView.(as) : as
-"""
-    permutedimsadd!(dest, src, perm, α, β)
-
-`dest = β * dest + α * permutedims(src, perm)`.
-"""
-function permutedimsadd!(
-        dest::AbstractArray, src::AbstractArray, perm, α::Number, β::Number
-    )
-    dest′, src′ = maybestrided(dest, src)
-    src′_permuted = permuteddims(src′, perm)
-    add!(dest′, src′_permuted, α, β)
-    return dest
-end
-
+using TensorAlgebra: permutedimsadd!
 function Base.copyto!(
         dest::AbstractNamedDimsArray, src::Summed{<:AbstractNamedDimsArrayStyle}
     )
