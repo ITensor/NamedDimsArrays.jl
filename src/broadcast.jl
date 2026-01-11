@@ -6,7 +6,7 @@ using Base.Broadcast: Broadcast as BC, Broadcasted, broadcast_shape, broadcasted
     check_broadcast_shape, combine_axes
 using MapBroadcast: MapBroadcast, Mapped, mapped, tile
 using ..NamedDimsArrays: NamedDimsArrays, AbstractNamedDimsArray,
-    AbstractNamedUnitRange, NaiveOrderedSet, dename, denamed, getperm, name, named,
+    AbstractNamedUnitRange, NaiveOrderedSet, dename, denamed, getperm, inds, name, named,
     nameddimsconstructorof
 
 abstract type AbstractNamedDimsArrayStyle{N} <: BC.AbstractArrayStyle{N} end
@@ -128,6 +128,95 @@ end
 
 function Base.copyto!(dest::AbstractArray, bc::Broadcasted{<:AbstractNamedDimsArrayStyle})
     return copyto!(dest, Mapped(bc))
+end
+
+using MapBroadcast: Summed
+summed_to_broadcasted(a) = a
+summed_to_broadcasted(a::Summed) = Broadcasted(a)
+function BC.broadcasted(style::AbstractNamedDimsArrayStyle, f, as...)
+    return Broadcasted(style, f, summed_to_broadcasted.(as))
+end
+
+function Base.similar(bc::Summed{<:AbstractNamedDimsArrayStyle}, elt::Type, ax)
+    return similar(Broadcasted(bc), elt, ax)
+end
+
+using TensorAlgebra: permutedimsadd!
+function Base.copyto!(
+        dest::AbstractNamedDimsArray, src::Summed{<:AbstractNamedDimsArrayStyle}
+    )
+    β = false
+    inds_dest = inds(dest)
+    for i in 1:length(src.arguments)
+        a = src.arguments[i]
+        α = src.coefficients[i]
+        perm = Tuple(getperm(inds(a), inds_dest))
+        permutedimsadd!(denamed(dest), denamed(a), perm, α, β)
+        β = true
+    end
+    return dest
+end
+
+# Linear operations.
+# TODO: Define `AbstractSummedArrayStyle` that defines these rules
+# and make `AbstractNamedDimsArrayStyle` a subtype of it.
+function BC.broadcasted(::AbstractNamedDimsArrayStyle, ::typeof(+), a1, a2)
+    return Summed(a1) + Summed(a2)
+end
+function BC.broadcasted(::AbstractNamedDimsArrayStyle, ::typeof(-), a1, a2)
+    return Summed(a1) - Summed(a2)
+end
+function BC.broadcasted(::AbstractNamedDimsArrayStyle, ::typeof(*), c::Number, a)
+    return c * Summed(a)
+end
+function BC.broadcasted(::AbstractNamedDimsArrayStyle, ::typeof(*), a, c::Number)
+    return Summed(a) * c
+end
+
+# Fix ambiguity error.
+BC.broadcasted(::AbstractNamedDimsArrayStyle, ::typeof(*), a::Number, b::Number) = a * b
+BC.broadcasted(::AbstractNamedDimsArrayStyle, ::typeof(/), a, c::Number) = Summed(a) / c
+BC.broadcasted(::AbstractNamedDimsArrayStyle, ::typeof(-), a) = -Summed(a)
+
+# Rewrite rules to canonicalize broadcast expressions.
+function BC.broadcasted(
+        style::AbstractNamedDimsArrayStyle, f::Base.Fix1{typeof(*), <:Number}, a
+    )
+    return BC.broadcasted(style, *, f.x, a)
+end
+function BC.broadcasted(
+        style::AbstractNamedDimsArrayStyle, f::Base.Fix2{typeof(*), <:Number}, a
+    )
+    return BC.broadcasted(style, *, a, f.x)
+end
+function BC.broadcasted(
+        style::AbstractNamedDimsArrayStyle, f::Base.Fix2{typeof(/), <:Number}, a
+    )
+    return BC.broadcasted(style, /, a, f.x)
+end
+
+# Compatibility with MapBroadcast.jl.
+using MapBroadcast: MapFunction
+function BC.broadcasted(
+        style::AbstractNamedDimsArrayStyle,
+        f::MapFunction{typeof(*), <:Tuple{<:Number, MapBroadcast.Arg}},
+        a,
+    )
+    return BC.broadcasted(style, *, f.args[1], a)
+end
+function BC.broadcasted(
+        style::AbstractNamedDimsArrayStyle,
+        f::MapFunction{typeof(*), <:Tuple{MapBroadcast.Arg, <:Number}},
+        a,
+    )
+    return BC.broadcasted(style, *, a, f.args[2])
+end
+function BC.broadcasted(
+        style::AbstractNamedDimsArrayStyle,
+        f::MapFunction{typeof(/), <:Tuple{MapBroadcast.Arg, <:Number}},
+        a,
+    )
+    return BC.broadcasted(style, /, a, f.args[2])
 end
 
 end
