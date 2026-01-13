@@ -5,6 +5,7 @@ using Compat: @compat
 @compat public to_inds
 @compat public @names
 
+include("lazyarray.jl")
 include("naiveorderedset.jl")
 include("isnamed.jl")
 include("randname.jl")
@@ -15,6 +16,7 @@ include("namedarray.jl")
 include("abstractnamedunitrange.jl")
 include("namedunitrange.jl")
 include("abstractnameddimsarray.jl")
+include("lazynameddimsarray.jl")
 include("broadcast.jl")
 include("adapt.jl")
 include("tensoralgebra.jl")

@@ -1,7 +1,10 @@
 name = "NamedDimsArrays"
 uuid = "60cbd0c0-df58-4cb7-918c-6f5607b73fde"
-authors = ["ITensor developers <support@itensor.org> and contributors"]
 version = "0.13.1"
+authors = ["ITensor developers <support@itensor.org> and contributors"]
+
+[workspace]
+projects = ["benchmark", "dev", "docs", "examples", "test"]
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
@@ -13,7 +16,9 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MapBroadcast = "ebd9b9da-f48d-417c-9660-449667d60261"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 SimpleTraits = "699a6c99-e7fa-54fc-8d76-47d257e15c1d"
+StridedViews = "4db3bf67-4bd7-4b4e-b153-31dc3fb37143"
 TensorAlgebra = "68bd88dc-f39d-4e12-b2ca-f046b68fcc6a"
+TermInterface = "8ea1fca8-c5ef-4a55-8b96-4e9afe9c9a3c"
 TupleTools = "9d95972d-f1c8-5527-a6e0-b4b365fa01f6"
 TypeParameterAccessors = "7e5a90cf-f82e-492e-a09b-e3e26432c138"
 VectorInterface = "409d34a3-91d5-4945-b6ec-7529ddf182d8"
@@ -38,11 +43,10 @@ LinearAlgebra = "1.10"
 MapBroadcast = "0.1.6"
 Random = "1.10"
 SimpleTraits = "0.9.4"
+StridedViews = "0.4.1"
 TensorAlgebra = "0.6.7"
+TermInterface = "2.0.0"
 TupleTools = "1.6"
 TypeParameterAccessors = "0.4"
 VectorInterface = "0.5.0"
 julia = "1.10"
-
-[workspace]
-projects = ["benchmark", "dev", "docs", "examples", "test"]
