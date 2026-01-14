@@ -44,7 +44,7 @@ function Base.show(io::IO, mime::MIME"text/plain", a::AbstractLazyNamedDimsArray
     return nothing
 end
 
-struct ScaledNamedDimsArray{T, N, C <: Number, TP, P <: AbstractNamedDimsArray{TP, N}} <:
+struct ScaledNamedDimsArray{T, N, C <: Number, P <: AbstractNamedDimsArray{<:Any, N}} <:
     AbstractLazyNamedDimsArray{T, N}
     coeff::C
     parent::P
@@ -53,7 +53,7 @@ struct ScaledNamedDimsArray{T, N, C <: Number, TP, P <: AbstractNamedDimsArray{T
             lazy"target type $T cannot hold products of " *
                 lazy"$(typeof(coeff)) and $(eltype(a)) objects"
         end
-        return new{T, ndims(a), typeof(coeff), eltype(a), typeof(a)}(coeff, a)
+        return new{T, ndims(a), typeof(coeff), typeof(a)}(coeff, a)
     end
 end
 function ScaledNamedDimsArray(coeff::Number, a::AbstractNamedDimsArray)
