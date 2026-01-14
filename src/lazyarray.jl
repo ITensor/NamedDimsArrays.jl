@@ -1,5 +1,6 @@
 # TODO: Move this file to TensorAlgebra.jl.
 
+import Base.Broadcast as BC
 import LinearAlgebra as LA
 import TensorAlgebra as TA
 import TermInterface as TI
@@ -25,57 +26,140 @@ end
 +ₗ(a::AbstractArray) = a
 -ₗ(a::AbstractArray) = -1 *ₗ a
 
-abstract type AbstractLazyArray{T, N} <: AbstractArray{T, N} end
-const AbstractLazyVector{T} = AbstractLazyArray{T, 1}
-const AbstractLazyMatrix{T} = AbstractLazyArray{T, 2}
-const AbstractLazyVecOrMat{T} = Union{AbstractLazyVector{T}, AbstractLazyMatrix{T}}
+lazy_function(f) = error("No lazy function defined for `$f`.")
+lazy_function(::typeof(+)) = +ₗ
+lazy_function(::typeof(-)) = -ₗ
+lazy_function(::typeof(*)) = *ₗ
+lazy_function(::typeof(/)) = /ₗ
+lazy_function(::typeof(\)) = \ₗ
+lazy_function(::typeof(conj)) = conjed
 
-# For lazy arrays, define Base methods in terms of lazy operations.
-Base.:(+)(a::AbstractLazyArray, b::AbstractLazyArray) = a +ₗ b
-Base.:(+)(a::AbstractLazyArray, b::AbstractArray) = a +ₗ b
-Base.:(+)(a::AbstractArray, b::AbstractLazyArray) = a +ₗ b
-Base.:(*)(α::Number, a::AbstractLazyArray) = α *ₗ a
-Base.:(*)(a::AbstractLazyArray, α::Number) = a *ₗ α
-Base.:(*)(a::AbstractLazyMatrix, b::AbstractLazyVecOrMat) = a *ₗ b
-Base.:(*)(a::AbstractLazyMatrix, b::AbstractVecOrMat) = a *ₗ b
-Base.:(*)(a::AbstractMatrix, b::AbstractLazyVecOrMat) = a *ₗ b
-Base.:(\)(α::Number, a::AbstractLazyArray) = α \ₗ a
-Base.:(/)(a::AbstractLazyArray, α::Number) = a /ₗ α
-Base.:(-)(a::AbstractLazyArray) = -ₗ(a)
-Base.conj(a::AbstractLazyArray) = conjed(a)
-
-function Base.similar(a::AbstractLazyArray, elt::Type)
-    return similar(a, elt, axes(a))
+broadcast_is_linear(f, args...) = false
+broadcast_is_linear(::typeof(+), ::Base.AbstractArrayOrBroadcasted...) = true
+broadcast_is_linear(::typeof(-), ::Base.AbstractArrayOrBroadcasted) = true
+function broadcast_is_linear(
+        ::typeof(-), ::Base.AbstractArrayOrBroadcasted, ::Base.AbstractArrayOrBroadcasted
+    )
+    return true
 end
-function Base.similar(a::AbstractLazyArray, elt::Type, ax)
-    # TODO: Define fallback as:
-    # args = TI.arguments(a)
-    # return similar(args[findfirst(Base.Fix2(isa, AbstractArray), args)], elt, ax)
-    return error("Not implemented.")
+broadcast_is_linear(::typeof(*), ::Number, ::Base.AbstractArrayOrBroadcasted) = true
+broadcast_is_linear(::typeof(\), ::Number, ::Base.AbstractArrayOrBroadcasted) = true
+broadcast_is_linear(::typeof(*), ::Base.AbstractArrayOrBroadcasted, ::Number) = true
+broadcast_is_linear(::typeof(/), ::Base.AbstractArrayOrBroadcasted, ::Number) = true
+function broadcast_is_linear(
+        ::typeof(*), ::Base.AbstractArrayOrBroadcasted, ::Base.AbstractArrayOrBroadcasted
+    )
+    return false
 end
-
-# Interface for materializing a lazy array.
-Base.copy(a::AbstractLazyArray) = copyto!(similar(a), a)
-function Base.copyto!(dest::AbstractArray, src::AbstractLazyArray)
-    TA.add!(dest, src, true, false)
-    return dest
+broadcast_is_linear(::typeof(*), ::Number, ::Number) = true
+broadcast_is_linear(::typeof(conj), ::Base.AbstractArrayOrBroadcasted) = true
+function is_linear(bc::BC.Broadcasted)
+    return broadcast_is_linear(bc.f, bc.args...) && all(is_linear, bc.args)
 end
 
-function Base.show(io::IO, a::AbstractLazyArray)
+to_linear(x) = x
+to_linear(bc::BC.Broadcasted) = lazy_function(bc.f)(to_linear.(bc.args)...)
+to_broadcasted(x) = x
+function to_broadcasted(a::AbstractArray)
+    !(BC.BroadcastStyle(typeof(a)) isa LazyArrayStyle) && return a
+    return BC.broadcasted(TI.operation(a), TI.arguments(a)...)
+end
+
+# For lazy arrays, define Broadcast methods in terms of lazy operations.
+struct LazyArrayStyle{N, Style <: BC.AbstractArrayStyle{N}} <: BC.AbstractArrayStyle{N}
+    style::Style
+end
+function LazyArrayStyle{N, Style}(::Val{M}) where {Style <: BC.AbstractArrayStyle{N}} where {N, M}
+    return LazyArrayStyle(Style(Val(M)))
+end
+function BC.BroadcastStyle(style1::LazyArrayStyle, style2::LazyArrayStyle)
+    style = BC.BroadcastStyle(style1.style, style2.style)
+    style ≡ BC.Unknown() && return BC.Unknown()
+    return LazyArrayStyle(style)
+end
+function Base.similar(bc::BC.Broadcasted{<:LazyArrayStyle}, elt::Type, ax)
+    return similar(BC.Broadcasted(bc.style.style, bc.f, bc.args, bc.axes), elt, ax)
+end
+# Backup definition, for broadcast operations that don't preserve LazyArrays
+# (such as nonlinear operations), convert back to Broadcasted expressions.
+function BC.broadcasted(::LazyArrayStyle, f, args...)
+    return BC.broadcasted(f, to_broadcasted.(args)...)
+end
+function BC.broadcasted(
+        ::LazyArrayStyle,
+        ::typeof(+),
+        a::AbstractArray,
+        b::AbstractArray,
+    )
+    return a +ₗ b
+end
+function BC.broadcasted(
+        ::LazyArrayStyle,
+        ::typeof(+),
+        a::AbstractArray,
+        b::BC.Broadcasted,
+    )
+    is_linear(b) || return BC.broadcasted(+, to_broadcasted(a), b)
+    return a +ₗ to_linear(b)
+end
+function BC.broadcasted(
+        ::LazyArrayStyle,
+        ::typeof(+),
+        a::BC.Broadcasted,
+        b::AbstractArray,
+    )
+    is_linear(a) || return BC.broadcasted(+, a, to_broadcasted(b))
+    return to_linear(a) +ₗ b
+end
+function BC.broadcasted(
+        ::LazyArrayStyle,
+        ::typeof(+),
+        a::BC.Broadcasted,
+        b::BC.Broadcasted,
+    )
+    return error("Not implemented")
+end
+function BC.broadcasted(
+        ::LazyArrayStyle, ::typeof(*), α::Number, a::AbstractArray
+    )
+    return α *ₗ a
+end
+function BC.broadcasted(
+        ::LazyArrayStyle, ::typeof(*), a::AbstractArray, α::Number
+    )
+    return a *ₗ α
+end
+function BC.broadcasted(
+        ::LazyArrayStyle, ::typeof(\), α::Number, a::AbstractArray
+    )
+    return α \ₗ a
+end
+function BC.broadcasted(
+        ::LazyArrayStyle, ::typeof(/), a::AbstractArray, α::Number
+    )
+    return a /ₗ α
+end
+function BC.broadcasted(::LazyArrayStyle, ::typeof(-), a::AbstractArray)
+    return -ₗ(a)
+end
+function BC.broadcasted(
+        ::LazyArrayStyle, ::typeof(conj), a::AbstractArray
+    )
+    return conjed(a)
+end
+
+function show_lazy(io::IO, a::AbstractArray)
     print(io, TI.operation(a), "(", join(TI.arguments(a), ", "), ")")
     return nothing
 end
-function Base.show(io::IO, mime::MIME"text/plain", a::AbstractLazyArray)
+function show_lazy(io::IO, mime::MIME"text/plain", a::AbstractArray)
     summary(io, a)
     println(io, ":")
     show(io, a)
     return nothing
 end
 
-scaled_eltype(coeff, a::AbstractArray) = Base.promote_op(*, typeof(coeff), eltype(a))
-
-struct ScaledArray{T, N, P <: AbstractArray{<:Any, N}, C <: Number} <:
-    AbstractLazyArray{T, N}
+struct ScaledArray{T, N, P <: AbstractArray{<:Any, N}, C <: Number} <: AbstractArray{T, N}
     coeff::C
     parent::P
     function ScaledArray(coeff::Number, a::AbstractArray)
@@ -83,18 +167,26 @@ struct ScaledArray{T, N, P <: AbstractArray{<:Any, N}, C <: Number} <:
         return new{T, ndims(a), typeof(a), typeof(coeff)}(coeff, a)
     end
 end
+scaled_eltype(coeff, a::AbstractArray) = Base.promote_op(*, typeof(coeff), eltype(a))
 Base.axes(a::ScaledArray) = axes(a.parent)
 Base.size(a::ScaledArray) = size(a.parent)
 
 Base.similar(a::ScaledArray) = similar(a.parent)
 Base.similar(a::ScaledArray, elt::Type) = similar(a.parent, elt)
 Base.similar(a::ScaledArray, ax) = similar(a.parent, ax)
-Base.similar(a::ScaledArray, elt::Type, ax) = similar(a.parent, elt, ax)
+Base.similar(a::ScaledArray, elt::Type, ax) = similar_scaled(a, elt, ax)
+Base.similar(a::ScaledArray, elt::Type, ax::Dims) = similar_scaled(a, elt, ax)
+similar_scaled(a::ScaledArray, elt::Type, ax) = similar(a.parent, elt, ax)
 
+function Base.copyto!(dest::AbstractArray, src::ScaledArray)
+    TA.add!(dest, src, true, false)
+    return dest
+end
 function TA.add!(dest::AbstractArray, src::ScaledArray, α::Number, β::Number)
     TA.add!(dest, src.parent, src.coeff * α, β)
     return dest
 end
+BC.materialize(a::ScaledArray) = copy(a)
 TI.iscall(::ScaledArray) = true
 TI.operation(::ScaledArray) = *
 TI.arguments(a::ScaledArray) = (a.coeff, a.parent)
@@ -105,15 +197,29 @@ TI.arguments(a::ScaledArray) = (a.coeff, a.parent)
 *ₗ(a::ScaledArray, b::AbstractArray) = a.coeff *ₗ (a.parent *ₗ b)
 conjed(a::ScaledArray) = conj(a.coeff) *ₗ conjed(a.parent)
 
-struct ConjArray{T, N, P <: AbstractArray{T, N}} <:
-    AbstractLazyArray{T, N}
+function BC.BroadcastStyle(arrayt::Type{<:ScaledArray{<:Any, <:Any, P}}) where {P}
+    return LazyArrayStyle(BC.BroadcastStyle(P))
+end
+
+Base.show(io::IO, a::ScaledArray) = show_lazy(io, a)
+Base.show(io::IO, mime::MIME"text/plain", a::ScaledArray) = show_lazy(io, mime, a)
+
+struct ConjArray{T, N, P <: AbstractArray{T, N}} <: AbstractArray{T, N}
     parent::P
 end
 Base.axes(a::ConjArray) = axes(a.parent)
 Base.size(a::ConjArray) = size(a.parent)
 
 Base.similar(a::ConjArray, elt::Type) = similar(a.parent, elt)
-Base.similar(a::ConjArray, elt::Type, ax) = similar(a.parent, elt, ax)
+Base.similar(a::ConjArray, elt::Type, ax) = similar_conj(a, elt, ax)
+Base.similar(a::ConjArray, elt::Type, ax::Dims) = similar_conj(a, elt, ax)
+similar_conj(a::ConjArray, elt::Type, ax) = similar(a.parent, elt, ax)
+
+function Base.copyto!(dest::AbstractArray, src::ConjArray)
+    TA.add!(dest, src, true, false)
+    return dest
+end
+BC.materialize(a::ConjArray) = copy(a)
 
 using StridedViews: StridedViews, StridedView, isstrided
 StridedViews.isstrided(a::ConjArray) = isstrided(a.parent)
@@ -123,16 +229,16 @@ TI.iscall(::ConjArray) = true
 TI.operation(::ConjArray) = conj
 TI.arguments(a::ConjArray) = (a.parent,)
 
-Base.conj(a::ConjArray) = a.parent
+conjed(a::ConjArray) = a.parent
 
-function add_eltype(args::AbstractArray{<:Any, N}...) where {N}
-    return Base.promote_op(+, eltype.(args)...)
+function BC.BroadcastStyle(arrayt::Type{<:ConjArray{<:Any, <:Any, P}}) where {P}
+    return LazyArrayStyle(BC.BroadcastStyle(P))
 end
-using Base.Broadcast: broadcasted
-add_axes(args::AbstractArray{<:Any, N}...) where {N} = axes(broadcasted(+, args...))
 
-struct AddArray{T, N, Args <: Tuple{Vararg{AbstractArray{<:Any, N}}}} <:
-    AbstractLazyArray{T, N}
+Base.show(io::IO, a::ConjArray) = show_lazy(io, a)
+Base.show(io::IO, mime::MIME"text/plain", a::ConjArray) = show_lazy(io, mime, a)
+
+struct AddArray{T, N, Args <: Tuple{Vararg{AbstractArray{<:Any, N}}}} <: AbstractArray{T, N}
     args::Args
     function AddArray(args::AbstractArray{<:Any, N}...) where {N}
         T = add_eltype(args...)
@@ -143,6 +249,11 @@ const AddVector{T, Args <: Tuple{Vararg{AbstractVector}}} = AddArray{T, 1, Args}
 const AddMatrix{T, Args <: Tuple{Vararg{AbstractMatrix}}} = AddArray{T, 2, Args}
 const AddVecOrMat{T} = Union{AddVector{T}, AddMatrix{T}}
 
+function add_eltype(args::AbstractArray{<:Any, N}...) where {N}
+    return Base.promote_op(+, eltype.(args)...)
+end
+using Base.Broadcast: broadcasted
+add_axes(args::AbstractArray{<:Any, N}...) where {N} = BC.combine_axes(args...)
 Base.axes(a::AddArray) = add_axes(a.args...)
 Base.size(a::AddArray) = length.(axes(a))
 
@@ -157,13 +268,18 @@ function Base.similar(
     )
     return similar_add(a, elt, ax)
 end
+Base.similar(a::AddArray, elt::Type, ax::Dims) = similar_add(a, elt, ax)
 Base.similar(a::AddArray, elt::Type, ax) = similar_add(a, elt, ax)
 using Base.Broadcast: broadcasted
-similar_add(a::AddArray, elt) = similar(broadcasted(+, a.args...), elt)
+similar_add(a::AddArray, elt) = similar(BC.Broadcasted(+, a.args), elt)
 function similar_add(a::AddArray, elt::Type, ax)
-    return similar(broadcasted(+, a.args...), elt, ax)
+    return similar(BC.Broadcasted(+, a.args), elt, ax)
 end
 
+function Base.copyto!(dest::AbstractArray, src::AddArray)
+    TA.add!(dest, src, true, false)
+    return dest
+end
 function TA.add!(dest::AbstractArray, src::AddArray, α::Number, β::Number)
     TA.add!(dest, first(src.args), α, β)
     for a in Base.tail(src.args)
@@ -171,6 +287,7 @@ function TA.add!(dest::AbstractArray, src::AddArray, α::Number, β::Number)
     end
     return dest
 end
+BC.materialize(a::AddArray) = copy(a)
 TI.iscall(::AddArray) = true
 TI.operation(::AddArray) = +
 TI.arguments(a::AddArray) = a.args
@@ -184,16 +301,16 @@ TI.arguments(a::AddArray) = a.args
 *ₗ(a::AddArray, b::AddArray) = +ₗ((Ref(a) .*ₗ b.args)...)
 conjed(a::AddArray) = +ₗ(conjed.(a.args)...)
 
-matprod(x, y) = x * y + x * y
-function mul_eltype(a::AbstractMatrix, b::AbstractVecOrMat)
-    return Base.promote_op(matprod, eltype(a), eltype(b))
-end
-function mul_axes(a::AbstractMatrix, b::AbstractVecOrMat)
-    return (axes(a, 1), axes(b, ndims(b)))
+function BC.BroadcastStyle(arrayt::Type{<:AddArray{<:Any, <:Any, Args}}) where {Args}
+    style = Base.promote_op(BC.combine_styles, fieldtypes(Args)...)()
+    return LazyArrayStyle(style)
 end
 
+Base.show(io::IO, a::AddArray) = show_lazy(io, a)
+Base.show(io::IO, mime::MIME"text/plain", a::AddArray) = show_lazy(io, mime, a)
+
 struct MulArray{T, N, A <: AbstractMatrix, B <: AbstractArray{<:Any, N}} <:
-    AbstractLazyArray{T, N}
+    AbstractArray{T, N}
     a::A
     b::B
     function MulArray(a::AbstractMatrix, b::AbstractVecOrMat)
@@ -207,6 +324,14 @@ const MulVecOrMat{T} = Union{MulVector{T}, MulMatrix{T}}
 MulVector(a::AbstractMatrix, b::AbstractVector) = MulArray(a, b)
 MulMatrix(a::AbstractMatrix, b::AbstractMatrix) = MulArray(a, b)
 
+# Same as `LinearAlgebra.matprod`, but duplicated here since it is private.
+matprod(x, y) = x * y + x * y
+function mul_eltype(a::AbstractMatrix, b::AbstractVecOrMat)
+    return Base.promote_op(matprod, eltype(a), eltype(b))
+end
+function mul_axes(a::AbstractMatrix, b::AbstractVecOrMat)
+    return (axes(a, 1), axes(b, ndims(b)))
+end
 Base.axes(a::MulArray) = mul_axes(a.a, a.b)
 Base.size(a::MulArray) = length.(axes(a))
 
@@ -221,18 +346,36 @@ function Base.similar(
     return similar_mul(a, elt, ax)
 end
 Base.similar(a::MulArray, elt::Type, ax) = similar_mul(a, elt, ax)
+Base.similar(a::MulArray, elt::Type, ax::Dims) = similar_mul(a, elt, ax)
 # TODO: Make use of both arguments to determine the output, maybe
 # using `LinearAlgebra.matprod_dest(a.a, a.b, elt)`?
 similar_mul(a::MulArray, elt::Type) = similar(a.b, elt)
 similar_mul(a::MulArray, elt::Type, ax) = similar(a.b, elt, ax)
+BC.materialize(a::MulArray) = copy(a)
 
 TI.iscall(::MulArray) = true
 TI.operation(::MulArray) = *
 TI.arguments(a::MulArray) = (a.a, a.b)
 
+function Base.copyto!(dest::AbstractArray, src::MulArray)
+    TA.add!(dest, src, true, false)
+    return dest
+end
 function TA.add!(dest::AbstractArray, src::MulArray, α::Number, β::Number)
-    LA.mul!(dest, src.a, src.b, α, β)
+    # We materialize the arguments here to avoid nested lazy evaluation.
+    # Rewrite rules should make it so that `MulArray` is a "leaf` node of the
+    # expression tree.
+    LA.mul!(dest, BC.materialize.((src.a, src.b))..., α, β)
     return dest
 end
 
 conjed(a::MulArray) = *ₗ(conjed(a.a), conjed(a.b))
+
+function BC.BroadcastStyle(arrayt::Type{<:MulArray{<:Any, <:Any, A, B}}) where {A, B}
+    style = Base.promote_op(BC.combine_styles, A, B)()
+    return LazyArrayStyle(style)
+end
+to_broadcasted(a::MulArray) = a.a * a.b
+
+Base.show(io::IO, a::MulArray) = show_lazy(io, a)
+Base.show(io::IO, mime::MIME"text/plain", a::MulArray) = show_lazy(io, mime, a)
