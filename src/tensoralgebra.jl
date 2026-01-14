@@ -2,12 +2,10 @@ import LinearAlgebra as LA
 import TensorAlgebra as TA
 using TupleTools: TupleTools
 
-using TensorAlgebra: permutedimsadd!
 function TA.add!(
         dest::AbstractNamedDimsArray, src::AbstractNamedDimsArray, α::Number, β::Number
     )
-    perm = Tuple(getperm(inds(src), inds(dest)))
-    permutedimsadd!(denamed(dest), denamed(src), perm, α, β)
+    TA.add!(denamed(dest), denamed(src, inds(dest)), α, β)
     return dest
 end
 

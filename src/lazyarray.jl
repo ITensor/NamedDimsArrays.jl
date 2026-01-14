@@ -1,5 +1,8 @@
-# TODO: Move this to TensorAlgebra.jl.
-using TermInterface: TermInterface as TI, operation, arguments
+# TODO: Move this file to TensorAlgebra.jl.
+
+import LinearAlgebra as LA
+import TensorAlgebra as TA
+import TermInterface as TI
 
 # Primitive constructors for lazy array linear algebra operations.
 +ₗ(a::AbstractArray, b::AbstractArray) = AddArray(a, b)
@@ -40,21 +43,26 @@ Base.:(\)(α::Number, a::AbstractLazyArray) = α \ₗ a
 Base.:(/)(a::AbstractLazyArray, α::Number) = a /ₗ α
 Base.:(-)(a::AbstractLazyArray) = -ₗ(a)
 Base.conj(a::AbstractLazyArray) = conjed(a)
+
 function Base.similar(a::AbstractLazyArray, elt::Type)
     return similar(a, elt, axes(a))
 end
 function Base.similar(a::AbstractLazyArray, elt::Type, ax)
+    # TODO: Define fallback as:
+    # args = TI.arguments(a)
+    # return similar(args[findfirst(Base.Fix2(isa, AbstractArray), args)], elt, ax)
     return error("Not implemented.")
 end
 
 # Interface for materializing a lazy array.
 Base.copy(a::AbstractLazyArray) = copyto!(similar(a), a)
 function Base.copyto!(dest::AbstractArray, src::AbstractLazyArray)
-    return error("Not implemented.")
+    TA.add!(dest, src, true, false)
+    return dest
 end
 
 function Base.show(io::IO, a::AbstractLazyArray)
-    print(io, operation(a), "(", join(arguments(a), ", "), ")")
+    print(io, TI.operation(a), "(", join(TI.arguments(a), ", "), ")")
     return nothing
 end
 function Base.show(io::IO, mime::MIME"text/plain", a::AbstractLazyArray)
@@ -66,13 +74,13 @@ end
 
 scaled_eltype(coeff, a::AbstractArray) = Base.promote_op(*, typeof(coeff), eltype(a))
 
-struct ScaledArray{T, N, C <: Number, P <: AbstractArray{<:Any, N}} <:
+struct ScaledArray{T, N, P <: AbstractArray{<:Any, N}, C <: Number} <:
     AbstractLazyArray{T, N}
     coeff::C
     parent::P
     function ScaledArray(coeff::Number, a::AbstractArray)
         T = scaled_eltype(coeff, a)
-        return new{T, ndims(a), typeof(coeff), typeof(a)}(coeff, a)
+        return new{T, ndims(a), typeof(a), typeof(coeff)}(coeff, a)
     end
 end
 Base.axes(a::ScaledArray) = axes(a.parent)
@@ -83,9 +91,8 @@ Base.similar(a::ScaledArray, elt::Type) = similar(a.parent, elt)
 Base.similar(a::ScaledArray, ax) = similar(a.parent, ax)
 Base.similar(a::ScaledArray, elt::Type, ax) = similar(a.parent, elt, ax)
 
-using TensorAlgebra: add!
-function Base.copyto!(dest::AbstractArray, src::ScaledArray)
-    add!(dest, src.parent, src.coeff, false)
+function TA.add!(dest::AbstractArray, src::ScaledArray, α::Number, β::Number)
+    TA.add!(dest, src.parent, src.coeff * α, β)
     return dest
 end
 TI.iscall(::ScaledArray) = true
@@ -93,6 +100,9 @@ TI.operation(::ScaledArray) = *
 TI.arguments(a::ScaledArray) = (a.coeff, a.parent)
 
 *ₗ(α::Number, a::ScaledArray) = (α * a.coeff) *ₗ a.parent
+*ₗ(a::ScaledArray, b::ScaledArray) = (a.coeff * b.coeff) *ₗ (a.parent *ₗ b.parent)
+*ₗ(a::AbstractArray, b::ScaledArray) = b.coeff *ₗ (a *ₗ b.parent)
+*ₗ(a::ScaledArray, b::AbstractArray) = a.coeff *ₗ (a.parent *ₗ b)
 conjed(a::ScaledArray) = conj(a.coeff) *ₗ conjed(a.parent)
 
 struct ConjArray{T, N, P <: AbstractArray{T, N}} <:
@@ -109,11 +119,6 @@ using StridedViews: StridedViews, StridedView, isstrided
 StridedViews.isstrided(a::ConjArray) = isstrided(a.parent)
 StridedViews.StridedView(a::ConjArray) = conj(StridedView(a.parent))
 
-using TensorAlgebra: add!
-function Base.copyto!(dest::AbstractArray, src::ConjArray)
-    add!(dest, src, true, false)
-    return dest
-end
 TI.iscall(::ConjArray) = true
 TI.operation(::ConjArray) = conj
 TI.arguments(a::ConjArray) = (a.parent,)
@@ -159,11 +164,10 @@ function similar_add(a::AddArray, elt::Type, ax)
     return similar(broadcasted(+, a.args...), elt, ax)
 end
 
-using TensorAlgebra: add!
-function Base.copyto!(dest::AbstractArray, src::AddArray)
-    dest .= src.args[1]
+function TA.add!(dest::AbstractArray, src::AddArray, α::Number, β::Number)
+    TA.add!(dest, first(src.args), α, β)
     for a in Base.tail(src.args)
-        dest .+= a
+        TA.add!(dest, a, α, true)
     end
     return dest
 end
@@ -217,22 +221,18 @@ function Base.similar(
     return similar_mul(a, elt, ax)
 end
 Base.similar(a::MulArray, elt::Type, ax) = similar_mul(a, elt, ax)
-similar_mul(a::MulArray, elt::Type) = similar(a.a, elt)
-similar_mul(a::MulArray, elt::Type, ax) = similar(a.a, elt, ax)
+# TODO: Make use of both arguments to determine the output, maybe
+# using `LinearAlgebra.matprod_dest(a.a, a.b, elt)`?
+similar_mul(a::MulArray, elt::Type) = similar(a.b, elt)
+similar_mul(a::MulArray, elt::Type, ax) = similar(a.b, elt, ax)
 
-using TensorAlgebra: contract!
-function Base.copyto!(dest::AbstractArray, src::MulArray)
-    error("Not implemented.")
-end
 TI.iscall(::MulArray) = true
 TI.operation(::MulArray) = *
-TI.arguments(a::MulArray) = a.a
+TI.arguments(a::MulArray) = (a.a, a.b)
 
-## TODO: Implement specialized algebra rules for MulArray and ScaledMulArray.
-## For example, adding should result in a MulAddArray.
-+ₗ(a::MulArray, b::AbstractArray) = MulAddArray(true, a.a, a.b, true, b)
-## +ₗ(a::ScaledMulArray, b::AbstractArray) = MulAddArray(a.α, a.parent.a, a.parent.b, true, b)
-## +ₗ(a::ScaledMulArray, b::ScaledArray) = MulAddArray(a.α, a.parent.a, a.parent.b, b.α, b.parent)
-## +ₗ(a::AbstractArray, b::MulArray) = b +ₗ a
-## +ₗ(a::MulArray, b::MulArray) = AddArray(a, b)
+function TA.add!(dest::AbstractArray, src::MulArray, α::Number, β::Number)
+    LA.mul!(dest, src.a, src.b, α, β)
+    return dest
+end
+
 conjed(a::MulArray) = *ₗ(conjed(a.a), conjed(a.b))
