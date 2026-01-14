@@ -245,9 +245,6 @@ struct AddArray{T, N, Args <: Tuple{Vararg{AbstractArray{<:Any, N}}}} <: Abstrac
         return new{T, N, typeof(args)}(args)
     end
 end
-const AddVector{T, Args <: Tuple{Vararg{AbstractVector}}} = AddArray{T, 1, Args}
-const AddMatrix{T, Args <: Tuple{Vararg{AbstractMatrix}}} = AddArray{T, 2, Args}
-const AddVecOrMat{T} = Union{AddVector{T}, AddMatrix{T}}
 
 function add_eltype(args::AbstractArray{<:Any, N}...) where {N}
     return Base.promote_op(+, eltype.(args)...)
@@ -309,27 +306,23 @@ end
 Base.show(io::IO, a::AddArray) = show_lazy(io, a)
 Base.show(io::IO, mime::MIME"text/plain", a::AddArray) = show_lazy(io, mime, a)
 
-struct MulArray{T, N, A <: AbstractMatrix, B <: AbstractArray{<:Any, N}} <:
-    AbstractArray{T, N}
+struct MulArray{T, N, A <: AbstractArray, B <: AbstractArray} <: AbstractArray{T, N}
     a::A
     b::B
-    function MulArray(a::AbstractMatrix, b::AbstractVecOrMat)
+    function MulArray(a::AbstractArray, b::AbstractArray)
         T = mul_eltype(a, b)
-        return new{T, ndims(b), typeof(a), typeof(b)}(a, b)
+        N = mul_ndims(a, b)
+        return new{T, N, typeof(a), typeof(b)}(a, b)
     end
 end
-const MulVector{T, A <: AbstractMatrix, B <: AbstractVector} = MulArray{T, 1, A, B}
-const MulMatrix{T, A <: AbstractMatrix, B <: AbstractMatrix} = MulArray{T, 2, A, B}
-const MulVecOrMat{T} = Union{MulVector{T}, MulMatrix{T}}
-MulVector(a::AbstractMatrix, b::AbstractVector) = MulArray(a, b)
-MulMatrix(a::AbstractMatrix, b::AbstractMatrix) = MulArray(a, b)
 
 # Same as `LinearAlgebra.matprod`, but duplicated here since it is private.
 matprod(x, y) = x * y + x * y
-function mul_eltype(a::AbstractMatrix, b::AbstractVecOrMat)
+function mul_eltype(a::AbstractArray, b::AbstractArray)
     return Base.promote_op(matprod, eltype(a), eltype(b))
 end
-function mul_axes(a::AbstractMatrix, b::AbstractVecOrMat)
+mul_ndims(a::AbstractArray, b::AbstractArray) = ndims(b)
+function mul_axes(a::AbstractArray, b::AbstractArray)
     return (axes(a, 1), axes(b, ndims(b)))
 end
 Base.axes(a::MulArray) = mul_axes(a.a, a.b)
