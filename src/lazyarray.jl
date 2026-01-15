@@ -53,10 +53,14 @@ end
 
 to_linear(x) = x
 to_linear(bc::BC.Broadcasted) = lazy_function(bc.f)(to_linear.(bc.args)...)
+# TODO: Use `Broadcast.broadcastable` interface for this?
 to_broadcasted(x) = x
 function to_broadcasted(a::AbstractArray)
-    !(BC.BroadcastStyle(typeof(a)) isa LazyArrayStyle) && return a
-    return BC.broadcasted(TI.operation(a), TI.arguments(a)...)
+    (BC.BroadcastStyle(typeof(a)) isa LazyArrayStyle) || return a
+    return BC.broadcasted(TI.operation(a), to_broadcasted.(TI.arguments(a))...)
+end
+function to_broadcasted(bc::BC.Broadcasted)
+    return BC.Broadcasted(bc.f, to_broadcasted.(bc.args))
 end
 
 # For lazy arrays, define Broadcast methods in terms of lazy operations.
@@ -77,7 +81,7 @@ end
 # Backup definition, for broadcast operations that don't preserve LazyArrays
 # (such as nonlinear operations), convert back to Broadcasted expressions.
 function BC.broadcasted(::LazyArrayStyle, f, args...)
-    return BC.broadcasted(f, to_broadcasted.(args)...)
+    return BC.Broadcasted(f, to_broadcasted.(args))
 end
 function BC.broadcasted(
         ::LazyArrayStyle,
@@ -93,7 +97,7 @@ function BC.broadcasted(
         a::AbstractArray,
         b::BC.Broadcasted,
     )
-    is_linear(b) || return BC.broadcasted(+, to_broadcasted(a), b)
+    is_linear(b) || return BC.Broadcasted(+, to_broadcasted.((a, b)))
     return a +ₗ to_linear(b)
 end
 function BC.broadcasted(
@@ -102,7 +106,7 @@ function BC.broadcasted(
         a::BC.Broadcasted,
         b::AbstractArray,
     )
-    is_linear(a) || return BC.broadcasted(+, a, to_broadcasted(b))
+    is_linear(a) || return BC.Broadcasted(+, to_broadcasted.((a, b)))
     return to_linear(a) +ₗ b
 end
 function BC.broadcasted(
@@ -212,7 +216,7 @@ macro scaledarray_type(ScaledArray, AbstractArray = :AbstractArray)
                 coeff::C
                 parent::P
                 function $ScaledArray(coeff::Number, a::AbstractArray)
-                    T = scaled_eltype(coeff, a)
+                    T = NamedDimsArrays.scaled_eltype(coeff, a)
                     return new{T, ndims(a), typeof(a), typeof(coeff)}(coeff, a)
                 end
             end
@@ -364,7 +368,7 @@ macro conjarray_type(ConjArray, AbstractArray = :AbstractArray)
             struct $ConjArray{T, N, P <: AbstractArray{T, N}} <: $AbstractArray{T, N}
                 parent::P
             end
-            conjed(a::$ConjArray) = a.parent
+            NamedDimsArrays.conjed(a::$ConjArray) = a.parent
         end
     )
 end
@@ -579,10 +583,8 @@ end
 
 # Generic constructors, accessors, and properties for MulArrays.
 *ₗ(a::AbstractArray, b::AbstractArray) = MulArray(a, b)
-mulled_left(a::AbstractArray) = error("No mulled_left defined for type $(typeof(a))")
-mulled_right(a::AbstractArray) = error("No mulled_right defined for type $(typeof(a))")
-mulled_left_type(arrayt::Type{<:AbstractArray}) = Base.promote_op(mulled_left, arrayt)
-mulled_right_type(arrayt::Type{<:AbstractArray}) = Base.promote_op(mulled_right, arrayt)
+factors(a::AbstractArray) = (a,)
+factor_types(arrayt::Type{<:AbstractArray}) = Base.promote_op(factors, arrayt)
 # Same as `LinearAlgebra.matprod`, but duplicated here since it is private.
 matprod(x, y) = x * y + x * y
 mul_eltype(a::AbstractArray, b::AbstractArray) = Base.promote_op(matprod, eltype(a), eltype(b))
@@ -590,14 +592,14 @@ mul_ndims(a::AbstractArray, b::AbstractArray) = ndims(b)
 mul_axes(a::AbstractArray, b::AbstractArray) = (axes(a, 1), axes(b, ndims(b)))
 
 # Base overloads for MulArrays.
-axes_mul(a::AbstractArray) = mul_axes(mulled_left(a), mulled_right(a))
+axes_mul(a::AbstractArray) = mul_axes(factors(a)...)
 size_mul(a::AbstractArray) = length.(axes_mul(a))
 similar_mul(a::AbstractArray) = similar(a, eltype(a))
 similar_mul(a::AbstractArray, ax::Tuple) = similar(a, eltype(a), ax)
 # TODO: Make use of both arguments to determine the output, maybe
-# using `LinearAlgebra.matprod_dest(mulled_left(a), mulled_right(a), elt)`?
-similar_mul(a::AbstractArray, elt::Type) = similar(mulled_right(a), elt)
-similar_mul(a::AbstractArray, elt::Type, ax) = similar(mulled_right(a), elt, ax)
+# using `LinearAlgebra.matprod_dest(factors(a)..., elt)`?
+similar_mul(a::AbstractArray, elt::Type) = similar(last(factors(a)), elt)
+similar_mul(a::AbstractArray, elt::Type, ax) = similar(last(factors(a)), elt, ax)
 function copyto!_mul(dest::AbstractArray, src::AbstractArray)
     TA.add!(dest, src, true, false)
     return dest
@@ -608,29 +610,31 @@ show_mul(io::IO, mime::MIME"text/plain", a::AbstractArray) = show_lazy(io, mime,
 # Base.Broadcast overloads for MulArrays.
 materialize_mul(a::AbstractArray) = copy(a)
 function BroadcastStyle_mul(arrayt::Type{<:AbstractArray})
-    A = mulled_left_type(arrayt)
-    B = mulled_right_type(arrayt)
-    style = Base.promote_op(BC.combine_styles, A, B)()
+    style = Base.promote_op(BC.combine_styles, factor_types(arrayt)...)()
     return LazyArrayStyle(style)
 end
-to_broadcasted_mul(a::AbstractArray) = mulled_left(a) * mulled_right(a)
 
 # TensorAlgebra overloads for MulArrays.
 function add!_mul(dest::AbstractArray, src::AbstractArray, α::Number, β::Number)
     # We materialize the arguments here to avoid nested lazy evaluation.
     # Rewrite rules should make it so that `MulArray` is a "leaf` node of the
     # expression tree.
-    LA.mul!(dest, BC.materialize.((mulled_left(src), mulled_right(src)))..., α, β)
+    LA.mul!(dest, BC.materialize.(factors(src))..., α, β)
     return dest
 end
 
 # Lazy operations for MulArrays.
-conjed_mul(a::AbstractArray) = *ₗ(conjed(mulled_left(a)), conjed(mulled_right(a)))
+conjed_mul(a::AbstractArray) = *ₗ(conjed.(factors(a))...)
+# Matmul isn't a broadcasting operation so we materialize (i.e.
+# perform the matrix multiplication) when building a broadcast
+# expression involving a `MulArray`.
+# TODO: Use `Broadcast.broadcastable` interface for this?
+to_broadcasted_mul(a::AbstractArray) = *(factors(a)...)
 
 # TermInterface overloads for MulArrays.
 iscall_mul(::AbstractArray) = true
 operation_mul(::AbstractArray) = *
-arguments_mul(a::AbstractArray) = (mulled_left(a), mulled_right(a))
+arguments_mul(a::AbstractArray) = factors(a)
 
 macro mularray_type(MulArray, AbstractArray = :AbstractArray)
     return esc(
@@ -645,10 +649,9 @@ macro mularray_type(MulArray, AbstractArray = :AbstractArray)
                     return new{T, N, typeof(a), typeof(b)}(a, b)
                 end
             end
-            NamedDimsArrays.mulled_left(a::$MulArray) = a.a
-            NamedDimsArrays.mulled_right(a::$MulArray) = a.b
-            NamedDimsArrays.mulled_left_type(arrayt::Type{<:$MulArray}) = fieldtype(arrayt, :a)
-            NamedDimsArrays.mulled_right_type(arrayt::Type{<:$MulArray}) = fieldtype(arrayt, :b)
+            NamedDimsArrays.factors(a::$MulArray) = (a.a, a.b)
+            NamedDimsArrays.factor_types(arrayt::Type{<:$MulArray}) =
+                (fieldtype(arrayt, :a), fieldtype(arrayt, :b))
         end
     )
 end
@@ -665,11 +668,15 @@ macro mularray_base(MulArray)
                 a::$MulArray, elt::Type,
                 ax::Tuple{Union{Integer, Base.OneTo}, Vararg{Union{Integer, Base.OneTo}}},
             ) = NamedDimsArrays.similar_mul(a, elt, ax)
-            Base.similar(a::$MulArray, elt::Type, ax) = NamedDimsArrays.similar_mul(a, elt, ax)
-            Base.similar(a::$MulArray, elt::Type, ax::Dims) = NamedDimsArrays.similar_mul(a, elt, ax)
-            Base.copyto!(dest::AbstractArray, src::$MulArray) = NamedDimsArrays.copyto!_mul(dest, src)
+            Base.similar(a::$MulArray, elt::Type, ax) =
+                NamedDimsArrays.similar_mul(a, elt, ax)
+            Base.similar(a::$MulArray, elt::Type, ax::Dims) =
+                NamedDimsArrays.similar_mul(a, elt, ax)
+            Base.copyto!(dest::AbstractArray, src::$MulArray) =
+                NamedDimsArrays.copyto!_mul(dest, src)
             Base.show(io::IO, a::$MulArray) = NamedDimsArrays.show_mul(io, a)
-            Base.show(io::IO, mime::MIME"text/plain", a::$MulArray) = NamedDimsArrays.show_mul(io, mime, a)
+            Base.show(io::IO, mime::MIME"text/plain", a::$MulArray) =
+                NamedDimsArrays.show_mul(io, mime, a)
         end
     )
 end
@@ -680,7 +687,6 @@ macro mularray_broadcast(MulArray)
             Base.Broadcast.materialize(a::$MulArray) = NamedDimsArrays.materialize_mul(a)
             Base.Broadcast.BroadcastStyle(arrayt::Type{<:$MulArray}) =
                 NamedDimsArrays.BroadcastStyle_mul(arrayt)
-            NamedDimsArrays.to_broadcasted(a::$MulArray) = NamedDimsArrays.to_broadcasted_mul(a)
         end
     )
 end
@@ -689,6 +695,8 @@ macro mularray_lazy(MulArray)
     return esc(
         quote
             NamedDimsArrays.conjed(a::$MulArray) = NamedDimsArrays.conjed_mul(a)
+            NamedDimsArrays.to_broadcasted(a::$MulArray) =
+                NamedDimsArrays.to_broadcasted_mul(a)
         end
     )
 end
