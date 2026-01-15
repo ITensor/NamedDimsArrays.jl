@@ -312,16 +312,22 @@ macro scaledarray_terminterface(ScaledArray)
     )
 end
 
+macro scaledarray(ScaledArray)
+    return esc(
+        quote
+            NamedDimsArrays.@scaledarray_base $ScaledArray
+            NamedDimsArrays.@scaledarray_broadcast $ScaledArray
+            NamedDimsArrays.@scaledarray_lazy $ScaledArray
+            NamedDimsArrays.@scaledarray_linearalgebra $ScaledArray
+            NamedDimsArrays.@scaledarray_tensoralgebra $ScaledArray
+            NamedDimsArrays.@scaledarray_terminterface $ScaledArray
+        end
+    )
+end
+
 @scaledarray_type ScaledArray
-@scaledarray_base ScaledArray
-@scaledarray_broadcast ScaledArray
-@scaledarray_lazy ScaledArray
-import LinearAlgebra
-@scaledarray_linearalgebra ScaledArray
-import TensorAlgebra
-@scaledarray_tensoralgebra ScaledArray
-import TermInterface
-@scaledarray_terminterface ScaledArray
+import LinearAlgebra, TensorAlgebra, TermInterface
+@scaledarray ScaledArray
 
 # Generic constructors for ConjArrays.
 conjed(a::AbstractArray) = ConjArray(a)
@@ -411,13 +417,20 @@ macro conjarray_terminterface(ConjArray)
     )
 end
 
+macro conjarray(ConjArray)
+    return esc(
+        quote
+            NamedDimsArrays.@conjarray_base $ConjArray
+            NamedDimsArrays.@conjarray_broadcast $ConjArray
+            NamedDimsArrays.@conjarray_stridedviews $ConjArray
+            NamedDimsArrays.@conjarray_terminterface $ConjArray
+        end
+    )
+end
+
 @conjarray_type ConjArray
-@conjarray_base ConjArray
-@conjarray_broadcast ConjArray
-import StridedViews
-@conjarray_stridedviews ConjArray
-import TermInterface
-@conjarray_terminterface ConjArray
+import StridedViews, TermInterface
+@conjarray ConjArray
 
 struct AddArray{T, N, Args <: Tuple{Vararg{AbstractArray{<:Any, N}}}} <: AbstractArray{T, N}
     args::Args
