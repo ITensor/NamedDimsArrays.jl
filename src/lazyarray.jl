@@ -1,9 +1,13 @@
 # TODO: Move this file to TensorAlgebra.jl.
-
 import Base.Broadcast as BC
 import LinearAlgebra as LA
+import StridedViews as SV
 import TensorAlgebra as TA
-import TermInterface as TI
+
+# TermInterface-like interface.
+iscall(x) = false
+function operation end
+function arguments end
 
 # Generic logic for lazy array linear algebra operations.
 function +ₗ(a::AbstractArray, b::AbstractArray, c::AbstractArray, xs::AbstractArray...)
@@ -57,17 +61,15 @@ to_linear(bc::BC.Broadcasted) = lazy_function(bc.f)(to_linear.(bc.args)...)
 to_broadcasted(x) = x
 function to_broadcasted(a::AbstractArray)
     (BC.BroadcastStyle(typeof(a)) isa LazyArrayStyle) || return a
-    return BC.broadcasted(TI.operation(a), to_broadcasted.(TI.arguments(a))...)
+    return BC.broadcasted(operation(a), to_broadcasted.(arguments(a))...)
 end
-function to_broadcasted(bc::BC.Broadcasted)
-    return BC.Broadcasted(bc.f, to_broadcasted.(bc.args))
-end
+to_broadcasted(bc::BC.Broadcasted) = BC.Broadcasted(bc.f, to_broadcasted.(bc.args))
 
 # For lazy arrays, define Broadcast methods in terms of lazy operations.
 struct LazyArrayStyle{N, Style <: BC.AbstractArrayStyle{N}} <: BC.AbstractArrayStyle{N}
     style::Style
 end
-function LazyArrayStyle{N, Style}(::Val{M}) where {Style <: BC.AbstractArrayStyle{N}} where {N, M}
+function LazyArrayStyle{N, Style}(::Val{M}) where {M, N, Style <: BC.AbstractArrayStyle{N}}
     return LazyArrayStyle(Style(Val(M)))
 end
 function BC.BroadcastStyle(style1::LazyArrayStyle, style2::LazyArrayStyle)
@@ -80,75 +82,29 @@ function Base.similar(bc::BC.Broadcasted{<:LazyArrayStyle}, elt::Type, ax)
 end
 # Backup definition, for broadcast operations that don't preserve LazyArrays
 # (such as nonlinear operations), convert back to Broadcasted expressions.
-function BC.broadcasted(::LazyArrayStyle, f, args...)
-    return BC.Broadcasted(f, to_broadcasted.(args))
-end
-function BC.broadcasted(
-        ::LazyArrayStyle,
-        ::typeof(+),
-        a::AbstractArray,
-        b::AbstractArray,
-    )
-    return a +ₗ b
-end
-function BC.broadcasted(
-        ::LazyArrayStyle,
-        ::typeof(+),
-        a::AbstractArray,
-        b::BC.Broadcasted,
-    )
+BC.broadcasted(::LazyArrayStyle, f, args...) = BC.Broadcasted(f, to_broadcasted.(args))
+BC.broadcasted(::LazyArrayStyle, ::typeof(+), a::AbstractArray, b::AbstractArray) = a +ₗ b
+function BC.broadcasted(::LazyArrayStyle, ::typeof(+), a::AbstractArray, b::BC.Broadcasted)
     is_linear(b) || return BC.Broadcasted(+, to_broadcasted.((a, b)))
     return a +ₗ to_linear(b)
 end
-function BC.broadcasted(
-        ::LazyArrayStyle,
-        ::typeof(+),
-        a::BC.Broadcasted,
-        b::AbstractArray,
-    )
+function BC.broadcasted(::LazyArrayStyle, ::typeof(+), a::BC.Broadcasted, b::AbstractArray)
     is_linear(a) || return BC.Broadcasted(+, to_broadcasted.((a, b)))
     return to_linear(a) +ₗ b
 end
-function BC.broadcasted(
-        ::LazyArrayStyle,
-        ::typeof(+),
-        a::BC.Broadcasted,
-        b::BC.Broadcasted,
-    )
+function BC.broadcasted(::LazyArrayStyle, ::typeof(+), a::BC.Broadcasted, b::BC.Broadcasted)
     return error("Not implemented")
 end
-function BC.broadcasted(
-        ::LazyArrayStyle, ::typeof(*), α::Number, a::AbstractArray
-    )
-    return α *ₗ a
-end
-function BC.broadcasted(
-        ::LazyArrayStyle, ::typeof(*), a::AbstractArray, α::Number
-    )
-    return a *ₗ α
-end
-function BC.broadcasted(
-        ::LazyArrayStyle, ::typeof(\), α::Number, a::AbstractArray
-    )
-    return α \ₗ a
-end
-function BC.broadcasted(
-        ::LazyArrayStyle, ::typeof(/), a::AbstractArray, α::Number
-    )
-    return a /ₗ α
-end
-function BC.broadcasted(::LazyArrayStyle, ::typeof(-), a::AbstractArray)
-    return -ₗ(a)
-end
-function BC.broadcasted(
-        ::LazyArrayStyle, ::typeof(conj), a::AbstractArray
-    )
-    return conjed(a)
-end
+BC.broadcasted(::LazyArrayStyle, ::typeof(*), α::Number, a::AbstractArray) = α *ₗ a
+BC.broadcasted(::LazyArrayStyle, ::typeof(*), a::AbstractArray, α::Number) = a *ₗ α
+BC.broadcasted(::LazyArrayStyle, ::typeof(\), α::Number, a::AbstractArray) = α \ₗ a
+BC.broadcasted(::LazyArrayStyle, ::typeof(/), a::AbstractArray, α::Number) = a /ₗ α
+BC.broadcasted(::LazyArrayStyle, ::typeof(-), a::AbstractArray) = -ₗ(a)
+BC.broadcasted(::LazyArrayStyle, ::typeof(conj), a::AbstractArray) = conjed(a)
 
 # Base overloads for lazy arrays.
 function show_lazy(io::IO, a::AbstractArray)
-    print(io, TI.operation(a), "(", join(TI.arguments(a), ", "), ")")
+    print(io, operation(a), "(", join(arguments(a), ", "), ")")
     return nothing
 end
 function show_lazy(io::IO, mime::MIME"text/plain", a::AbstractArray)
@@ -174,18 +130,14 @@ similar_scaled(a::AbstractArray) = similar(unscaled(a))
 similar_scaled(a::AbstractArray, elt::Type) = similar(unscaled(a), elt)
 similar_scaled(a::AbstractArray, ax) = similar(unscaled(a), ax)
 similar_scaled(a::AbstractArray, elt::Type, ax) = similar(unscaled(a), elt, ax)
-function copyto!_scaled(dest::AbstractArray, src::AbstractArray)
-    TA.add!(dest, src, true, false)
-    return dest
-end
+copyto!_scaled(dest::AbstractArray, src::AbstractArray) = TA.add!(dest, src, true, false)
 show_scaled(io::IO, a::AbstractArray) = show_lazy(io, a)
 show_scaled(io::IO, mime::MIME"text/plain", a::AbstractArray) = show_lazy(io, mime, a)
 
 # Base.Broadcast overloads for ScaledArrays.
 materialize_scaled(a::AbstractArray) = copy(a)
-function BroadcastStyle_scaled(arrayt::Type{<:AbstractArray})
-    return LazyArrayStyle(BC.BroadcastStyle(unscaled_type(arrayt)))
-end
+BroadcastStyle_scaled(arrayt::Type{<:AbstractArray}) =
+    LazyArrayStyle(BC.BroadcastStyle(unscaled_type(arrayt)))
 
 # LinearAlgebra overloads for ScaledArrays.
 mul!_scaled(dest::AbstractArray, a::AbstractArray, b::AbstractArray, α::Number, β::Number) =
@@ -198,12 +150,10 @@ mulled_scaled(a::AbstractArray, b::AbstractArray) =
 conjed_scaled(a::AbstractArray) = conj(coeff(a)) *ₗ conjed(unscaled(a))
 
 # TensorAlgebra overloads for ScaledArrays.
-function add!_scaled(dest::AbstractArray, src::AbstractArray, α::Number, β::Number)
+add!_scaled(dest::AbstractArray, src::AbstractArray, α::Number, β::Number) =
     TA.add!(dest, unscaled(src), coeff(src) * α, β)
-    return dest
-end
 
-# TermInterface overloads for ScaledArrays.
+# TermInterface-like overloads for ScaledArrays.
 iscall_scaled(::AbstractArray) = true
 operation_scaled(::AbstractArray) = *
 arguments_scaled(a::AbstractArray) = (coeff(a), unscaled(a))
@@ -224,55 +174,73 @@ macro scaledarray_type(ScaledArray, AbstractArray = :AbstractArray)
             NamedDimsArrays.unscaled_type(arrayt::Type{<:$ScaledArray}) =
                 fieldtype(arrayt, :parent)
             NamedDimsArrays.coeff(a::$ScaledArray) = a.coeff
-            NamedDimsArrays.coeff_type(arrayt::Type{<:$ScaledArray}) = fieldtype(arrayt, :coeff)
+            NamedDimsArrays.coeff_type(arrayt::Type{<:$ScaledArray}) =
+                fieldtype(arrayt, :coeff)
         end
     )
 end
 
-macro scaledarray_base(ScaledArray)
+macro scaledarray_base(ScaledArray, AbstractArray = :AbstractArray)
     return esc(
         quote
-            Base.axes(a::$ScaledArray) = NamedDimsArrays.axes_scaled(a)
-            Base.size(a::$ScaledArray) = NamedDimsArrays.size_scaled(a)
-            Base.similar(a::$ScaledArray) = NamedDimsArrays.similar_scaled(a)
-            Base.similar(a::$ScaledArray, elt::Type) = NamedDimsArrays.similar_scaled(a, elt)
-            Base.similar(a::$ScaledArray, ax) = NamedDimsArrays.similar_scaled(a, ax)
-            Base.similar(a::$ScaledArray, elt::Type, ax) = NamedDimsArrays.similar_scaled(a, elt, ax)
-            Base.similar(a::$ScaledArray, elt::Type, ax::Dims) = NamedDimsArrays.similar_scaled(a, elt, ax)
-            Base.copyto!(dest::AbstractArray, src::$ScaledArray) = NamedDimsArrays.copyto!_scaled(dest, src)
-            Base.show(io::IO, a::$ScaledArray) = NamedDimsArrays.show_scaled(io, a)
-            Base.show(io::IO, mime::MIME"text/plain", a::$ScaledArray) = NamedDimsArrays.show_scaled(io, mime, a)
+            Base.axes(a::$ScaledArray) =
+                NamedDimsArrays.axes_scaled(a)
+            Base.size(a::$ScaledArray) =
+                NamedDimsArrays.size_scaled(a)
+            Base.similar(a::$ScaledArray) =
+                NamedDimsArrays.similar_scaled(a)
+            Base.similar(a::$ScaledArray, elt::Type) =
+                NamedDimsArrays.similar_scaled(a, elt)
+            Base.similar(a::$ScaledArray, ax) =
+                NamedDimsArrays.similar_scaled(a, ax)
+            Base.similar(a::$ScaledArray, elt::Type, ax) =
+                NamedDimsArrays.similar_scaled(a, elt, ax)
+            Base.similar(a::$ScaledArray, elt::Type, ax::Dims) =
+                NamedDimsArrays.similar_scaled(a, elt, ax)
+            Base.copyto!(dest::$AbstractArray, src::$ScaledArray) =
+                NamedDimsArrays.copyto!_scaled(dest, src)
+            Base.show(io::IO, a::$ScaledArray) =
+                NamedDimsArrays.show_scaled(io, a)
+            Base.show(io::IO, mime::MIME"text/plain", a::$ScaledArray) =
+                NamedDimsArrays.show_scaled(io, mime, a)
         end
     )
 end
 
-macro scaledarray_broadcast(ScaledArray)
+macro scaledarray_broadcast(ScaledArray, AbstractArray = :AbstractArray)
     return esc(
         quote
-            Base.Broadcast.materialize(a::$ScaledArray) = NamedDimsArrays.materialize_scaled(a)
+            Base.Broadcast.materialize(a::$ScaledArray) =
+                NamedDimsArrays.materialize_scaled(a)
             Base.Broadcast.BroadcastStyle(arrayt::Type{<:$ScaledArray}) =
                 NamedDimsArrays.BroadcastStyle_scaled(arrayt)
         end
     )
 end
 
-macro scaledarray_linearalgebra(ScaledArray)
+macro scaledarray_linearalgebra(ScaledArray, AbstractArray = :AbstractArray)
     return esc(
         quote
-            function LinearAlgebra.mul!(
-                    dest::AbstractMatrix, a::$ScaledArray{<:Any, 2}, b::$ScaledArray{<:Any, 2},
+            function NamedDimsArrays.LA.mul!(
+                    dest::$AbstractArray{<:Any, 2},
+                    a::$ScaledArray{<:Any, 2},
+                    b::$ScaledArray{<:Any, 2},
                     α::Number, β::Number,
                 )
                 return NamedDimsArrays.mul!_scaled(dest, a, b, α, β)
             end
-            function LinearAlgebra.mul!(
-                    dest::AbstractMatrix, a::AbstractMatrix, b::$ScaledArray{<:Any, 2},
+            function NamedDimsArrays.LA.mul!(
+                    dest::$AbstractArray{<:Any, 2},
+                    a::$AbstractArray{<:Any, 2},
+                    b::$ScaledArray{<:Any, 2},
                     α::Number, β::Number,
                 )
                 return NamedDimsArrays.mul!_scaled(dest, a, b, α, β)
             end
-            function LinearAlgebra.mul!(
-                    dest::AbstractMatrix, a::$ScaledArray{<:Any, 2}, b::AbstractMatrix,
+            function NamedDimsArrays.LA.mul!(
+                    dest::$AbstractArray{<:Any, 2},
+                    a::$ScaledArray{<:Any, 2},
+                    b::$AbstractArray{<:Any, 2},
                     α::Number, β::Number,
                 )
                 return NamedDimsArrays.mul!_scaled(dest, a, b, α, β)
@@ -281,50 +249,54 @@ macro scaledarray_linearalgebra(ScaledArray)
     )
 end
 
-macro scaledarray_lazy(ScaledArray)
+macro scaledarray_lazy(ScaledArray, AbstractArray = :AbstractArray)
     return esc(
         quote
             NamedDimsArrays.:(*ₗ)(α::Number, a::$ScaledArray) =
                 NamedDimsArrays.mulled_scaled(α, a)
             NamedDimsArrays.:(*ₗ)(a::$ScaledArray, b::$ScaledArray) =
                 NamedDimsArrays.mulled_scaled(a, b)
-            NamedDimsArrays.:(*ₗ)(a::AbstractArray, b::$ScaledArray) =
+            NamedDimsArrays.:(*ₗ)(a::$AbstractArray, b::$ScaledArray) =
                 NamedDimsArrays.mulled_scaled(a, b)
-            NamedDimsArrays.:(*ₗ)(a::$ScaledArray, b::AbstractArray) =
+            NamedDimsArrays.:(*ₗ)(a::$ScaledArray, b::$AbstractArray) =
                 NamedDimsArrays.mulled_scaled(a, b)
-            NamedDimsArrays.conjed(a::$ScaledArray) = NamedDimsArrays.conjed_scaled(a)
+            NamedDimsArrays.conjed(a::$ScaledArray) =
+                NamedDimsArrays.conjed_scaled(a)
         end
     )
 end
 
-macro scaledarray_tensoralgebra(ScaledArray)
+macro scaledarray_tensoralgebra(ScaledArray, AbstractArray = :AbstractArray)
     return esc(
         quote
-            TensorAlgebra.add!(dest::AbstractArray, src::$ScaledArray, α::Number, β::Number) =
-                NamedDimsArrays.add!_scaled(dest, src, α, β)
+            function NamedDimsArrays.TA.add!(
+                    dest::$AbstractArray, src::$ScaledArray, α::Number, β::Number
+                )
+                return NamedDimsArrays.add!_scaled(dest, src, α, β)
+            end
         end
     )
 end
 
-macro scaledarray_terminterface(ScaledArray)
+macro scaledarray_terminterface(ScaledArray, AbstractArray = :AbstractArray)
     return esc(
         quote
-            TermInterface.iscall(a::$ScaledArray) = NamedDimsArrays.iscall_scaled(a)
-            TermInterface.operation(a::$ScaledArray) = NamedDimsArrays.operation_scaled(a)
-            TermInterface.arguments(a::$ScaledArray) = NamedDimsArrays.arguments_scaled(a)
+            NamedDimsArrays.iscall(a::$ScaledArray) = NamedDimsArrays.iscall_scaled(a)
+            NamedDimsArrays.operation(a::$ScaledArray) = NamedDimsArrays.operation_scaled(a)
+            NamedDimsArrays.arguments(a::$ScaledArray) = NamedDimsArrays.arguments_scaled(a)
         end
     )
 end
 
-macro scaledarray(ScaledArray)
+macro scaledarray(ScaledArray, AbstractArray = :AbstractArray)
     return esc(
         quote
-            NamedDimsArrays.@scaledarray_base $ScaledArray
-            NamedDimsArrays.@scaledarray_broadcast $ScaledArray
-            NamedDimsArrays.@scaledarray_lazy $ScaledArray
-            NamedDimsArrays.@scaledarray_linearalgebra $ScaledArray
-            NamedDimsArrays.@scaledarray_tensoralgebra $ScaledArray
-            NamedDimsArrays.@scaledarray_terminterface $ScaledArray
+            NamedDimsArrays.@scaledarray_base $ScaledArray $AbstractArray
+            NamedDimsArrays.@scaledarray_broadcast $ScaledArray $AbstractArray
+            NamedDimsArrays.@scaledarray_lazy $ScaledArray $AbstractArray
+            NamedDimsArrays.@scaledarray_linearalgebra $ScaledArray $AbstractArray
+            NamedDimsArrays.@scaledarray_tensoralgebra $ScaledArray $AbstractArray
+            NamedDimsArrays.@scaledarray_terminterface $ScaledArray $AbstractArray
         end
     )
 end
@@ -339,25 +311,20 @@ size_conj(a::AbstractArray) = size(conjed(a))
 similar_conj(a::AbstractArray, elt::Type) = similar(conjed(a), elt)
 similar_conj(a::AbstractArray, elt::Type, ax) = similar(conjed(a), elt, ax)
 similar_conj(a::AbstractArray, ax) = similar(conjed(a), ax)
-function copyto!_conj(dest::AbstractArray, src::AbstractArray)
-    TA.add!(dest, src, true, false)
-    return dest
-end
+copyto!_conj(dest::AbstractArray, src::AbstractArray) = TA.add!(dest, src, true, false)
 show_conj(io::IO, a::AbstractArray) = show_lazy(io, a)
 show_conj(io::IO, mime::MIME"text/plain", a::AbstractArray) = show_lazy(io, mime, a)
 
 # Base.Broadcast overloads for ConjArrays.
 materialize_conj(a::AbstractArray) = copy(a)
-function BroadcastStyle_conj(arrayt::Type{<:AbstractArray})
-    return LazyArrayStyle(BC.BroadcastStyle(conjed_type(arrayt)))
-end
+BroadcastStyle_conj(arrayt::Type{<:AbstractArray}) =
+    LazyArrayStyle(BC.BroadcastStyle(conjed_type(arrayt)))
 
 # StridedViews overloads for ConjArrays.
-using StridedViews: StridedView, isstrided
-isstrided_conj(a::AbstractArray) = isstrided(conjed(a))
-StridedView_conj(a::AbstractArray) = conj(StridedView(conjed(a)))
+isstrided_conj(a::AbstractArray) = SV.isstrided(conjed(a))
+StridedView_conj(a::AbstractArray) = conj(SV.StridedView(conjed(a)))
 
-# TermInterface overloads for ConjArrays.
+# TermInterface-like overloads for ConjArrays.
 iscall_conj(::AbstractArray) = true
 operation_conj(::AbstractArray) = conj
 arguments_conj(a::AbstractArray) = (conjed(a),)
@@ -373,7 +340,7 @@ macro conjarray_type(ConjArray, AbstractArray = :AbstractArray)
     )
 end
 
-macro conjarray_base(ConjArray)
+macro conjarray_base(ConjArray, AbstractArray = :AbstractArray)
     return esc(
         quote
             Base.axes(a::$ConjArray) = axes_conj(a)
@@ -381,14 +348,15 @@ macro conjarray_base(ConjArray)
             Base.similar(a::$ConjArray, elt::Type) = similar_conj(a, elt)
             Base.similar(a::$ConjArray, elt::Type, ax) = similar_conj(a, elt, ax)
             Base.similar(a::$ConjArray, elt::Type, ax::Dims) = similar_conj(a, elt, ax)
-            Base.copyto!(dest::AbstractArray, src::$ConjArray) = copyto!_conj(dest, src)
+            Base.copyto!(dest::$AbstractArray, src::$ConjArray) = copyto!_conj(dest, src)
             Base.show(io::IO, a::$ConjArray) = show_conj(io, a)
-            Base.show(io::IO, mime::MIME"text/plain", a::$ConjArray) = show_conj(io, mime, a)
+            Base.show(io::IO, mime::MIME"text/plain", a::$ConjArray) =
+                show_conj(io, mime, a)
         end
     )
 end
 
-macro conjarray_broadcast(ConjArray)
+macro conjarray_broadcast(ConjArray, AbstractArray = :AbstractArray)
     return esc(
         quote
             Base.Broadcast.materialize(a::$ConjArray) = materialize_conj(a)
@@ -398,32 +366,34 @@ macro conjarray_broadcast(ConjArray)
     )
 end
 
-macro conjarray_stridedviews(ConjArray)
+macro conjarray_stridedviews(ConjArray, AbstractArray = :AbstractArray)
     return esc(
         quote
-            StridedViews.isstrided(a::$ConjArray) = isstrided_conj(a)
-            StridedViews.StridedView(a::$ConjArray) = StridedView_conj(a)
+            NamedDimsArrays.SV.isstrided(a::$ConjArray) =
+                NamedDimsArrays.isstrided_conj(a)
+            NamedDimsArrays.SV.StridedView(a::$ConjArray) =
+                NamedDimsArrays.StridedView_conj(a)
         end
     )
 end
 
-macro conjarray_terminterface(ConjArray)
+macro conjarray_terminterface(ConjArray, AbstractArray = :AbstractArray)
     return esc(
         quote
-            TI.iscall(::$ConjArray) = true
-            TI.operation(::$ConjArray) = conj
-            TI.arguments(a::$ConjArray) = (a.parent,)
+            NamedDimsArrays.iscall(a::$ConjArray) = NamedDimsArrays.iscall_conj(a)
+            NamedDimsArrays.operation(a::$ConjArray) = NamedDimsArrays.operation_conj(a)
+            NamedDimsArrays.arguments(a::$ConjArray) = NamedDimsArrays.arguments_conj(a)
         end
     )
 end
 
-macro conjarray(ConjArray)
+macro conjarray(ConjArray, AbstractArray = :AbstractArray)
     return esc(
         quote
-            NamedDimsArrays.@conjarray_base $ConjArray
-            NamedDimsArrays.@conjarray_broadcast $ConjArray
-            NamedDimsArrays.@conjarray_stridedviews $ConjArray
-            NamedDimsArrays.@conjarray_terminterface $ConjArray
+            NamedDimsArrays.@conjarray_base $ConjArray $AbstractArray
+            NamedDimsArrays.@conjarray_broadcast $ConjArray $AbstractArray
+            NamedDimsArrays.@conjarray_stridedviews $ConjArray $AbstractArray
+            NamedDimsArrays.@conjarray_terminterface $ConjArray $AbstractArray
         end
     )
 end
@@ -441,11 +411,9 @@ size_add(a::AbstractArray) = length.(axes_add(a))
 similar_add(a::AbstractArray) = similar(a, eltype(a))
 similar_add(a::AbstractArray, ax::Tuple) = similar(a, eltype(a), ax)
 similar_add(a::AbstractArray, elt::Type) = similar(BC.Broadcasted(+, addends(a)), elt)
-similar_add(a::AbstractArray, elt::Type, ax) = similar(BC.Broadcasted(+, addends(a)), elt, ax)
-function copyto!_add(dest::AbstractArray, src::AbstractArray)
-    TA.add!(dest, src, true, false)
-    return dest
-end
+similar_add(a::AbstractArray, elt::Type, ax) =
+    similar(BC.Broadcasted(+, addends(a)), elt, ax)
+copyto!_add(dest::AbstractArray, src::AbstractArray) = TA.add!(dest, src, true, false)
 show_add(io::IO, a::AbstractArray) = show_lazy(io, a)
 show_add(io::IO, mime::MIME"text/plain", a::AbstractArray) = show_lazy(io, mime, a)
 
@@ -470,12 +438,13 @@ end
 # Lazy operations for AddArrays.
 added_add(a::AbstractArray, b::AbstractArray) = AddArray((addends(a)..., addends(b)...)...)
 mulled_add(α::Number, a::AbstractArray) = +ₗ((α .*ₗ addends(a))...)
+## TODO: Define these by expanding all combinations treating both inputs as AddArrays.
 ## mulled_add(a::AbstractArray, b::AbstractArray) = +ₗ((Ref(a) .*ₗ addends(b))...)
 ## mulled_add(a::AddArray, b::AbstractArray) = +ₗ((addends(a) .*ₗ Ref(b))...)
 ## mulled_add(a::AddArray, b::AddArray) = +ₗ((Ref(a) .*ₗ addends(b))...)
 conjed_add(a::AbstractArray) = +ₗ(conjed.(addends(a))...)
 
-# TermInterface overloads for AddArrays.
+# TermInterface-like overloads for AddArrays.
 iscall_add(::AbstractArray) = true
 operation_add(::AbstractArray) = +
 arguments_add(a::AbstractArray) = addends(a)
@@ -492,12 +461,13 @@ macro addarray_type(AddArray, AbstractArray = :AbstractArray)
                 end
             end
             NamedDimsArrays.addends(a::$AddArray) = a.args
-            NamedDimsArrays.addends_type(arrayt::Type{<:$AddArray}) = fieldtype(arrayt, :args)
+            NamedDimsArrays.addends_type(arrayt::Type{<:$AddArray}) =
+                fieldtype(arrayt, :args)
         end
     )
 end
 
-macro addarray_base(AddArray)
+macro addarray_base(AddArray, AbstractArray = :AbstractArray)
     return esc(
         quote
             Base.axes(a::$AddArray) = NamedDimsArrays.axes_add(a)
@@ -515,7 +485,7 @@ macro addarray_base(AddArray)
                 NamedDimsArrays.similar_add(a, elt, ax)
             Base.similar(a::$AddArray, elt::Type, ax) =
                 NamedDimsArrays.similar_add(a, elt, ax)
-            Base.copyto!(dest::AbstractArray, src::$AddArray) =
+            Base.copyto!(dest::$AbstractArray, src::$AddArray) =
                 NamedDimsArrays.copyto!_add(dest, src)
             Base.show(io::IO, a::$AddArray) =
                 NamedDimsArrays.show_add(io, a)
@@ -525,7 +495,7 @@ macro addarray_base(AddArray)
     )
 end
 
-macro addarray_broadcast(AddArray)
+macro addarray_broadcast(AddArray, AbstractArray = :AbstractArray)
     return esc(
         quote
             Base.Broadcast.materialize(a::$AddArray) = NamedDimsArrays.materialize_add(a)
@@ -535,48 +505,59 @@ macro addarray_broadcast(AddArray)
     )
 end
 
-macro addarray_lazy(AddArray)
+macro addarray_lazy(AddArray, AbstractArray = :AbstractArray)
     return esc(
         quote
-            NamedDimsArrays.:(+ₗ)(a::AbstractArray, b::$AddArray) = NamedDimsArrays.added_add(a, b)
-            NamedDimsArrays.:(+ₗ)(a::$AddArray, b::AbstractArray) = NamedDimsArrays.added_add(a, b)
-            NamedDimsArrays.:(+ₗ)(a::$AddArray, b::$AddArray) = NamedDimsArrays.added_add(a, b)
-            NamedDimsArrays.:(*ₗ)(α::Number, a::$AddArray) = NamedDimsArrays.mulled_add(α, a)
-            NamedDimsArrays.:(*ₗ)(a::AbstractArray, b::$AddArray) = NamedDimsArrays.mulled_add(a, b)
-            NamedDimsArrays.:(*ₗ)(a::$AddArray, b::AbstractArray) = NamedDimsArrays.mulled_add(a, b)
-            NamedDimsArrays.:(*ₗ)(a::$AddArray, b::$AddArray) = NamedDimsArrays.mulled_add(a, b)
-            NamedDimsArrays.conjed(a::$AddArray) = NamedDimsArrays.conjed_add(a)
+            NamedDimsArrays.:(+ₗ)(a::$AbstractArray, b::$AddArray) =
+                NamedDimsArrays.added_add(a, b)
+            NamedDimsArrays.:(+ₗ)(a::$AddArray, b::$AbstractArray) =
+                NamedDimsArrays.added_add(a, b)
+            NamedDimsArrays.:(+ₗ)(a::$AddArray, b::$AddArray) =
+                NamedDimsArrays.added_add(a, b)
+            NamedDimsArrays.:(*ₗ)(α::Number, a::$AddArray) =
+                NamedDimsArrays.mulled_add(α, a)
+            NamedDimsArrays.:(*ₗ)(a::$AbstractArray, b::$AddArray) =
+                NamedDimsArrays.mulled_add(a, b)
+            NamedDimsArrays.:(*ₗ)(a::$AddArray, b::$AbstractArray) =
+                NamedDimsArrays.mulled_add(a, b)
+            NamedDimsArrays.:(*ₗ)(a::$AddArray, b::$AddArray) =
+                NamedDimsArrays.mulled_add(a, b)
+            NamedDimsArrays.conjed(a::$AddArray) =
+                NamedDimsArrays.conjed_add(a)
         end
     )
 end
 
-macro addarray_tensoralgebra(AddArray)
+macro addarray_tensoralgebra(AddArray, AbstractArray = :AbstractArray)
     return esc(
         quote
-            TensorAlgebra.add!(dest::AbstractArray, src::$AddArray, α::Number, β::Number) =
-                NamedDimsArrays.add!_add(dest, src, α, β)
+            function NamedDimsArrays.TA.add!(
+                    dest::$AbstractArray, src::$AddArray, α::Number, β::Number
+                )
+                return NamedDimsArrays.add!_add(dest, src, α, β)
+            end
         end
     )
 end
 
-macro addarray_terminterface(AddArray)
+macro addarray_terminterface(AddArray, AbstractArray = :AbstractArray)
     return esc(
         quote
-            TermInterface.iscall(a::$AddArray) = NamedDimsArrays.iscall_add(a)
-            TermInterface.operation(a::$AddArray) = NamedDimsArrays.operation_add(a)
-            TermInterface.arguments(a::$AddArray) = NamedDimsArrays.arguments_add(a)
+            NamedDimsArrays.iscall(a::$AddArray) = NamedDimsArrays.iscall_add(a)
+            NamedDimsArrays.operation(a::$AddArray) = NamedDimsArrays.operation_add(a)
+            NamedDimsArrays.arguments(a::$AddArray) = NamedDimsArrays.arguments_add(a)
         end
     )
 end
 
-macro addarray(AddArray)
+macro addarray(AddArray, AbstractArray = :AbstractArray)
     return esc(
         quote
-            NamedDimsArrays.@addarray_base $AddArray
-            NamedDimsArrays.@addarray_broadcast $AddArray
-            NamedDimsArrays.@addarray_lazy $AddArray
-            NamedDimsArrays.@addarray_tensoralgebra $AddArray
-            NamedDimsArrays.@addarray_terminterface $AddArray
+            NamedDimsArrays.@addarray_base $AddArray $AbstractArray
+            NamedDimsArrays.@addarray_broadcast $AddArray $AbstractArray
+            NamedDimsArrays.@addarray_lazy $AddArray $AbstractArray
+            NamedDimsArrays.@addarray_tensoralgebra $AddArray $AbstractArray
+            NamedDimsArrays.@addarray_terminterface $AddArray $AbstractArray
         end
     )
 end
@@ -592,18 +573,16 @@ mul_ndims(a::AbstractArray, b::AbstractArray) = ndims(b)
 mul_axes(a::AbstractArray, b::AbstractArray) = (axes(a, 1), axes(b, ndims(b)))
 
 # Base overloads for MulArrays.
+eltype_mul(a::AbstractArray{T}) where {T} = T
 axes_mul(a::AbstractArray) = mul_axes(factors(a)...)
 size_mul(a::AbstractArray) = length.(axes_mul(a))
 similar_mul(a::AbstractArray) = similar(a, eltype(a))
 similar_mul(a::AbstractArray, ax::Tuple) = similar(a, eltype(a), ax)
+similar_mul(a::AbstractArray, elt::Type) = similar(a, elt, axes(a))
 # TODO: Make use of both arguments to determine the output, maybe
 # using `LinearAlgebra.matprod_dest(factors(a)..., elt)`?
-similar_mul(a::AbstractArray, elt::Type) = similar(last(factors(a)), elt)
 similar_mul(a::AbstractArray, elt::Type, ax) = similar(last(factors(a)), elt, ax)
-function copyto!_mul(dest::AbstractArray, src::AbstractArray)
-    TA.add!(dest, src, true, false)
-    return dest
-end
+copyto!_mul(dest::AbstractArray, src::AbstractArray) = TA.add!(dest, src, true, false)
 show_mul(io::IO, a::AbstractArray) = show_lazy(io, a)
 show_mul(io::IO, mime::MIME"text/plain", a::AbstractArray) = show_lazy(io, mime, a)
 
@@ -615,13 +594,11 @@ function BroadcastStyle_mul(arrayt::Type{<:AbstractArray})
 end
 
 # TensorAlgebra overloads for MulArrays.
-function add!_mul(dest::AbstractArray, src::AbstractArray, α::Number, β::Number)
-    # We materialize the arguments here to avoid nested lazy evaluation.
-    # Rewrite rules should make it so that `MulArray` is a "leaf` node of the
-    # expression tree.
+# We materialize the arguments here to avoid nested lazy evaluation.
+# Rewrite rules should make it so that `MulArray` is a "leaf` node of the
+# expression tree.
+add!_mul(dest::AbstractArray, src::AbstractArray, α::Number, β::Number) =
     LA.mul!(dest, BC.materialize.(factors(src))..., α, β)
-    return dest
-end
 
 # Lazy operations for MulArrays.
 conjed_mul(a::AbstractArray) = *ₗ(conjed.(factors(a))...)
@@ -631,7 +608,7 @@ conjed_mul(a::AbstractArray) = *ₗ(conjed.(factors(a))...)
 # TODO: Use `Broadcast.broadcastable` interface for this?
 to_broadcasted_mul(a::AbstractArray) = *(factors(a)...)
 
-# TermInterface overloads for MulArrays.
+# TermInterface-like overloads for MulArrays.
 iscall_mul(::AbstractArray) = true
 operation_mul(::AbstractArray) = *
 arguments_mul(a::AbstractArray) = factors(a)
@@ -656,9 +633,10 @@ macro mularray_type(MulArray, AbstractArray = :AbstractArray)
     )
 end
 
-macro mularray_base(MulArray)
+macro mularray_base(MulArray, AbstractArray = :AbstractArray)
     return esc(
         quote
+            Base.eltype(a::$MulArray) = NamedDimsArrays.eltype_mul(a)
             Base.axes(a::$MulArray) = NamedDimsArrays.axes_mul(a)
             Base.size(a::$MulArray) = NamedDimsArrays.size_mul(a)
             Base.similar(a::$MulArray) = NamedDimsArrays.similar_mul(a)
@@ -672,7 +650,7 @@ macro mularray_base(MulArray)
                 NamedDimsArrays.similar_mul(a, elt, ax)
             Base.similar(a::$MulArray, elt::Type, ax::Dims) =
                 NamedDimsArrays.similar_mul(a, elt, ax)
-            Base.copyto!(dest::AbstractArray, src::$MulArray) =
+            Base.copyto!(dest::$AbstractArray, src::$MulArray) =
                 NamedDimsArrays.copyto!_mul(dest, src)
             Base.show(io::IO, a::$MulArray) = NamedDimsArrays.show_mul(io, a)
             Base.show(io::IO, mime::MIME"text/plain", a::$MulArray) =
@@ -681,7 +659,7 @@ macro mularray_base(MulArray)
     )
 end
 
-macro mularray_broadcast(MulArray)
+macro mularray_broadcast(MulArray, AbstractArray = :AbstractArray)
     return esc(
         quote
             Base.Broadcast.materialize(a::$MulArray) = NamedDimsArrays.materialize_mul(a)
@@ -691,7 +669,7 @@ macro mularray_broadcast(MulArray)
     )
 end
 
-macro mularray_lazy(MulArray)
+macro mularray_lazy(MulArray, AbstractArray = :AbstractArray)
     return esc(
         quote
             NamedDimsArrays.conjed(a::$MulArray) = NamedDimsArrays.conjed_mul(a)
@@ -701,39 +679,41 @@ macro mularray_lazy(MulArray)
     )
 end
 
-macro mularray_tensoralgebra(MulArray)
+macro mularray_tensoralgebra(MulArray, AbstractArray = :AbstractArray)
     return esc(
         quote
-            TensorAlgebra.add!(dest::AbstractArray, src::$MulArray, α::Number, β::Number) =
-                NamedDimsArrays.add!_mul(dest, src, α, β)
+            function NamedDimsArrays.TA.add!(
+                    dest::$AbstractArray, src::$MulArray, α::Number, β::Number
+                )
+                return NamedDimsArrays.add!_mul(dest, src, α, β)
+            end
         end
     )
 end
 
-macro mularray_terminterface(MulArray)
+macro mularray_terminterface(MulArray, AbstractArray = :AbstractArray)
     return esc(
         quote
-            TermInterface.iscall(a::$MulArray) = NamedDimsArrays.iscall_mul(a)
-            TermInterface.operation(a::$MulArray) = NamedDimsArrays.operation_mul(a)
-            TermInterface.arguments(a::$MulArray) = NamedDimsArrays.arguments_mul(a)
+            NamedDimsArrays.iscall(a::$MulArray) = NamedDimsArrays.iscall_mul(a)
+            NamedDimsArrays.operation(a::$MulArray) = NamedDimsArrays.operation_mul(a)
+            NamedDimsArrays.arguments(a::$MulArray) = NamedDimsArrays.arguments_mul(a)
         end
     )
 end
 
-macro mularray(MulArray)
+macro mularray(MulArray, AbstractArray = :AbstractArray)
     return esc(
         quote
-            NamedDimsArrays.@mularray_base $MulArray
-            NamedDimsArrays.@mularray_broadcast $MulArray
-            NamedDimsArrays.@mularray_lazy $MulArray
-            NamedDimsArrays.@mularray_tensoralgebra $MulArray
-            NamedDimsArrays.@mularray_terminterface $MulArray
+            NamedDimsArrays.@mularray_base $MulArray $AbstractArray
+            NamedDimsArrays.@mularray_broadcast $MulArray $AbstractArray
+            NamedDimsArrays.@mularray_lazy $MulArray $AbstractArray
+            NamedDimsArrays.@mularray_tensoralgebra $MulArray $AbstractArray
+            NamedDimsArrays.@mularray_terminterface $MulArray $AbstractArray
         end
     )
 end
 
 # Define types.
-import LinearAlgebra, StridedViews, TensorAlgebra, TermInterface
 @scaledarray_type ScaledArray
 @scaledarray ScaledArray
 @conjarray_type ConjArray
