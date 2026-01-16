@@ -5,7 +5,6 @@ using Compat: @compat
 @compat public to_inds
 @compat public @names
 
-include("lazyarray.jl")
 include("naiveorderedset.jl")
 include("isnamed.jl")
 include("randname.jl")
