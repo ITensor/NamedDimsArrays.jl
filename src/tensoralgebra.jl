@@ -2,6 +2,13 @@ import LinearAlgebra as LA
 import TensorAlgebra as TA
 using TupleTools: TupleTools
 
+function TA.add!(
+        dest::AbstractNamedDimsArray, src::AbstractNamedDimsArray, α::Number, β::Number
+    )
+    TA.add!(denamed(dest), denamed(src, inds(dest)), α, β)
+    return dest
+end
+
 Base.:*(a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray) = mul_nameddims(a1, a2)
 function mul_nameddims(a1::AbstractArray, a2::AbstractArray)
     a_dest, inds_dest = TA.contract(

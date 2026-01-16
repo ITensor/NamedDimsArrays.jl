@@ -886,15 +886,13 @@ end
 
 function Base.show(io::IO, mime::MIME"text/plain", a::AbstractNamedDimsArray)
     summary(io, a)
-    println(io)
+    println(io, ":")
     show(io, mime, denamed(a))
     return nothing
 end
 
 function Base.show(io::IO, a::AbstractNamedDimsArray)
-    show(io, unspecify_type_parameters(typeof(a)))
-    print(io, "(")
     show(io, denamed(a))
-    print(io, ", ", inds(a), ")")
+    print(io, "[", join(inds(a), ", "), "]")
     return nothing
 end

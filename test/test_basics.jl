@@ -410,20 +410,13 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
     end
     @testset "show" begin
         a = NamedDimsArray([1 2; 3 4], ("i", "j"))
-        ref = function (prefix)
-            return "named(Base.OneTo(2), \"i\")×named(Base.OneTo(2), \"j\") $(prefix)NamedDimsArray{Int64, 2, Matrix{Int64}, …}\n2×2 Matrix{Int64}:\n 1  2\n 3  4"
-        end
-        res = sprint(show, "text/plain", a)
-        # Could be either one depending on the namespacing.
-        @test (res == ref("")) || (res == ref("NamedDimsArrays."))
+        @test sprint(show, "text/plain", a) ==
+            "named(Base.OneTo(2), \"i\")×named(Base.OneTo(2), \"j\") " *
+            "$NamedDimsArray{Int64, 2, Matrix{Int64}, …}:\n" *
+            "2×2 Matrix{Int64}:\n 1  2\n 3  4"
 
         a = NamedDimsArray([1 2; 3 4], ("i", "j"))
-        ref = function (prefix)
-            return "$(prefix)NamedDimsArray([1 2; 3 4], (named(Base.OneTo(2), \"i\"), named(Base.OneTo(2), \"j\")))"
-        end
-        res = sprint(show, a)
-        # Could be either one depending on the namespacing.
-        @test (res == ref("")) || (res == ref("NamedDimsArrays."))
+        @test sprint(show, a) == "[1 2; 3 4][named(Base.OneTo(2), \"i\"), named(Base.OneTo(2), \"j\")]"
     end
 
     @testset "operator" begin

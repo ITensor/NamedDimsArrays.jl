@@ -8,6 +8,7 @@ using MapBroadcast: MapBroadcast, Mapped, mapped, tile
 using ..NamedDimsArrays: NamedDimsArrays, AbstractNamedDimsArray,
     AbstractNamedUnitRange, NaiveOrderedSet, dename, denamed, getperm, inds, name, named,
     nameddimsconstructorof
+import TensorAlgebra as TA
 
 abstract type AbstractNamedDimsArrayStyle{N} <: BC.AbstractArrayStyle{N} end
 
@@ -141,17 +142,12 @@ function Base.similar(bc::Summed{<:AbstractNamedDimsArrayStyle}, elt::Type, ax)
     return similar(Broadcasted(bc), elt, ax)
 end
 
-using TensorAlgebra: permutedimsadd!
 function Base.copyto!(
         dest::AbstractNamedDimsArray, src::Summed{<:AbstractNamedDimsArrayStyle}
     )
     β = false
-    inds_dest = inds(dest)
     for i in 1:length(src.arguments)
-        a = src.arguments[i]
-        α = src.coefficients[i]
-        perm = Tuple(getperm(inds(a), inds_dest))
-        permutedimsadd!(denamed(dest), denamed(a), perm, α, β)
+        TA.add!(dest, src.arguments[i], src.coefficients[i], β)
         β = true
     end
     return dest
