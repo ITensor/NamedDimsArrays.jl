@@ -1,10 +1,6 @@
 import TensorAlgebra as TA
 using TensorAlgebra: +ₗ, *ₗ, conjed
 
-# TODO: Move to TensorAlgebra.jl.
-import FunctionImplementations as FI
-FI.permuteddims(a::TA.ConjArray, perm) = conjed(FI.permuteddims(conjed(a), perm))
-
 copy_lazynameddims(a::AbstractArray) = copyto!(similar(a), a)
 
 TA.@scaledarray_type ScaledNamedDimsArray AbstractNamedDimsArray
