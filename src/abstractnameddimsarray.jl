@@ -8,7 +8,7 @@ using TypeParameterAccessors: unspecify_type_parameters
 # https://pytorch.org/docs/stable/named_tensor.html
 
 abstract type AbstractNamedDimsArrayImplementationStyle <:
-    FI.AbstractArrayImplementationStyle end
+FI.AbstractArrayImplementationStyle end
 
 struct NamedDimsArrayImplementationStyle <: AbstractNamedDimsArrayImplementationStyle end
 
