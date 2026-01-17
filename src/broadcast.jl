@@ -1,7 +1,3 @@
-# Broadcasting NamedDimsArrays. Wrap in a module to avoid name conflicts with
-# FunctionImplementations Style definitions.
-module Broadcast
-
 using Base.Broadcast: Broadcast as BC, Broadcasted, broadcast_shape, broadcasted,
     check_broadcast_shape, combine_axes
 using MapBroadcast: MapBroadcast, Mapped, mapped, tile
@@ -213,6 +209,4 @@ function BC.broadcasted(
         a,
     )
     return BC.broadcasted(style, /, a, f.args[2])
-end
-
 end

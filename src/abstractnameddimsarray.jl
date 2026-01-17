@@ -1,4 +1,4 @@
-using FunctionImplementations: FunctionImplementations as FI
+import FunctionImplementations as FI
 using TypeParameterAccessors: unspecify_type_parameters
 
 # Some of the interface is inspired by:
@@ -7,17 +7,18 @@ using TypeParameterAccessors: unspecify_type_parameters
 # https://github.com/mcabbott/NamedPlus.jl
 # https://pytorch.org/docs/stable/named_tensor.html
 
-abstract type AbstractNamedDimsArrayStyle <: FI.AbstractArrayStyle end
+abstract type AbstractNamedDimsArrayImplementationStyle <:
+FI.AbstractArrayImplementationStyle end
 
-struct NamedDimsArrayStyle <: AbstractNamedDimsArrayStyle end
+struct NamedDimsArrayImplementationStyle <: AbstractNamedDimsArrayImplementationStyle end
 
 abstract type AbstractNamedDimsArray{T, N} <: AbstractArray{T, N} end
 
 const AbstractNamedDimsVector{T} = AbstractNamedDimsArray{T, 1}
 const AbstractNamedDimsMatrix{T} = AbstractNamedDimsArray{T, 2}
 
-function FI.Style(type::Type{<:AbstractNamedDimsArray})
-    return NamedDimsArrayStyle()
+function FI.ImplementationStyle(type::Type{<:AbstractNamedDimsArray})
+    return NamedDimsArrayImplementationStyle()
 end
 
 const NamedDimsIndices = Union{
