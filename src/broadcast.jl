@@ -1,6 +1,6 @@
 using Base.Broadcast: Broadcast as BC, Broadcasted, broadcast_shape, broadcasted,
     check_broadcast_shape, combine_axes
-using MapBroadcast: MapBroadcast, Mapped, mapped, tile
+## using MapBroadcast: MapBroadcast, Mapped, mapped, tile
 using ..NamedDimsArrays: NamedDimsArrays, AbstractNamedDimsArray,
     AbstractNamedUnitRange, NaiveOrderedSet, dename, denamed, getperm, inds, name, named,
     nameddimsconstructorof
@@ -12,6 +12,10 @@ struct NamedDimsArrayStyle{N, NDA} <: AbstractNamedDimsArrayStyle{N} end
 NamedDimsArrayStyle(::Val{N}) where {N} = NamedDimsArrayStyle{N, NamedDimsArray}()
 NamedDimsArrayStyle{M}(::Val{N}) where {M, N} = NamedDimsArrayStyle{N, NamedDimsArray}()
 NamedDimsArrayStyle{M, NDA}(::Val{N}) where {M, N, NDA} = NamedDimsArrayStyle{N, NDA}()
+
+function nameddimstype(style::NamedDimsArrayStyle{<:Any, NDA}) where {NDA}
+    return NDA
+end
 
 function BC.BroadcastStyle(arraytype::Type{<:AbstractNamedDimsArray})
     return NamedDimsArrayStyle{ndims(arraytype), nameddimsconstructorof(arraytype)}()
@@ -59,7 +63,7 @@ function set_promote_shape(
     return named.(ax_promoted, name.(ax1))
 end
 
-# Handle operations like `ITensor() + ITensor(i, j)`.
+# Handle operations like `randn() + randn(2, 2)[i, j]``.
 # TODO: Decide if this should be a general definition for `AbstractNamedDimsArray`,
 # or just for `AbstractITensor`.
 function set_promote_shape(
@@ -68,7 +72,7 @@ function set_promote_shape(
     return ax2
 end
 
-# Handle operations like `ITensor(i, j) + ITensor()`.
+# Handle operations like `randn(2, 2)[i, j] + randn()`.
 # TODO: Decide if this should be a general definition for `AbstractNamedDimsArray`,
 # or just for `AbstractITensor`.
 function set_promote_shape(
@@ -92,121 +96,40 @@ function set_check_broadcast_shape(
 end
 set_check_broadcast_shape(ax1::Tuple{}, ax2::Tuple{}) = nothing
 
-# Dename and lazily permute the arguments using the reference
-# dimension names.
-# TODO: Make a version that gets the inds from `m`.
-function NamedDimsArrays.denamed(m::Mapped, inds)
-    return mapped(m.f, map(arg -> denamed(arg, inds), m.args)...)
-end
-
-function nameddimstype(style::NamedDimsArrayStyle{<:Any, NDA}) where {NDA}
-    return NDA
-end
-
-using FillArrays: Fill
-
-function MapBroadcast.tile(a::AbstractNamedDimsArray, ax)
-    axes(a) == ax && return a
-    !iszero(ndims(a)) && return error("Not implemented.")
-    return nameddimsconstructorof(a)(Fill(a[], denamed.(Tuple(ax))), name.(ax))
+broadcasted_denamed(x::Number, inds) = x
+broadcasted_denamed(a::AbstractArray, inds) = denamed(a, inds)
+function broadcasted_denamed(bc::Broadcasted, inds)
+    return broadcasted(bc.f, Base.Fix2(broadcasted_denamed, inds).(bc.args)...)
 end
 
 function Base.similar(bc::Broadcasted{<:AbstractNamedDimsArrayStyle}, elt::Type, ax)
-    inds = name.(ax)
-    m′ = denamed(Mapped(bc), inds)
-    # TODO: Store the wrapper type in `AbstractNamedDimsArrayStyle` and use that
-    # wrapper type rather than the generic `nameddims` constructor, which
-    # can lose information.
-    # Call it as `nameddimstype(bc.style)`.
-    return nameddimstype(bc.style)(
-        similar(m′, elt, denamed.(Tuple(ax))), inds
-    )
+    inds_a = name.(ax)
+    bc_denamed = broadcasted_denamed(bc, inds_a)
+    a_denamed = similar(bc_denamed, elt)
+    return nameddimstype(bc.style)(a_denamed, inds_a)
+end
+
+inds(bc::Broadcasted) = name.(axes(bc))
+function Base.copy(bc::Broadcasted{<:AbstractNamedDimsArrayStyle})
+    # We could use:
+    # ```julia
+    # elt = combine_eltypes(bc.f, bc.args)
+    # copyto!(similar(bc, elt), bc)
+    # ```
+    # but `combine_eltypes` is based on type inference, which might fail.
+    # Calling broadcasted on the denamed arrays reuses the code logic in
+    # Base.Broadcast for handling cases where type inference fails by determining
+    # the output element type at runtime with widening.
+    inds_dest = inds(bc)
+    bc_denamed = broadcasted_denamed(bc, inds_dest)
+    dest_denamed = copy(bc_denamed)
+    return nameddimstype(bc.style)(dest_denamed, inds_dest)
 end
 
 function Base.copyto!(dest::AbstractArray, bc::Broadcasted{<:AbstractNamedDimsArrayStyle})
-    return copyto!(dest, Mapped(bc))
-end
-
-using MapBroadcast: Summed
-summed_to_broadcasted(a) = a
-summed_to_broadcasted(a::Summed) = Broadcasted(a)
-function BC.broadcasted(style::AbstractNamedDimsArrayStyle, f, as...)
-    return Broadcasted(style, f, summed_to_broadcasted.(as))
-end
-
-function Base.similar(bc::Summed{<:AbstractNamedDimsArrayStyle}, elt::Type, ax)
-    return similar(Broadcasted(bc), elt, ax)
-end
-
-function Base.copyto!(
-        dest::AbstractNamedDimsArray, src::Summed{<:AbstractNamedDimsArrayStyle}
-    )
-    β = false
-    for i in 1:length(src.arguments)
-        TA.add!(dest, src.arguments[i], src.coefficients[i], β)
-        β = true
-    end
+    dest_denamed = denamed(dest)
+    inds_dest = inds(dest)
+    bc_denamed = broadcasted_denamed(bc, inds_dest)
+    copyto!(dest_denamed, bc_denamed)
     return dest
-end
-
-# Linear operations.
-# TODO: Define `AbstractSummedArrayStyle` that defines these rules
-# and make `AbstractNamedDimsArrayStyle` a subtype of it.
-function BC.broadcasted(::AbstractNamedDimsArrayStyle, ::typeof(+), a1, a2)
-    return Summed(a1) + Summed(a2)
-end
-function BC.broadcasted(::AbstractNamedDimsArrayStyle, ::typeof(-), a1, a2)
-    return Summed(a1) - Summed(a2)
-end
-function BC.broadcasted(::AbstractNamedDimsArrayStyle, ::typeof(*), c::Number, a)
-    return c * Summed(a)
-end
-function BC.broadcasted(::AbstractNamedDimsArrayStyle, ::typeof(*), a, c::Number)
-    return Summed(a) * c
-end
-
-# Fix ambiguity error.
-BC.broadcasted(::AbstractNamedDimsArrayStyle, ::typeof(*), a::Number, b::Number) = a * b
-BC.broadcasted(::AbstractNamedDimsArrayStyle, ::typeof(/), a, c::Number) = Summed(a) / c
-BC.broadcasted(::AbstractNamedDimsArrayStyle, ::typeof(-), a) = -Summed(a)
-
-# Rewrite rules to canonicalize broadcast expressions.
-function BC.broadcasted(
-        style::AbstractNamedDimsArrayStyle, f::Base.Fix1{typeof(*), <:Number}, a
-    )
-    return BC.broadcasted(style, *, f.x, a)
-end
-function BC.broadcasted(
-        style::AbstractNamedDimsArrayStyle, f::Base.Fix2{typeof(*), <:Number}, a
-    )
-    return BC.broadcasted(style, *, a, f.x)
-end
-function BC.broadcasted(
-        style::AbstractNamedDimsArrayStyle, f::Base.Fix2{typeof(/), <:Number}, a
-    )
-    return BC.broadcasted(style, /, a, f.x)
-end
-
-# Compatibility with MapBroadcast.jl.
-using MapBroadcast: MapFunction
-function BC.broadcasted(
-        style::AbstractNamedDimsArrayStyle,
-        f::MapFunction{typeof(*), <:Tuple{<:Number, MapBroadcast.Arg}},
-        a,
-    )
-    return BC.broadcasted(style, *, f.args[1], a)
-end
-function BC.broadcasted(
-        style::AbstractNamedDimsArrayStyle,
-        f::MapFunction{typeof(*), <:Tuple{MapBroadcast.Arg, <:Number}},
-        a,
-    )
-    return BC.broadcasted(style, *, a, f.args[2])
-end
-function BC.broadcasted(
-        style::AbstractNamedDimsArrayStyle,
-        f::MapFunction{typeof(/), <:Tuple{MapBroadcast.Arg, <:Number}},
-        a,
-    )
-    return BC.broadcasted(style, /, a, f.args[2])
 end
