@@ -246,14 +246,10 @@ function Base.length(a::AbstractNamedDimsArray)
 end
 
 # Circumvent issue when ndims isn't known at compile time.
-function Base.axes(a::AbstractNamedDimsArray, d)
-    return d <= ndims(a) ? axes(a)[d] : OneTo(1)
-end
+Base.axes(a::AbstractNamedDimsArray, d) = axes(a)[d]
 
 # Circumvent issue when ndims isn't known at compile time.
-function Base.size(a::AbstractNamedDimsArray, d)
-    return d <= ndims(a) ? size(a)[d] : OneTo(1)
-end
+Base.size(a::AbstractNamedDimsArray, d) = size(a)[d]
 
 # Circumvent issue when ndims isn't known at compile time.
 Base.ndims(a::AbstractNamedDimsArray) = ndims(denamed(a))

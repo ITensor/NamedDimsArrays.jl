@@ -63,7 +63,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         @test CartesianIndices(na) == CartesianIndices(a)
         @test collect(pairs(na)) == (CartesianIndices(a) .=> a)
 
-        @test_throws ErrorException NamedDimsArray(randn(4), namedoneto.((2, 2), ("i", "j")))
+        @test_throws ArgumentError NamedDimsArray(randn(4), namedoneto.((2, 2), ("i", "j")))
         @test_throws ErrorException NamedDimsArray(randn(2, 2), namedoneto.((2, 3), ("i", "j")))
 
         a = randn(elt, 3, 4)

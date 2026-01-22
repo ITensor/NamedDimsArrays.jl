@@ -63,8 +63,8 @@ Base.isempty(a::AbstractNamedArray) = isempty(denamed(a))
 ##   return (next, next)
 ## end
 
-function randname(ang::AbstractRNG, a::AbstractNamedArray)
-    return named(denamed(a), randname(name(a)))
+function randname(rng::AbstractRNG, a::AbstractNamedArray)
+    return named(denamed(a), randname(rng, name(a)))
 end
 
 function Base.show(io::IO, a::AbstractNamedArray)
