@@ -5,15 +5,19 @@ struct NamedDimsArray{T, N, Parent <: AbstractArray{T, N}, DimNames <: Tuple{Var
     AbstractNamedDimsArray{T, N}
     parent::Parent
     inds::DimNames
-    function NamedDimsArray(
+    function NamedDimsArray{T, N, Parent, DimNames}(
             parent::AbstractArray{<:Any, N}, dims::Tuple{Vararg{Any, N}}
-        ) where {N}
-        # This checks the shapes of the inputs.
+        ) where {T, N, Parent <: AbstractArray{T, N}, DimNames <: Tuple{Vararg{Any, N}}}
         inds = to_inds(parent, dims)
-        return new{eltype(parent), ndims(parent), typeof(parent), typeof(inds)}(
-            parent, inds
-        )
+        return new{T, N, Parent, DimNames}(parent, inds)
     end
+end
+function NamedDimsArray(
+        parent::Parent, dims::Tuple{Vararg{Any, N}}
+    ) where {T, N, Parent <: AbstractArray{T, N}}
+    # This checks the shapes of the inputs.
+    inds = to_inds(parent, dims)
+    return NamedDimsArray{T, N, Parent, typeof(inds)}(parent, inds)
 end
 
 const NamedDimsVector{T, Parent <: AbstractVector{T}, DimNames <: Tuple{Any}} = NamedDimsArray{

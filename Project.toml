@@ -1,7 +1,7 @@
 name = "NamedDimsArrays"
 uuid = "60cbd0c0-df58-4cb7-918c-6f5607b73fde"
 authors = ["ITensor developers <support@itensor.org> and contributors"]
-version = "0.13.5"
+version = "0.13.6"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
@@ -20,10 +20,12 @@ VectorInterface = "409d34a3-91d5-4945-b6ec-7529ddf182d8"
 [weakdeps]
 AbstractTrees = "1520ce14-60c1-5f80-bbc7-55ef81b5835c"
 BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
+Mooncake = "da2b9cff-9c12-43a0-ae48-6db2b0edb7d6"
 
 [extensions]
 NamedDimsArraysAbstractTreesExt = "AbstractTrees"
 NamedDimsArraysBlockArraysExt = "BlockArrays"
+NamedDimsArraysMooncakeExt = "Mooncake"
 
 [compat]
 AbstractTrees = "0.4.5"
@@ -34,9 +36,10 @@ Compat = "4.16"
 FillArrays = "1.13"
 FunctionImplementations = "0.4"
 LinearAlgebra = "1.10"
+Mooncake = "0.4.202"
 Random = "1.10"
 SimpleTraits = "0.9.4"
-TensorAlgebra = "0.6.9"
+TensorAlgebra = "0.6.12"
 TupleTools = "1.6"
 TypeParameterAccessors = "0.4"
 VectorInterface = "0.5.0"
