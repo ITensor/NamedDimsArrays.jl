@@ -45,6 +45,11 @@ struct Name{Value} <: AbstractName
     value::Value
 end
 name(n::Name) = n.value
+name_type(n::Name) = name_type(typeof(n))
+name_type(n::Type{<:Name{Value}}) where {Value} = Value
+function randname(rng::AbstractRNG, type::Type{<:Name}; kwargs...)
+    return Name(randname(rng, name_type(type); kwargs...))
+end
 
 """
     @names x y ...
