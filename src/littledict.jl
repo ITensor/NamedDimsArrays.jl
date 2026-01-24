@@ -18,6 +18,8 @@ Base.length(s::LittleSet) = length(s.values)
 Base.axes(s::LittleSet) = axes(s.values)
 Base.keys(s::LittleSet) = Base.OneTo(length(s))
 Base.:(==)(s1::LittleSet, s2::LittleSet) = issetequal(s1.values, s2.values)
+Base.:(==)(s1::LittleSet, s2::Tuple) = s1.values == s2
+Base.:(==)(s1::Tuple, s2::LittleSet) = s1 == s2.values
 Base.iterate(s::LittleSet, args...) = iterate(s.values, args...)
 Base.getindex(s::LittleSet, I::Int) = s.values[I]
 # TODO: Required in Julia 1.10, delete when we drop support for that.
@@ -31,6 +33,7 @@ Base.Broadcast.BroadcastStyle(s1::AbstractArrayStyle{0}, s2::Style{LittleSet}) =
 Base.Broadcast.BroadcastStyle(s1::AbstractArrayStyle, s2::Style{LittleSet}) = s1
 Base.Broadcast.broadcastable(s::LittleSet) = s
 Base.to_shape(s::LittleSet) = s
+Base.sort(s::LittleSet; kwargs...) = LittleSet(_sort(s.values; kwargs...))
 
 # Needed for functionality such as `CartesianIndices(::AbstractNamedDimsArray)`,
 # `pairs(::AbstractNamedDimsArray)`, etc.

@@ -42,8 +42,7 @@ function NamedDimsArray(a::AbstractNamedDimsArray)
 end
 
 # Minimal interface.
-## TODO: FIXME ## Base.axes(a::NamedDimsArray) = LittleSet(getfield(a, :axes))
-Base.axes(a::NamedDimsArray) = getfield(a, :axes)
+Base.axes(a::NamedDimsArray) = LittleSet(getfield(a, :axes))
 Base.parent(a::NamedDimsArray) = getfield(a, :parent)
 denamed(a::NamedDimsArray) = parent(a)
 

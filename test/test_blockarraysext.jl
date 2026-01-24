@@ -33,7 +33,7 @@ using Test: @test, @testset
     b[Block(2, 2)] = randn(elt, 3, 3)
     na = nameddims(a, ("i", "j"))
     nb = nameddims(b, ("j", "i"))
-    ## TODO: FIXME ## nc = na .+ 2 .* nb
-    ## TODO: FIXME ## c = a + 2 * permutedims(b, (2, 1))
-    ## TODO: FIXME ## @test dename(nc, ("i", "j")) ≈ c
+    nc = na .+ 2 .* nb
+    c = a + 2 * permutedims(b, (2, 1))
+    @test dename(nc, ("i", "j")) ≈ c
 end
