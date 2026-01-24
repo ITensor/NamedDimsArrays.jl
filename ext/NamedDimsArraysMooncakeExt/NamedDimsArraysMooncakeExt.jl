@@ -18,7 +18,7 @@ Mooncake.tangent_type(::Type{<:AbstractNamedUnitRange}) = Mooncake.NoTangent
 @zero_derivative DefaultCtx Tuple{typeof(nameddimsconstructorof), Any}
 @zero_derivative DefaultCtx Tuple{typeof(randname), Any}
 @zero_derivative DefaultCtx Tuple{typeof(randname), Any, Any}
-@zero_derivative DefaultCtx Tuple{typeof(to_inds), Any, Any}
+@zero_derivative DefaultCtx Tuple{typeof(to_axes), Any, Any}
 
 using Mooncake: Tangent
 using NamedDimsArrays: AbstractNamedDimsArray, NamedDimsArray, denamed
