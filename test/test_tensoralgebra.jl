@@ -5,8 +5,9 @@ using TensorAlgebra: TensorAlgebra, contract, left_null, left_orth, left_polar, 
     orth, polar, right_null, right_orth, right_polar, unmatricize
 using Test: @test, @testset, @test_broken
 
-elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
-@testset "TensorAlgebra (eltype=$(elt))" for elt in elts
+@testset "TensorAlgebra (eltype=$(elt))" for elt in (
+        Float32, Float64, Complex{Float32}, Complex{Float64},
+    )
     @testset "contract" begin
         i = namedoneto(2, "i")
         j = namedoneto(2, "j")
