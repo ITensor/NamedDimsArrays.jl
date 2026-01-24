@@ -118,7 +118,7 @@ function to_axis(a::AbstractNamedDimsArray, axis, dim::AbstractNamedUnitRange)
     return dim
 end
 function to_axis(a::AbstractNamedDimsArray, axis, dim)
-    return named(denamed(name(axis)), dim)
+    return named(denamed(axis), dim)
 end
 function to_axis(a::AbstractNamedDimsArray, axis, dim::Name)
     return to_axis(a, axis, name(dim))
@@ -238,7 +238,7 @@ end
 ##     return LittleSet(map(named, axes(denamed(a)), axes(a)))
 ## end
 function Base.size(a::AbstractNamedDimsArray)
-    return LittleSet(map(named, size(denamed(a)), axes(a)))
+    return LittleSet(map(named, size(denamed(a)), dimnames(a)))
 end
 
 function Base.length(a::AbstractNamedDimsArray)
@@ -397,7 +397,7 @@ function Base.getindex(a::NamedDimsCartesianIndices{N}, I::Vararg{Int, N}) where
     return NamedDimsCartesianIndex(index)
 end
 
-Base.axes(I::NamedDimsCartesianIndices) = name.(I.indices)
+Base.axes(I::NamedDimsCartesianIndices) = I.indices
 function denamed(I::NamedDimsCartesianIndices)
     return CartesianIndices(denamed.(I.indices))
 end

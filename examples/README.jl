@@ -43,7 +43,7 @@ julia> Pkg.add("NamedDimsArrays")
 
 # ## Examples
 
-using NamedDimsArrays: aligndims, dename, dimnames, inds, named, namedoneto
+using NamedDimsArrays: aligndims, dename, dimnames, named, namedoneto
 using TensorAlgebra: contract
 using Test: @test
 

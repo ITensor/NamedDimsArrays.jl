@@ -1,8 +1,8 @@
 using Base.Broadcast: Broadcast as BC, Broadcasted, broadcast_shape, broadcasted,
     check_broadcast_shape, combine_axes
-using ..NamedDimsArrays: NamedDimsArrays, AbstractNamedDimsArray,
-    AbstractNamedUnitRange, LittleSet, dename, denamed, getperm, inds, name, named,
-    nameddimsconstructorof
+## using ..NamedDimsArrays: NamedDimsArrays, AbstractNamedDimsArray,
+##     AbstractNamedUnitRange, LittleSet, dename, denamed, getperm, inds, name, named,
+##     nameddimsconstructorof
 import TensorAlgebra as TA
 
 abstract type AbstractNamedDimsArrayStyle{N} <: BC.AbstractArrayStyle{N} end

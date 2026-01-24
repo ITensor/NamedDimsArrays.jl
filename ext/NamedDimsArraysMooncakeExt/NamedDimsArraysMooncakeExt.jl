@@ -2,8 +2,8 @@ module NamedDimsArraysMooncakeExt
 
 using Mooncake: Mooncake, @zero_derivative, DefaultCtx
 using NamedDimsArrays: AbstractNamedDimsArray, AbstractNamedUnitRange,
-    blockedperm_nameddims, combine_nameddimsconstructors, dimnames, inds, inds_setdiff,
-    name, nameddimsconstructorof, randname, to_inds
+    blockedperm_nameddims, combine_nameddimsconstructors, dimnames, inds_setdiff,
+    name, nameddimsconstructorof, randname, to_axes
 using TensorAlgebra: blockedperm
 
 Mooncake.tangent_type(::Type{<:AbstractNamedUnitRange}) = Mooncake.NoTangent
@@ -13,8 +13,6 @@ Mooncake.tangent_type(::Type{<:AbstractNamedUnitRange}) = Mooncake.NoTangent
 @zero_derivative DefaultCtx Tuple{typeof(combine_nameddimsconstructors), Any, Any}
 @zero_derivative DefaultCtx Tuple{typeof(dimnames), Any}
 @zero_derivative DefaultCtx Tuple{typeof(dimnames), Any, Any}
-@zero_derivative DefaultCtx Tuple{typeof(inds), Any}
-@zero_derivative DefaultCtx Tuple{typeof(inds), Any, Any}
 @zero_derivative DefaultCtx Tuple{typeof(inds_setdiff), Any, Any}
 @zero_derivative DefaultCtx Tuple{typeof(name), Any}
 @zero_derivative DefaultCtx Tuple{typeof(nameddimsconstructorof), Any}
@@ -25,7 +23,7 @@ Mooncake.tangent_type(::Type{<:AbstractNamedUnitRange}) = Mooncake.NoTangent
 using Mooncake: Tangent
 using NamedDimsArrays: AbstractNamedDimsArray, NamedDimsArray, denamed
 function Base.copyto!(dest::NamedDimsArray, src::Tangent)
-    # TODO: Account for the `inds` of the Tangent? In other words, is the tangent data
+    # TODO: Account for the named `axes` of the Tangent? In other words, is the tangent data
     # aligned with the `dest` data?
     copyto!(denamed(dest), src.fields.parent)
     return dest
