@@ -1,23 +1,23 @@
 using TypeParameterAccessors: TypeParameterAccessors, parenttype
 
-# inds should be a named slice.
+# axes should be a named slice.
 struct NamedDimsArray{T, N, Parent <: AbstractArray{T, N}, DimNames <: Tuple{Vararg{Any, N}}} <:
     AbstractNamedDimsArray{T, N}
     parent::Parent
-    inds::DimNames
+    axes::DimNames
     function NamedDimsArray{T, N, Parent, DimNames}(
             parent::AbstractArray{<:Any, N}, dims::Tuple{Vararg{Any, N}}
         ) where {T, N, Parent <: AbstractArray{T, N}, DimNames <: Tuple{Vararg{Any, N}}}
-        inds = to_inds(parent, dims)
-        return new{T, N, Parent, DimNames}(parent, inds)
+        ax = to_axes(parent, dims)
+        return new{T, N, Parent, DimNames}(parent, ax)
     end
 end
 function NamedDimsArray(
         parent::Parent, dims::Tuple{Vararg{Any, N}}
     ) where {T, N, Parent <: AbstractArray{T, N}}
     # This checks the shapes of the inputs.
-    inds = to_inds(parent, dims)
-    return NamedDimsArray{T, N, Parent, typeof(inds)}(parent, inds)
+    ax = to_axes(parent, dims)
+    return NamedDimsArray{T, N, Parent, typeof(ax)}(parent, ax)
 end
 
 const NamedDimsVector{T, Parent <: AbstractVector{T}, DimNames <: Tuple{Any}} = NamedDimsArray{
@@ -33,16 +33,16 @@ function NamedDimsArray(parent::AbstractArray, dims)
 end
 
 # TODO: Delete this, and just wrap the input naively.
-function NamedDimsArray(a::AbstractNamedDimsArray, inds)
+function NamedDimsArray(a::AbstractNamedDimsArray, ax)
     return error("Already named.")
 end
 
 function NamedDimsArray(a::AbstractNamedDimsArray)
-    return NamedDimsArray(denamed(a), inds(a))
+    return NamedDimsArray(denamed(a), axes(a))
 end
 
 # Minimal interface.
-inds(a::NamedDimsArray) = getfield(a, :inds)
+Base.axes(a::NamedDimsArray) = getfield(a, :axes)
 Base.parent(a::NamedDimsArray) = getfield(a, :parent)
 denamed(a::NamedDimsArray) = parent(a)
 

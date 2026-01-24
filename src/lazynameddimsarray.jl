@@ -7,14 +7,14 @@ TA.@scaledarray_type ScaledNamedDimsArray AbstractNamedDimsArray
 TA.@scaledarray ScaledNamedDimsArray AbstractNamedDimsArray
 TA.:*ₗ(α::Number, a::AbstractNamedDimsArray) = ScaledNamedDimsArray(α, a)
 Base.copy(a::ScaledNamedDimsArray) = copy_lazynameddims(a)
-inds(a::ScaledNamedDimsArray) = inds(TA.unscaled(a))
+## Base.axes(a::ScaledNamedDimsArray) = axes(TA.unscaled(a))
 denamed(a::ScaledNamedDimsArray) = coeff(a) *ₗ denamed(TA.unscaled(a))
 
 TA.@conjarray_type ConjNamedDimsArray AbstractNamedDimsArray
 TA.@conjarray ConjNamedDimsArray AbstractNamedDimsArray
 TA.conjed(a::AbstractNamedDimsArray) = ConjNamedDimsArray(a)
 Base.copy(a::ConjNamedDimsArray) = copy_lazynameddims(a)
-inds(a::ConjNamedDimsArray) = inds(conjed(a))
+## Base.axes(a::ConjNamedDimsArray) = axes(conjed(a))
 denamed(a::ConjNamedDimsArray) = conjed(denamed(conjed(a)))
 aligneddims(a::ConjNamedDimsArray, dims) = conjed(aligneddims(conjed(a), dims))
 
@@ -22,11 +22,11 @@ TA.@addarray_type AddNamedDimsArray AbstractNamedDimsArray
 TA.@addarray AddNamedDimsArray AbstractNamedDimsArray
 TA.:+ₗ(a::AbstractNamedDimsArray, b::AbstractNamedDimsArray) = AddNamedDimsArray(a, b)
 Base.copy(a::AddNamedDimsArray) = copy_lazynameddims(a)
-inds(a::AddNamedDimsArray) = inds(first(TA.addends(a)))
+## Base.axes(a::AddNamedDimsArray) = axes(first(TA.addends(a)))
 function denamed(a::AddNamedDimsArray)
     a′ = denamed(first(TA.addends(a)))
     for addend in Iterators.rest(TA.addends(a))
-        a′ = a′ +ₗ denamed(addend, inds(first(TA.addends(a))))
+        a′ = a′ +ₗ denamed(addend, axes(first(TA.addends(a))))
     end
     return a′
 end
@@ -38,7 +38,7 @@ Base.copy(a::MulNamedDimsArray) = copy_lazynameddims(a)
 TA.mul_ndims(a::AbstractNamedDimsArray, b::AbstractNamedDimsArray) = length(TA.mul_axes(a, b))
 # TODO: Don't convert to `Tuple`?
 TA.mul_axes(a::AbstractNamedDimsArray, b::AbstractNamedDimsArray) =
-    NaiveOrderedSet(Tuple(symdiff(axes(a), axes(b))))
+    LittleSet(Tuple(symdiff(axes(a), axes(b))))
 # Fix ambiguity error.
 function Base.similar(
         a::MulNamedDimsArray, elt::Type,
@@ -47,9 +47,9 @@ function Base.similar(
     return TA.similar_mul(a, elt, inds)
 end
 # Fix ambiguity error.
-function Base.similar(a::MulNamedDimsArray, elt::Type, inds::NaiveOrderedSet)
+function Base.similar(a::MulNamedDimsArray, elt::Type, inds::LittleSet)
     return TA.similar_mul(a, elt, inds)
 end
 # TODO: Don't convert to `Tuple`?
-inds(a::MulNamedDimsArray) = Tuple(symdiff(inds.(TA.factors(a))...))
+## Base.axes(a::MulNamedDimsArray) = Tuple(symdiff(inds.(TA.factors(a))...))
 denamed(a::MulNamedDimsArray) = error("`denamed` is not defined for `MulNamedDimsArray`.")

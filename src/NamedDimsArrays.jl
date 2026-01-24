@@ -2,10 +2,10 @@ module NamedDimsArrays
 
 export NamedDimsArray, aligndims, named, nameddims, operator
 using Compat: @compat
-@compat public to_inds
+@compat public to_axes
 @compat public @names
 
-include("naiveorderedset.jl")
+include("littledict.jl")
 include("isnamed.jl")
 include("randname.jl")
 include("abstractnamedinteger.jl")

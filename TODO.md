@@ -10,9 +10,9 @@ aligns the dimensions (currently `a[j, i]` doesn't align the dimensions).
 It could be written in terms of `align_getindex`/`align_view`.
 - `svd`, `eigen` (including tensor versions)
 - `reshape`, `vec`, including fused dimension names.
-- Dimension name set logic, i.e. `setdiffinds(a::AbstractNamedDimsArray, b::AbstractNamedDimsArray)`, etc.
+- Dimension name set logic, i.e. `setdiffaxes(a::AbstractNamedDimsArray, b::AbstractNamedDimsArray)`, etc.
 - `swapinds` (written in terms of `mapinds`/`replaceinds`).
-- `mapinds(f, a::AbstractNamedDimsArray)` (rename `replaceinds(f, a)` to `mapinds(f, a)`, or have both?)
+- `mapaxes(f, a::AbstractNamedDimsArray)` (rename `replaceaxes(f, a)` to `mapaxes(f, a)`, or have both?)
 - `cat` (define `CatName` as a combination of the input names?).
 - `canonize`/`flatten_array_wrappers` (https://github.com/mcabbott/NamedPlus.jl/blob/v0.0.5/src/permute.jl#L207)
   - `nameddims(PermutedDimsArray(a, perm), inds)` -> `nameddims(a, inds[invperm(perm)])`

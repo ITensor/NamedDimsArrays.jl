@@ -11,7 +11,7 @@ using Test: @test, @testset
     a[Block(1, 2)] = randn(elt, 2, 3)
     a[Block(2, 2)] = randn(elt, 3, 3)
     n = nameddims(a, ("i", "j"))
-    i, j = inds(n)
+    i, j = axes(n)
     @test denamed(n[i[Block(2)], j[Block(1)]]) == a[Block(2, 1)]
     @test denamed(n[Block(2), Block(1)]) == a[Block(2, 1)]
     @test denamed(n[Block(2, 1)]) == a[Block(2, 1)]

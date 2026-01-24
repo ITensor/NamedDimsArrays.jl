@@ -1,11 +1,11 @@
 using Combinatorics: Combinatorics
 import NamedDimsArrays as NDA
-using NamedDimsArrays: AbstractNamedDimsArray, AbstractNamedDimsMatrix, NaiveOrderedSet,
+using NamedDimsArrays: AbstractNamedDimsArray, AbstractNamedDimsMatrix, LittleSet,
     Name, NameMismatch, NamedDimsCartesianIndex, NamedDimsCartesianIndices, NamedDimsArray,
     NamedDimsMatrix, NamedDimsOperator
 using NamedDimsArrays: aligndims, aligneddims, apply, dename, denamed, dim, dimnames, dims,
-    fusednames, isnamed, mapinds, name, named, nameddims, inds, namedoneto, operator,
-    product, replaceinds, setinds, state, @names
+    fusednames, isnamed, mapaxes, name, named, nameddims, namedoneto, operator,
+    product, replaceaxes, setaxes, state, @names
 using Test: @test, @test_throws, @testset
 using VectorInterface: scalartype
 
@@ -32,9 +32,9 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         @test name(ai) == i
         @test name(aj) == j
         @test isnamed(na)
-        @test inds(na) == (i, j)
-        @test inds(na, 1) == i
-        @test inds(na, 2) == j
+        @test axes(na) == (i, j)
+        @test axes(na, 1) == i
+        @test axes(na, 2) == j
         @test dimnames(na) == ("i", "j")
         @test dimnames(na, 1) == "i"
         @test dimnames(na, 2) == "j"
@@ -101,16 +101,16 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         ai, aj = axes(na)
         for na′ in (
                 similar(na, Float32, (j, i)),
-                similar(na, Float32, NaiveOrderedSet((j, i))),
+                similar(na, Float32, LittleSet((j, i))),
                 similar(na, Float32, (aj, ai)),
-                similar(na, Float32, NaiveOrderedSet((aj, ai))),
+                similar(na, Float32, LittleSet((aj, ai))),
                 similar(a, Float32, (j, i)),
-                similar(a, Float32, NaiveOrderedSet((j, i))),
+                similar(a, Float32, LittleSet((j, i))),
                 similar(a, Float32, (aj, ai)),
-                similar(a, Float32, NaiveOrderedSet((aj, ai))),
+                similar(a, Float32, LittleSet((aj, ai))),
             )
             @test eltype(na′) ≡ Float32
-            @test all(inds(na′) .== (j, i))
+            @test all(axes(na′) .== (j, i))
             @test na′ ≠ na
         end
 
@@ -121,16 +121,16 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         ai, aj = axes(na)
         for na′ in (
                 similar(na, (j, i)),
-                similar(na, NaiveOrderedSet((j, i))),
+                similar(na, LittleSet((j, i))),
                 similar(na, (aj, ai)),
-                similar(na, NaiveOrderedSet((aj, ai))),
+                similar(na, LittleSet((aj, ai))),
                 similar(a, (j, i)),
-                similar(a, NaiveOrderedSet((j, i))),
+                similar(a, LittleSet((j, i))),
                 similar(a, (aj, ai)),
-                similar(a, NaiveOrderedSet((aj, ai))),
+                similar(a, LittleSet((aj, ai))),
             )
             @test eltype(na′) ≡ eltype(na)
-            @test all(inds(na′) .== (j, i))
+            @test all(axes(na′) .== (j, i))
             @test na′ ≠ na
         end
 
@@ -140,7 +140,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         @test a[i, j] == na
         @test @view(a[i, j]) == na
         @test na[j[1], i[2]] == a[2, 1]
-        @test inds(na[j, i]) == (named(1:3, "i"), named(1:4, "j"))
+        @test axes(na[j, i]) == (named(1:3, "i"), named(1:4, "j"))
         @test na[j, i] == na
         @test @view(na[j, i]) == na
         @test i[axes(a, 1)] == named(1:3, "i")
@@ -163,7 +163,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         a = randn(elt, 3, 3)
         na = NamedDimsArray(a, ("i", "j"))
         for na′ in (na[named(2:3, "i"), named(2:3, "j")], na["i" => 2:3, "j" => 2:3])
-            @test inds(na′) == (named(2:3, "i"), named(2:3, "j"))
+            @test axes(na′) == (named(2:3, "i"), named(2:3, "j"))
             @test denamed(na′) == a[2:3, 2:3]
             @test denamed(na′) isa typeof(a)
         end
@@ -173,7 +173,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         na = NamedDimsArray(a, ("i", "j"))
         for na′ in
             (@view(na[named(2:3, "i"), named(2:3, "j")]), @view(na["i" => 2:3, "j" => 2:3]))
-            @test inds(na′) == (named(2:3, "i"), named(2:3, "j"))
+            @test axes(na′) == (named(2:3, "i"), named(2:3, "j"))
             @test copy(denamed(na′)) == a[2:3, 2:3]
             @test denamed(na′) ≡ @view(a[2:3, 2:3])
             @test denamed(na′) isa SubArray{elt, 2}
@@ -217,22 +217,22 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         a′ = denamed(na, ("j", "i"))
         @test a′ isa PermutedDimsArray{elt}
         @test a′ == transpose(a)
-        nb = setinds(na, ("k", "j"))
-        @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
+        nb = setaxes(na, ("k", "j"))
+        @test axes(nb) == (named(1:3, "k"), named(1:4, "j"))
         @test denamed(nb) == a
-        nb = replaceinds(na, "i" => "k")
-        @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
+        nb = replaceaxes(na, "i" => "k")
+        @test axes(nb) == (named(1:3, "k"), named(1:4, "j"))
         @test denamed(nb) == a
-        nb = replaceinds(na, named(1:3, "i") => named(1:3, "k"))
-        @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
+        nb = replaceaxes(na, named(1:3, "i") => named(1:3, "k"))
+        @test axes(nb) == (named(1:3, "k"), named(1:4, "j"))
         @test denamed(nb) == a
-        nb = replaceinds(n -> n == named(1:3, "i") ? named(1:3, "k") : n, na)
-        @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
+        nb = replaceaxes(n -> n == named(1:3, "i") ? named(1:3, "k") : n, na)
+        @test axes(nb) == (named(1:3, "k"), named(1:4, "j"))
         @test denamed(nb) == a
-        nb = mapinds(n -> n == named(1:3, "i") ? named(1:3, "k") : n, na)
-        @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
+        nb = mapaxes(n -> n == named(1:3, "i") ? named(1:3, "k") : n, na)
+        @test axes(nb) == (named(1:3, "k"), named(1:4, "j"))
         @test denamed(nb) == a
-        nb = setinds(na, named(3, "i") => named(3, "k"))
+        nb = setaxes(na, named(3, "i") => named(3, "k"))
         na[1, 1] = 11
         @test na[1, 1] == 11
         @test Tuple(size(na)) == (named(3, named(1:3, "i")), named(4, named(1:4, "j")))
@@ -264,7 +264,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         nc = zeros(elt, named.((2, 3), (:i, :j)))
         Is = eachindex(na, nb)
         @test Is isa NamedDimsCartesianIndices{2}
-        @test issetequal(inds(Is), (named(1:2, :i), named(1:3, :j)))
+        @test issetequal(axes(Is), (named(1:2, :i), named(1:3, :j)))
         for I in Is
             @test I isa NamedDimsCartesianIndex{2}
             @test issetequal(name.(Tuple(I)), (:i, :j))
@@ -336,26 +336,26 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         for na in (zeros(elt, i, j), zeros(elt, (i, j)))
             @test eltype(na) ≡ elt
             @test na isa NamedDimsArray
-            @test inds(na) == Base.oneto.((i, j))
+            @test axes(na) == Base.oneto.((i, j))
             @test iszero(na)
         end
         for na in (fill(value, i, j), fill(value, (i, j)))
             @test eltype(na) ≡ elt
             @test na isa NamedDimsArray
-            @test inds(na) == Base.oneto.((i, j))
+            @test axes(na) == Base.oneto.((i, j))
             @test all(isequal(value), na)
         end
         for na in (rand(elt, i, j), rand(elt, (i, j)))
             @test eltype(na) ≡ elt
             @test na isa NamedDimsArray
-            @test inds(na) == Base.oneto.((i, j))
+            @test axes(na) == Base.oneto.((i, j))
             @test !iszero(na)
             @test all(x -> real(x) > 0, na)
         end
         for na in (randn(elt, i, j), randn(elt, (i, j)))
             @test eltype(na) ≡ elt
             @test na isa NamedDimsArray
-            @test inds(na) == Base.oneto.((i, j))
+            @test axes(na) == Base.oneto.((i, j))
             @test !iszero(na)
         end
     end
@@ -365,33 +365,33 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         for na in (zeros(i, j), zeros((i, j)))
             @test eltype(na) ≡ default_elt
             @test na isa NamedDimsArray
-            @test inds(na) == Base.oneto.((i, j))
+            @test axes(na) == Base.oneto.((i, j))
             @test iszero(na)
         end
         for na in (rand(i, j), rand((i, j)))
             @test eltype(na) ≡ default_elt
             @test na isa NamedDimsArray
-            @test inds(na) == Base.oneto.((i, j))
+            @test axes(na) == Base.oneto.((i, j))
             @test !iszero(na)
             @test all(x -> real(x) > 0, na)
         end
         for na in (randn(i, j), randn((i, j)))
             @test eltype(na) ≡ default_elt
             @test na isa NamedDimsArray
-            @test inds(na) == Base.oneto.((i, j))
+            @test axes(na) == Base.oneto.((i, j))
             @test !iszero(na)
         end
     end
-    @testset "NaiveOrderedSet" begin
+    @testset "LittleSet" begin
         # Broadcasting
-        s = NaiveOrderedSet((1, 2))
+        s = LittleSet((1, 2))
         @test eltype(s) == Int
         @test s .+ [3, 4] == [4, 6]
         @test s .+ (3, 4) ≡ (4, 6)
 
-        s = NaiveOrderedSet(("a", "b", "c"))
+        s = LittleSet(("a", "b", "c"))
         @test all(s .== ("a", "b", "c"))
-        @test values(s) == ("a", "b", "c")
+        @test s.values == ("a", "b", "c")
         @test Tuple(s) == ("a", "b", "c")
         @test s[1] == "a"
         @test s[2] == "b"
@@ -401,7 +401,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
                 replace(s, "b" => "x"),
                 map(x -> x == "b" ? "x" : x, s),
             )
-            @test s′ isa NaiveOrderedSet
+            @test s′ isa LittleSet
             @test Tuple(s′) == ("a", "x", "c")
             @test s′[1] == "a"
             @test s′[2] == "x"
@@ -444,17 +444,17 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         @test o isa NamedDimsOperator
         o² = product(o, o)
         @test issetequal(dimnames(o²), ("i'", "j'", "i", "j"))
-        õ = replaceinds(
+        õ = replaceaxes(
             state(o), "i" => "i'", "j" => "j'", "i'" => "x", "j'" => "y"
         )
-        o²′ = replaceinds(õ * o, "x" => "i'", "y" => "j'")
+        o²′ = replaceaxes(õ * o, "x" => "i'", "y" => "j'")
         @test state(o²) ≈ o²′
 
         o = operator(randn(2, 2, 2, 2), ("i'", "j'"), ("i", "j"))
         v = NamedDimsArray(randn(2, 2), ("i", "j"))
         ov = apply(o, v)
         @test issetequal(dimnames(ov), ("i", "j"))
-        @test ov ≈ replaceinds(o * v, "i'" => "i", "j'" => "j")
+        @test ov ≈ replaceaxes(o * v, "i'" => "i", "j'" => "j")
     end
 
     @testset "@names" begin

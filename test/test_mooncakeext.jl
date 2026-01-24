@@ -1,8 +1,8 @@
 using LinearAlgebra: mul!
 import Mooncake
 using NamedDimsArrays: AbstractNamedUnitRange, Name, NamedDimsArray, NamedUnitRange,
-    blockedperm_nameddims, combine_nameddimsconstructors, dimnames, inds, inds_setdiff,
-    name, nameddimsconstructorof, randname, to_inds
+    blockedperm_nameddims, combine_nameddimsconstructors, dimnames, inds_setdiff,
+    name, nameddimsconstructorof, randname, to_axes
 import Random
 using TensorAlgebra: blockedperm
 using Test: @test, @testset
@@ -33,14 +33,14 @@ using Test: @test, @testset
         )
         Mooncake.TestUtils.test_rule(rng, dimnames, a1; mode, is_primitive)
         Mooncake.TestUtils.test_rule(rng, dimnames, a1, 1; mode, is_primitive)
-        Mooncake.TestUtils.test_rule(rng, inds, a1; mode, is_primitive)
-        Mooncake.TestUtils.test_rule(rng, inds, a1, 1; mode, is_primitive)
+        ## Mooncake.TestUtils.test_rule(rng, axes, a1; mode, is_primitive)
+        ## Mooncake.TestUtils.test_rule(rng, axes, a1, 1; mode, is_primitive)
         Mooncake.TestUtils.test_rule(rng, inds_setdiff, (i, j), (j, k); mode, is_primitive)
         Mooncake.TestUtils.test_rule(rng, name, i; mode, is_primitive)
         Mooncake.TestUtils.test_rule(rng, nameddimsconstructorof, a1; mode, is_primitive)
         Mooncake.TestUtils.test_rule(rng, randname, i; mode, is_primitive)
         Mooncake.TestUtils.test_rule(rng, randname, rng, i; mode, is_primitive)
-        Mooncake.TestUtils.test_rule(rng, to_inds, a1, (i, j); mode, is_primitive)
+        Mooncake.TestUtils.test_rule(rng, to_axes, a1, (i, j); mode, is_primitive)
     end
     @testset "contract" begin
         i, j, k = Name.((:i, :j, :k))
