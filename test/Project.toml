@@ -16,8 +16,8 @@ TensorAlgebra = "68bd88dc-f39d-4e12-b2ca-f046b68fcc6a"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 VectorInterface = "409d34a3-91d5-4945-b6ec-7529ddf182d8"
 
-[sources]
-NamedDimsArrays = {path = ".."}
+[sources.NamedDimsArrays]
+path = ".."
 
 [compat]
 AbstractTrees = "0.4.5"
@@ -26,7 +26,7 @@ Aqua = "0.8.9"
 BlockArrays = "1"
 Combinatorics = "1"
 JLArrays = "0.2, 0.3"
-Mooncake = "0.4"
+Mooncake = "0.4, 0.5"
 NamedDimsArrays = "0.13"
 Random = "1.10"
 SafeTestsets = "0.1"
