@@ -21,24 +21,24 @@ get_domain_ind(a, i) = throw(MethodError(get_domain_ind, (a, i)))
 get_codomain_ind(a, i) = throw(MethodError(get_codomain_ind, (a, i)))
 
 # TODO: Should this be `adjoint`?
-function dag(a::AbstractNamedDimsArray, inds_map)
+function dag(a::AbstractNamedDimsArray, axes_map)
     a = conj(a)
-    a′ = mapinds(a) do i
-        return get(inds_map, i, i)
+    a′ = mapaxes(a) do i
+        return get(axes_map, i, i)
     end
     return a′
 end
 
 function apply(x::AbstractNamedDimsArray, y::AbstractNamedDimsArray)
     xy = x * y
-    return mapinds(xy) do i
+    return mapaxes(xy) do i
         return get_domain_ind(x, i)
     end
 end
 
 function apply_dag(x::AbstractNamedDimsArray, y::AbstractNamedDimsArray)
     xy = x * y
-    return mapinds(xy) do i
+    return mapaxes(xy) do i
         return get_codomain_ind(y, i)
     end
 end
@@ -47,7 +47,7 @@ function Base.transpose(a::AbstractNamedDimsArray)
     c = codomain(a)
     d = domain(a)
     a_map = merge(Dict(c .=> d), Dict(d .=> c))
-    a′ = mapinds(state(a)) do i
+    a′ = mapaxes(state(a)) do i
         return get(a_map, i, i)
     end
     return operator(a′, c .=> d)
@@ -62,12 +62,12 @@ function product(x::AbstractNamedDimsArray, y::AbstractNamedDimsArray)
     d = domain(x)
     c′ = randname.(c)
     x′_map = merge(Dict(c .=> c′), Dict(d .=> c))
-    x′ = mapinds(parent(x)) do i
+    x′ = mapaxes(parent(x)) do i
         return get(x′_map, i, i)
     end
     x′y = x′ * parent(y)
     x′y_map = Dict(c′ .=> c)
-    xy = mapinds(x′y) do i
+    xy = mapaxes(x′y) do i
         return get(x′y_map, i, i)
     end
     return operator(xy, c .=> d)
@@ -102,7 +102,7 @@ Base.length(b::Bijection) = length(b.domain_to_codomain)
 # It should act like a dictionary from the domain to the codomain,
 # but then under `inverse` it should act like a dictionary from the codomain to the domain.
 # Primarily it should define `get`.
-function inds_map(a)
+function axes_map(a)
     return Bijection(domain(a) .=> codomain(a))
 end
 
@@ -110,7 +110,8 @@ abstract type AbstractNamedDimsOperator{T, N} <: AbstractNamedDimsArray{T, N} en
 
 state(a::AbstractNamedDimsArray) = a
 
-inds(a::AbstractNamedDimsOperator) = inds(state(a))
+# TODO: Encode the index mapping in the axes?
+Base.axes(a::AbstractNamedDimsOperator) = axes(state(a))
 
 # TODO: Unify these two functions.
 function operator(a::AbstractNamedDimsArray, domain_codomain_pairs)
@@ -145,11 +146,11 @@ end
 Base.parent(a::NamedDimsOperator) = getfield(a, :parent)
 state(a::NamedDimsOperator) = parent(a)
 denamed(a::NamedDimsOperator) = denamed(state(a))
-inds_map(a::NamedDimsOperator) = getfield(a, :domain_codomain_bijection)
+axes_map(a::NamedDimsOperator) = getfield(a, :domain_codomain_bijection)
 
 function NamedDimsOperator(a::AbstractNamedDimsArray, domain_codomain_pairs)
-    domain = to_inds(a, first.(domain_codomain_pairs))
-    codomain = to_inds(a, last.(domain_codomain_pairs))
+    domain = to_axes(a, first.(domain_codomain_pairs))
+    codomain = to_axes(a, last.(domain_codomain_pairs))
     return NamedDimsOperator(a, Bijection(domain .=> codomain))
 end
 
@@ -160,22 +161,22 @@ end
 statetype(type::Type{<:NamedDimsOperator}) = parenttype(type)
 
 function nameddimsof(a::NamedDimsOperator, b::AbstractArray)
-    return NamedDimsOperator(nameddimsof(state(a), b), inds_map(a))
+    return NamedDimsOperator(nameddimsof(state(a), b), axes_map(a))
 end
 function nameddimsconstructorof(type::Type{<:NamedDimsOperator})
     return nameddimsconstructorof(statetype(type))
 end
 
 # TODO: Make abstract?
-domain(a::NamedDimsOperator) = domain(inds_map(a))
+domain(a::NamedDimsOperator) = domain(axes_map(a))
 # TODO: Make abstract?
-codomain(a::NamedDimsOperator) = codomain(inds_map(a))
+codomain(a::NamedDimsOperator) = codomain(axes_map(a))
 
 # TODO: Make abstract?
 function get_domain_ind(a::NamedDimsOperator, i)
-    return get(inverse(inds_map(a)), i, i)
+    return get(inverse(axes_map(a)), i, i)
 end
 # TODO: Make abstract?
 function get_codomain_ind(a::NamedDimsOperator, i)
-    return get(inds_map(a), i, i)
+    return get(axes_map(a), i, i)
 end

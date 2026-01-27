@@ -3,24 +3,24 @@ import TensorAlgebra as TA
 using TupleTools: TupleTools
 
 # This layer is used to define derivative rules (to skip differentiating `setdiff`).
-inds_setdiff(s1, s2) = setdiff(s1, s2)
+axes_setdiff(s1, s2) = setdiff(s1, s2)
 
 function TA.add!(
         dest::AbstractNamedDimsArray, src::AbstractNamedDimsArray, α::Number, β::Number
     )
-    TA.add!(denamed(dest), denamed(src, inds(dest)), α, β)
+    TA.add!(denamed(dest), denamed(src, axes(dest)), α, β)
     return dest
 end
 
 Base.:*(a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray) = mul_nameddims(a1, a2)
 function mul_nameddims(a1::AbstractArray, a2::AbstractArray)
-    a_dest, inds_dest = TA.contract(
-        denamed(a1), inds(a1), denamed(a2), inds(a2)
+    a_dest, axes_dest = TA.contract(
+        denamed(a1), axes(a1), denamed(a2), axes(a2)
     )
     nameddimstype = combine_nameddimsconstructors(
         nameddimsconstructorof(a1), nameddimsconstructorof(a2)
     )
-    return nameddimstype(a_dest, inds_dest)
+    return nameddimstype(a_dest, axes_dest)
 end
 
 # Left associative fold/reduction.
@@ -56,7 +56,7 @@ function mul!_nameddims(
         α::Number, β::Number,
     )
     TA.contractadd!(
-        denamed(a_dest), inds(a_dest), denamed(a1), inds(a1), denamed(a2), inds(a2), α, β
+        denamed(a_dest), axes(a_dest), denamed(a1), axes(a1), denamed(a2), axes(a2), α, β
     )
     return a_dest
 end
@@ -71,7 +71,7 @@ function mul!_nameddims(
         a_dest::AbstractArray,
         a1::AbstractArray, a2::AbstractArray,
     )
-    TA.contract!(denamed(a_dest), inds(a_dest), denamed(a1), inds(a1), denamed(a2), inds(a2))
+    TA.contract!(denamed(a_dest), axes(a_dest), denamed(a1), axes(a1), denamed(a2), axes(a2))
     return a_dest
 end
 
@@ -79,10 +79,10 @@ function TA.blockedperm(na::AbstractNamedDimsArray, nameddim_blocks::Tuple...)
     return blockedperm_nameddims(na, nameddim_blocks...)
 end
 function blockedperm_nameddims(na::AbstractArray, nameddim_blocks::Tuple...)
-    dimname_blocks = map(group -> to_inds(na, group), nameddim_blocks)
-    inds_a = inds(na)
+    dimname_blocks = map(group -> to_axes(na, group), nameddim_blocks)
+    axes_a = axes(na)
     perms = map(dimname_blocks) do dimname_block
-        return TA.BaseExtensions.indexin(dimname_block, inds_a)
+        return TA.BaseExtensions.indexin(dimname_block, axes_a)
     end
     return TA.permmortar(perms)
 end
@@ -96,41 +96,41 @@ function TA.matricize(a::AbstractNamedDimsArray, fusions::Vararg{Pair, 2})
     return matricize_nameddims(a, fusions...)
 end
 function matricize_nameddims(na::AbstractArray, fusions::Vararg{Pair, 2})
-    inds_fuse = map(group -> to_inds(na, group), first.(fusions))
-    inds_fused = last.(fusions)
-    if sum(length, inds_fuse) < ndims(na)
+    axes_fuse = map(group -> to_axes(na, group), first.(fusions))
+    axes_fused = last.(fusions)
+    if sum(length, axes_fuse) < ndims(na)
         # Not all names are specified
-        inds_unspecified = inds_setdiff(inds(na), inds_fuse...)
-        inds_fuse = vcat(
-            tuple.(inds_unspecified), collect(inds_fuse)
+        axes_unspecified = axes_setdiff(axes(na), axes_fuse...)
+        axes_fuse = vcat(
+            tuple.(axes_unspecified), collect(axes_fuse)
         )
-        inds_fused = vcat(
-            inds_unspecified, collect(inds_fused)
+        axes_fused = vcat(
+            axes_unspecified, collect(axes_fused)
         )
     end
-    perm = TA.blockedperm(na, inds_fuse...)
+    perm = TA.blockedperm(na, axes_fuse...)
     a_fused = TA.matricize(denamed(na), perm)
-    return nameddims(a_fused, inds_fused)
+    return nameddims(a_fused, axes_fused)
 end
 
 function TA.unmatricize(na::AbstractNamedDimsArray, splitters::Vararg{Pair, 2})
     return unmatricize_nameddims(na, splitters...)
 end
 function unmatricize_nameddims(na::AbstractArray, splitters::Vararg{Pair, 2})
-    splitters = to_inds(na, first.(splitters)) .=> last.(splitters)
+    splitters = to_axes(na, first.(splitters)) .=> last.(splitters)
     split_namedlengths = last.(splitters)
     splitters_denamed = map(splitters) do splitter
         fused_name, split_namedlengths = splitter
-        fused_dim = findfirst(isequal(fused_name), inds(na))
+        fused_dim = findfirst(isequal(fused_name), axes(na))
         split_lengths = denamed.(split_namedlengths)
         return fused_dim => split_lengths
     end
     blocked_axes = last.(TupleTools.sort(splitters_denamed; by = first))
     a_split = TA.unmatricize(denamed(na), blocked_axes...)
-    names_split = Any[tuple.(inds(na))...]
+    names_split = Any[tuple.(axes(na))...]
     for splitter in splitters
         fused_name, split_namedlengths = splitter
-        fused_dim = findfirst(isequal(fused_name), inds(na))
+        fused_dim = findfirst(isequal(fused_name), axes(na))
         split_names = name.(split_namedlengths)
         names_split[fused_dim] = split_names
     end
@@ -152,25 +152,25 @@ for f in [
         function $f_nameddims(
                 a::AbstractArray, dimnames_codomain, dimnames_domain; kwargs...
             )
-            codomain = to_inds(a, dimnames_codomain)
-            domain = to_inds(a, dimnames_domain)
-            x_denamed, y_denamed = TA.$f(denamed(a), inds(a), codomain, domain; kwargs...)
+            codomain = to_axes(a, dimnames_codomain)
+            domain = to_axes(a, dimnames_domain)
+            x_denamed, y_denamed = TA.$f(denamed(a), axes(a), codomain, domain; kwargs...)
             name_x = randname(dimnames(a, 1))
             name_y = name_x
             namedindices_x = named(last(axes(x_denamed)), name_x)
             namedindices_y = named(first(axes(y_denamed)), name_y)
-            inds_x = (codomain..., namedindices_x)
-            inds_y = (namedindices_y, domain...)
-            x = nameddims(x_denamed, inds_x)
-            y = nameddims(y_denamed, inds_y)
+            axes_x = (codomain..., namedindices_x)
+            axes_y = (namedindices_y, domain...)
+            x = nameddims(x_denamed, axes_x)
+            y = nameddims(y_denamed, axes_y)
             return x, y
         end
         function TA.$f(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
             return $f_nameddims(a, dimnames_codomain; kwargs...)
         end
         function $f_nameddims(a::AbstractArray, dimnames_codomain; kwargs...)
-            codomain = to_inds(a, dimnames_codomain)
-            domain = inds_setdiff(inds(a), codomain)
+            codomain = to_axes(a, dimnames_codomain)
+            domain = axes_setdiff(axes(a), codomain)
             return TA.$f(a, codomain, domain; kwargs...)
         end
     end
@@ -199,21 +199,21 @@ end
 function svd_nameddims(
         a::AbstractArray, dimnames_codomain, dimnames_domain; kwargs...
     )
-    codomain = to_inds(a, dimnames_codomain)
-    domain = to_inds(a, dimnames_domain)
+    codomain = to_axes(a, dimnames_codomain)
+    domain = to_axes(a, dimnames_domain)
     u_denamed, s_denamed, v_denamed = TA.svd(
-        denamed(a), inds(a), codomain, domain; kwargs...
+        denamed(a), axes(a), codomain, domain; kwargs...
     )
     name_u = randname(dimnames(a, 1))
     name_v = randname(dimnames(a, 1))
     namedindices_u = named(last(axes(u_denamed)), name_u)
     namedindices_v = named(first(axes(v_denamed)), name_v)
-    inds_u = (codomain..., namedindices_u)
-    inds_s = (namedindices_u, namedindices_v)
-    inds_v = (namedindices_v, domain...)
-    u = nameddims(u_denamed, inds_u)
-    s = nameddims(s_denamed, inds_s)
-    v = nameddims(v_denamed, inds_v)
+    axes_u = (codomain..., namedindices_u)
+    axes_s = (namedindices_u, namedindices_v)
+    axes_v = (namedindices_v, domain...)
+    u = nameddims(u_denamed, axes_u)
+    s = nameddims(s_denamed, axes_s)
+    v = nameddims(v_denamed, axes_v)
     return u, s, v
 end
 function TA.svd(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
@@ -223,7 +223,7 @@ function svd_nameddims(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
     return TA.svd(
         a,
         dimnames_codomain,
-        inds_setdiff(inds(a), to_inds(a, dimnames_codomain));
+        axes_setdiff(axes(a), to_axes(a, dimnames_codomain));
         kwargs...,
     )
 end
@@ -241,9 +241,9 @@ function svdvals_nameddims(
     )
     return TA.svdvals(
         denamed(a),
-        inds(a),
-        to_inds(a, dimnames_codomain),
-        to_inds(a, dimnames_domain);
+        axes(a),
+        to_axes(a, dimnames_codomain),
+        to_axes(a, dimnames_domain);
         kwargs...,
     )
 end
@@ -252,8 +252,8 @@ function TA.svdvals(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
     return svdvals_nameddims(a, dimnames_codomain; kwargs...)
 end
 function svdvals_nameddims(a::AbstractArray, dimnames_codomain; kwargs...)
-    codomain = to_inds(a, dimnames_codomain)
-    domain = inds_setdiff(inds(a), codomain)
+    codomain = to_axes(a, dimnames_codomain)
+    domain = axes_setdiff(axes(a), codomain)
     return TA.svdvals(a, codomain, domain; kwargs...)
 end
 
@@ -269,19 +269,19 @@ end
 function eigen_nameddims(
         a::AbstractArray, dimnames_codomain, dimnames_domain; kwargs...
     )
-    codomain = to_inds(a, dimnames_codomain)
-    domain = to_inds(a, dimnames_domain)
-    d_denamed, v_denamed = TA.eigen(denamed(a), inds(a), codomain, domain; kwargs...)
+    codomain = to_axes(a, dimnames_codomain)
+    domain = to_axes(a, dimnames_domain)
+    d_denamed, v_denamed = TA.eigen(denamed(a), axes(a), codomain, domain; kwargs...)
     name_d = randname(dimnames(a, 1))
     name_d′ = randname(name_d)
     name_v = name_d
     namedindices_d = named(last(axes(d_denamed)), name_d)
     namedindices_d′ = named(first(axes(d_denamed)), name_d′)
     namedindices_v = named(last(axes(v_denamed)), name_v)
-    inds_d = (namedindices_d′, namedindices_d)
-    inds_v = (domain..., namedindices_v)
-    d = nameddims(d_denamed, inds_d)
-    v = nameddims(v_denamed, inds_v)
+    axes_d = (namedindices_d′, namedindices_d)
+    axes_v = (domain..., namedindices_v)
+    d = nameddims(d_denamed, axes_d)
+    v = nameddims(v_denamed, axes_v)
     return d, v
 end
 
@@ -297,9 +297,9 @@ end
 function eigvals_nameddims(
         a::AbstractArray, dimnames_codomain, dimnames_domain; kwargs...
     )
-    codomain = to_inds(a, dimnames_codomain)
-    domain = to_inds(a, dimnames_domain)
-    return TA.eigvals(denamed(a), inds(a), codomain, domain; kwargs...)
+    codomain = to_axes(a, dimnames_codomain)
+    domain = to_axes(a, dimnames_domain)
+    return TA.eigvals(denamed(a), axes(a), codomain, domain; kwargs...)
 end
 
 function LA.eigvals(a::AbstractNamedDimsArray, args...; kwargs...)
@@ -314,21 +314,21 @@ end
 function left_null_nameddims(
         a::AbstractArray, dimnames_codomain, dimnames_domain; kwargs...
     )
-    codomain = to_inds(a, dimnames_codomain)
-    domain = to_inds(a, dimnames_domain)
-    n_denamed = TA.left_null(denamed(a), inds(a), codomain, domain; kwargs...)
+    codomain = to_axes(a, dimnames_codomain)
+    domain = to_axes(a, dimnames_domain)
+    n_denamed = TA.left_null(denamed(a), axes(a), codomain, domain; kwargs...)
     name_n = randname(dimnames(a, 1))
     namedindices_n = named(last(axes(n_denamed)), name_n)
-    inds_n = (codomain..., namedindices_n)
-    return nameddims(n_denamed, inds_n)
+    axes_n = (codomain..., namedindices_n)
+    return nameddims(n_denamed, axes_n)
 end
 
 function TA.left_null(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
     return left_null_nameddims(a, dimnames_codomain; kwargs...)
 end
 function left_null_nameddims(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
-    codomain = to_inds(a, dimnames_codomain)
-    domain = inds_setdiff(inds(a), codomain)
+    codomain = to_axes(a, dimnames_codomain)
+    domain = axes_setdiff(axes(a), codomain)
     return TA.left_null(a, codomain, domain; kwargs...)
 end
 
@@ -340,21 +340,21 @@ end
 function right_null_nameddims(
         a::AbstractArray, dimnames_codomain, dimnames_domain; kwargs...
     )
-    codomain = to_inds(a, dimnames_codomain)
-    domain = to_inds(a, dimnames_domain)
-    n_denamed = TA.right_null(denamed(a), inds(a), codomain, domain; kwargs...)
+    codomain = to_axes(a, dimnames_codomain)
+    domain = to_axes(a, dimnames_domain)
+    n_denamed = TA.right_null(denamed(a), axes(a), codomain, domain; kwargs...)
     name_n = randname(dimnames(a, 1))
     namedindices_n = named(first(axes(n_denamed)), name_n)
-    inds_n = (namedindices_n, domain...)
-    return nameddims(n_denamed, inds_n)
+    axes_n = (namedindices_n, domain...)
+    return nameddims(n_denamed, axes_n)
 end
 
 function TA.right_null(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
     return right_null_nameddims(a, dimnames_codomain; kwargs...)
 end
 function right_null_nameddims(a::AbstractArray, dimnames_codomain; kwargs...)
-    codomain = to_inds(a, dimnames_codomain)
-    domain = inds_setdiff(inds(a), codomain)
+    codomain = to_axes(a, dimnames_codomain)
+    domain = axes_setdiff(axes(a), codomain)
     return TA.right_null(a, codomain, domain; kwargs...)
 end
 
@@ -375,10 +375,10 @@ for f in MATRIX_FUNCTIONS
         function $f_nameddims(
                 a::AbstractArray, dimnames_codomain, dimnames_domain; kwargs...
             )
-            codomain = to_inds(a, dimnames_codomain)
-            domain = to_inds(a, dimnames_domain)
+            codomain = to_axes(a, dimnames_codomain)
+            domain = to_axes(a, dimnames_domain)
             fa_denamed = TA.$f(
-                denamed(a), inds(a), codomain, domain; kwargs...
+                denamed(a), axes(a), codomain, domain; kwargs...
             )
             return nameddims(fa_denamed, (codomain..., domain...))
         end
