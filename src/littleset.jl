@@ -1,10 +1,5 @@
 using Base.Broadcast: AbstractArrayStyle, Broadcasted, Style
 
-struct LittleDict{Keys, Values}
-    keys::Keys
-    values::Values
-end
-
 struct LittleSet{Values}
     values::Values
 end

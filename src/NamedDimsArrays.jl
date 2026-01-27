@@ -5,7 +5,7 @@ using Compat: @compat
 @compat public to_axes
 @compat public @names
 
-include("littledict.jl")
+include("littleset.jl")
 include("isnamed.jl")
 include("randname.jl")
 include("abstractnamedinteger.jl")
