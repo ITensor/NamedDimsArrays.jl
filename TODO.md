@@ -11,13 +11,13 @@ It could be written in terms of `align_getindex`/`align_view`.
 - `svd`, `eigen` (including tensor versions)
 - `reshape`, `vec`, including fused dimension names.
 - Dimension name set logic, i.e. `setdiffaxes(a::AbstractNamedDimsArray, b::AbstractNamedDimsArray)`, etc.
-- `swapinds` (written in terms of `mapinds`/`replaceinds`).
+- `swapaxes` (written in terms of `mapaxes`/`replaceaxes`).
 - `mapaxes(f, a::AbstractNamedDimsArray)` (rename `replaceaxes(f, a)` to `mapaxes(f, a)`, or have both?)
 - `cat` (define `CatName` as a combination of the input names?).
 - `canonize`/`flatten_array_wrappers` (https://github.com/mcabbott/NamedPlus.jl/blob/v0.0.5/src/permute.jl#L207)
-  - `nameddims(PermutedDimsArray(a, perm), inds)` -> `nameddims(a, inds[invperm(perm)])`
-  - `nameddims(transpose(a), inds)` -> `nameddims(a, reverse(inds))`
-  - `Transpose(nameddims(a, inds))` -> `nameddims(a, reverse(inds))`
+  - `nameddims(PermutedDimsArray(a, perm), axes)` -> `nameddims(a, axes[invperm(perm)])`
+  - `nameddims(transpose(a), axes)` -> `nameddims(a, reverse(axes))`
+  - `Transpose(nameddims(a, axes))` -> `nameddims(a, reverse(axes))`
   - etc.
 - `MappedName(old_name, name)`, acts like `Name(name)` but keeps track of the old name.
   - `nameddimsmap(a, ::Pair...)`: `namedmap(named(randn(2, 2, 2, 2), i, j, k, l), i => k, j => l)`
@@ -27,7 +27,7 @@ It could be written in terms of `align_getindex`/`align_view`.
   `Name(:i)' = prime(:i)`, etc.
     - Also `prime(f, a::AbstractNamedDimsArray)` where `f` is a filter function to determine
       which dimensions to filter.
-- `transpose`/`adjoint` based on `swapinds` and `MappedName(old_name, new_name)`.
+- `transpose`/`adjoint` based on `swapaxes` and `MappedName(old_name, new_name)`.
   - `adjoint` could make use of a lazy `ConjArray`.
   - `transpose(a, dimname1 => dimname1′, dimname2 => dimname2′)` like `https://github.com/mcabbott/NamedPlus.jl`.
     - Same as `replacedims(a, dimname1 => dimname1′, dimname1′ => dimname1, dimname2 => dimname2′, dimname2′ => dimname2)`.

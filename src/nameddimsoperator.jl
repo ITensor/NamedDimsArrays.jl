@@ -21,10 +21,10 @@ get_domain_ind(a, i) = throw(MethodError(get_domain_ind, (a, i)))
 get_codomain_ind(a, i) = throw(MethodError(get_codomain_ind, (a, i)))
 
 # TODO: Should this be `adjoint`?
-function dag(a::AbstractNamedDimsArray, inds_map)
+function dag(a::AbstractNamedDimsArray, axes_map)
     a = conj(a)
     a′ = mapaxes(a) do i
-        return get(inds_map, i, i)
+        return get(axes_map, i, i)
     end
     return a′
 end
@@ -102,7 +102,7 @@ Base.length(b::Bijection) = length(b.domain_to_codomain)
 # It should act like a dictionary from the domain to the codomain,
 # but then under `inverse` it should act like a dictionary from the codomain to the domain.
 # Primarily it should define `get`.
-function inds_map(a)
+function axes_map(a)
     return Bijection(domain(a) .=> codomain(a))
 end
 
@@ -146,7 +146,7 @@ end
 Base.parent(a::NamedDimsOperator) = getfield(a, :parent)
 state(a::NamedDimsOperator) = parent(a)
 denamed(a::NamedDimsOperator) = denamed(state(a))
-inds_map(a::NamedDimsOperator) = getfield(a, :domain_codomain_bijection)
+axes_map(a::NamedDimsOperator) = getfield(a, :domain_codomain_bijection)
 
 function NamedDimsOperator(a::AbstractNamedDimsArray, domain_codomain_pairs)
     domain = to_axes(a, first.(domain_codomain_pairs))
@@ -161,22 +161,22 @@ end
 statetype(type::Type{<:NamedDimsOperator}) = parenttype(type)
 
 function nameddimsof(a::NamedDimsOperator, b::AbstractArray)
-    return NamedDimsOperator(nameddimsof(state(a), b), inds_map(a))
+    return NamedDimsOperator(nameddimsof(state(a), b), axes_map(a))
 end
 function nameddimsconstructorof(type::Type{<:NamedDimsOperator})
     return nameddimsconstructorof(statetype(type))
 end
 
 # TODO: Make abstract?
-domain(a::NamedDimsOperator) = domain(inds_map(a))
+domain(a::NamedDimsOperator) = domain(axes_map(a))
 # TODO: Make abstract?
-codomain(a::NamedDimsOperator) = codomain(inds_map(a))
+codomain(a::NamedDimsOperator) = codomain(axes_map(a))
 
 # TODO: Make abstract?
 function get_domain_ind(a::NamedDimsOperator, i)
-    return get(inverse(inds_map(a)), i, i)
+    return get(inverse(axes_map(a)), i, i)
 end
 # TODO: Make abstract?
 function get_codomain_ind(a::NamedDimsOperator, i)
-    return get(inds_map(a), i, i)
+    return get(axes_map(a), i, i)
 end

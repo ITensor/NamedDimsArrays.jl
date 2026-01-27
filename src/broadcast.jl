@@ -1,7 +1,7 @@
 using Base.Broadcast: Broadcast as BC, Broadcasted, broadcast_shape, broadcasted,
     check_broadcast_shape, combine_axes
 ## using ..NamedDimsArrays: NamedDimsArrays, AbstractNamedDimsArray,
-##     AbstractNamedUnitRange, LittleSet, dename, denamed, getperm, inds, name, named,
+##     AbstractNamedUnitRange, LittleSet, dename, denamed, getperm, axes, name, named,
 ##     nameddimsconstructorof
 import TensorAlgebra as TA
 
@@ -94,17 +94,17 @@ function set_check_broadcast_shape(
 end
 set_check_broadcast_shape(ax1::Tuple{}, ax2::Tuple{}) = nothing
 
-broadcasted_denamed(x::Number, inds) = x
-broadcasted_denamed(a::AbstractArray, inds) = denamed(a, inds)
-function broadcasted_denamed(bc::Broadcasted, inds)
-    return broadcasted(bc.f, Base.Fix2(broadcasted_denamed, inds).(bc.args)...)
+broadcasted_denamed(x::Number, axes) = x
+broadcasted_denamed(a::AbstractArray, axes) = denamed(a, axes)
+function broadcasted_denamed(bc::Broadcasted, axes)
+    return broadcasted(bc.f, Base.Fix2(broadcasted_denamed, axes).(bc.args)...)
 end
 
 function Base.similar(bc::Broadcasted{<:AbstractNamedDimsArrayStyle}, elt::Type, ax)
-    inds_a = name.(ax)
-    bc_denamed = broadcasted_denamed(bc, inds_a)
+    axes_a = name.(ax)
+    bc_denamed = broadcasted_denamed(bc, axes_a)
     a_denamed = similar(bc_denamed, elt)
-    return nameddimstype(bc.style)(a_denamed, inds_a)
+    return nameddimstype(bc.style)(a_denamed, axes_a)
 end
 
 ## Base.axes(bc::Broadcasted) = name.(axes(bc))
@@ -118,16 +118,16 @@ function Base.copy(bc::Broadcasted{<:AbstractNamedDimsArrayStyle})
     # Calling broadcasted on the denamed arrays reuses the code logic in
     # Base.Broadcast for handling cases where type inference fails by determining
     # the output element type at runtime with widening.
-    inds_dest = axes(bc)
-    bc_denamed = broadcasted_denamed(bc, inds_dest)
+    axes_dest = axes(bc)
+    bc_denamed = broadcasted_denamed(bc, axes_dest)
     dest_denamed = copy(bc_denamed)
-    return nameddimstype(bc.style)(dest_denamed, inds_dest)
+    return nameddimstype(bc.style)(dest_denamed, axes_dest)
 end
 
 function Base.copyto!(dest::AbstractArray, bc::Broadcasted{<:AbstractNamedDimsArrayStyle})
     dest_denamed = denamed(dest)
-    inds_dest = axes(dest)
-    bc_denamed = broadcasted_denamed(bc, inds_dest)
+    axes_dest = axes(dest)
+    bc_denamed = broadcasted_denamed(bc, axes_dest)
     copyto!(dest_denamed, bc_denamed)
     return dest
 end

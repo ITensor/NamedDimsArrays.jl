@@ -42,14 +42,14 @@ TA.mul_axes(a::AbstractNamedDimsArray, b::AbstractNamedDimsArray) =
 # Fix ambiguity error.
 function Base.similar(
         a::MulNamedDimsArray, elt::Type,
-        inds::Tuple{NamedDimsIndices, Vararg{NamedDimsIndices}}
+        axes::Tuple{NamedDimsIndices, Vararg{NamedDimsIndices}}
     )
-    return TA.similar_mul(a, elt, inds)
+    return TA.similar_mul(a, elt, axes)
 end
 # Fix ambiguity error.
-function Base.similar(a::MulNamedDimsArray, elt::Type, inds::LittleSet)
-    return TA.similar_mul(a, elt, inds)
+function Base.similar(a::MulNamedDimsArray, elt::Type, axes::LittleSet)
+    return TA.similar_mul(a, elt, axes)
 end
 # TODO: Don't convert to `Tuple`?
-## Base.axes(a::MulNamedDimsArray) = Tuple(symdiff(inds.(TA.factors(a))...))
+## Base.axes(a::MulNamedDimsArray) = Tuple(symdiff(axes.(TA.factors(a))...))
 denamed(a::MulNamedDimsArray) = error("`denamed` is not defined for `MulNamedDimsArray`.")
