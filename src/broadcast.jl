@@ -1,7 +1,7 @@
 using Base.Broadcast: Broadcast as BC, Broadcasted, broadcast_shape, broadcasted,
     check_broadcast_shape, combine_axes
 using ..NamedDimsArrays: NamedDimsArrays, AbstractNamedDimsArray,
-    AbstractNamedUnitRange, NaiveOrderedSet, dename, denamed, getperm, inds, name, named,
+    AbstractNamedUnitRange, LittleSet, dename, denamed, getperm, inds, name, named,
     nameddimsconstructorof
 import TensorAlgebra as TA
 
@@ -31,25 +31,25 @@ end
 BC.combine_axes(a::AbstractNamedDimsArray) = axes(a)
 
 function BC.broadcast_shape(
-        ax1::NaiveOrderedSet, ax2::NaiveOrderedSet, ax_rest::NaiveOrderedSet...
+        ax1::LittleSet, ax2::LittleSet, ax_rest::LittleSet...
     )
     return broadcast_shape(broadcast_shape(ax1, ax2), ax_rest...)
 end
 
-function BC.broadcast_shape(ax1::NaiveOrderedSet, ax2::NaiveOrderedSet)
+function BC.broadcast_shape(ax1::LittleSet, ax2::LittleSet)
     return promote_shape(ax1, ax2)
 end
 
 # Handle scalar values.
-function BC.broadcast_shape(ax1::Tuple{}, ax2::NaiveOrderedSet)
+function BC.broadcast_shape(ax1::Tuple{}, ax2::LittleSet)
     return ax2
 end
-function BC.broadcast_shape(ax1::NaiveOrderedSet, ax2::Tuple{})
+function BC.broadcast_shape(ax1::LittleSet, ax2::Tuple{})
     return ax1
 end
 
-function Base.promote_shape(ax1::NaiveOrderedSet, ax2::NaiveOrderedSet)
-    return NaiveOrderedSet(set_promote_shape(Tuple(ax1), Tuple(ax2)))
+function Base.promote_shape(ax1::LittleSet, ax2::LittleSet)
+    return LittleSet(set_promote_shape(Tuple(ax1), Tuple(ax2)))
 end
 
 function set_promote_shape(
@@ -80,7 +80,7 @@ function set_promote_shape(
     return ax1
 end
 
-function BC.check_broadcast_shape(ax1::NaiveOrderedSet, ax2::NaiveOrderedSet)
+function BC.check_broadcast_shape(ax1::LittleSet, ax2::LittleSet)
     return set_check_broadcast_shape(Tuple(ax1), Tuple(ax2))
 end
 

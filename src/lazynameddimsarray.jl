@@ -38,7 +38,7 @@ Base.copy(a::MulNamedDimsArray) = copy_lazynameddims(a)
 TA.mul_ndims(a::AbstractNamedDimsArray, b::AbstractNamedDimsArray) = length(TA.mul_axes(a, b))
 # TODO: Don't convert to `Tuple`?
 TA.mul_axes(a::AbstractNamedDimsArray, b::AbstractNamedDimsArray) =
-    NaiveOrderedSet(Tuple(symdiff(axes(a), axes(b))))
+    LittleSet(Tuple(symdiff(axes(a), axes(b))))
 # Fix ambiguity error.
 function Base.similar(
         a::MulNamedDimsArray, elt::Type,
@@ -47,7 +47,7 @@ function Base.similar(
     return TA.similar_mul(a, elt, inds)
 end
 # Fix ambiguity error.
-function Base.similar(a::MulNamedDimsArray, elt::Type, inds::NaiveOrderedSet)
+function Base.similar(a::MulNamedDimsArray, elt::Type, inds::LittleSet)
     return TA.similar_mul(a, elt, inds)
 end
 # TODO: Don't convert to `Tuple`?
