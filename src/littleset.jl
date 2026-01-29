@@ -52,3 +52,27 @@ end
 function Base.replace(s::LittleSet, replacements::Pair...; kwargs...)
     return LittleSet(replace(s.values, replacements...; kwargs...))
 end
+
+# Dictionaries.jl interface:
+# isdictequal (issetequal/==): set equality of keys and equality of values.
+# merge (union): merge keys, prefer values from right-hand side.
+struct LittleDict{Keys, Values}
+    keys::Keys
+    values::Values
+end
+Base.keys(d::LittleDict) = LittleSet(d.keys)
+Base.values(d::LittleDict) = d.values
+Base.length(d::LittleDict) = length(keys(d))
+Base.isempty(d::LittleDict) = isempty(keys(d))
+Base.getindex(d::LittleDict, k) = values(d)[findfirst(==(k), keys(d))]
+Base.keytype(::Type{<:LittleDict{Keys}}) where {Keys} = eltype(Keys)
+Base.keytype(d::LittleDict) = keytype(typeof(d))
+Base.valtype(::Type{<:LittleDict{<:Any, Values}}) where {Values} = eltype(Values)
+Base.valtype(d::LittleDict) = valtype(typeof(d))
+Base.eltype(type::Type{<:LittleDict}) = Base.promote_op(named, valtype(type), keytype(type))
+Base.eltype(d::LittleDict) = eltype(typeof(d))
+Base.iterate(d::LittleDict, args...) = iterate(named.(values(d), keys(d)), args...)
+function Base.:(==)(d1::LittleDict, d2::LittleDict)
+    keys(d1) != keys(d2) && return false
+    return all(k -> d1[k] == d2[k], keys(d1))
+end

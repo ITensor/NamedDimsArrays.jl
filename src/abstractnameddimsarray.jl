@@ -45,7 +45,7 @@ isnamed(::Type{<:AbstractNamedDimsArray}) = true
 Base.axes(a::AbstractNamedDimsArray, dim::Int) = axes(a)[dim]
 
 function dimnames(a::AbstractNamedDimsArray)
-    return name.(axes(a))
+    return keys(axes(a))
 end
 function dimnames(a::AbstractNamedDimsArray, dim::Int)
     return dimnames(a)[dim]
@@ -83,7 +83,7 @@ function to_axes(a::AbstractArray, axes, dims)
     if any(size(a) .≠ length.(denamed.(named_axes)))
         error("Input dimensions don't match.")
     end
-    return named_axes
+    return LittleDict(name.(named_axes), denamed.(named_axes))
 end
 function to_axis(a::AbstractArray, axis, dim::AbstractNamedArray)
     # TODO: Check `axis` and `dim` have the same shape?
@@ -131,12 +131,14 @@ end
 # Generic construction of named dims arrays.
 
 """
-    nameddims(a::AbstractArray, axes)
+    nameddims(a::AbstractArray, dims)
 
-Construct a named dimensions array from an denamed array `a` and named dimensions `axes`.
+Construct a named dimensions array from an denamed array `a` and named dimensions `dims`.
 """
-function nameddims(a::AbstractArray, axes)
-    return nameddimsconstructor(a, axes)(a, axes)
+function nameddims(a::AbstractArray, dims)
+    @info "" dims
+    @info "" nameddimsconstructor(a, dims)
+    return nameddimsconstructor(a, dims)(a, dims)
 end
 
 #=
@@ -156,12 +158,17 @@ function nameddimsconstructorof(type::Type{<:AbstractNamedDimsArray})
     return unspecify_type_parameters(type)
 end
 
+function to_inds(a::AbstractArray, dims)
+    ax = to_axes(a, dims)
+    return named.(values(ax), keys(ax))
+end
+
 # Output a constructor for a named dims array (that should accept and denamed array and
 # a set of named dimensions/axes/indices) based on the dimension names.
-function nameddimsconstructor(a::AbstractArray, ax)
-    ax′ = to_axes(a, ax)
-    isempty(ax′) && return NamedDimsArray
-    return mapreduce(nameddimsconstructor, combine_nameddimsconstructors, ax′)
+function nameddimsconstructor(a::AbstractArray, dims)
+    inds = to_inds(a, dims)
+    isempty(inds) && return NamedDimsArray
+    return mapreduce(nameddimsconstructor, combine_nameddimsconstructors, inds)
 end
 
 nameddimsconstructor(nameddim) = nameddimsconstructor(typeof(nameddim))

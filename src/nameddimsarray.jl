@@ -1,35 +1,50 @@
 using TypeParameterAccessors: TypeParameterAccessors, parenttype
 
 # axes should be a named slice.
-struct NamedDimsArray{T, N, Parent <: AbstractArray{T, N}, DimNames <: Tuple{Vararg{Any, N}}} <:
-    AbstractNamedDimsArray{T, N}
-    parent::Parent
-    axes::DimNames
-    function NamedDimsArray{T, N, Parent, DimNames}(
-            parent::AbstractArray{<:Any, N}, dims::Tuple{Vararg{Any, N}}
-        ) where {T, N, Parent <: AbstractArray{T, N}, DimNames <: Tuple{Vararg{Any, N}}}
-        ax = to_axes(parent, dims)
-        return new{T, N, Parent, DimNames}(parent, ax)
-    end
+struct NamedDimsArray{
+        T, N, Denamed <: AbstractArray{T, N},
+        DimNames <: Tuple{Vararg{Any, N}}, Inds <: Tuple{Vararg{Any, N}}
+    } <: AbstractNamedDimsArray{T, N}
+    denamed::Denamed
+    dimnames::DimNames
+    inds::Inds
+    ## function NamedDimsArray{T, N, Denamed, DimNames, Inds}(
+    ##         parent::AbstractArray{<:Any, N},
+    ##         dimnames::Tuple{Vararg{Any, N}},
+    ##         inds::Tuple{Vararg{Any, N}},
+    ##     ) where {
+    ##         T, N, Denamed <: AbstractArray{T, N},
+    ##         DimNames <: Tuple{Vararg{Any, N}}, Inds <: Tuple{Vararg{Any, N}},
+    ##     }
+    ##     return new{T, N, Denamed, DimNames, Inds}(parent, dimnames, inds)
+    ## end
 end
+
 function NamedDimsArray(
-        parent::Parent, dims::Tuple{Vararg{Any, N}}
-    ) where {T, N, Parent <: AbstractArray{T, N}}
+        parent::Denamed, dims::Tuple{Vararg{Any, N}}
+    ) where {T, N, Denamed <: AbstractArray{T, N}}
     # This checks the shapes of the inputs.
     ax = to_axes(parent, dims)
-    return NamedDimsArray{T, N, Parent, typeof(ax)}(parent, ax)
+    return NamedDimsArray(parent, keys(ax), values(ax))
 end
 
-const NamedDimsVector{T, Parent <: AbstractVector{T}, DimNames <: Tuple{Any}} = NamedDimsArray{
-    T, 1, Parent, DimNames,
+function NamedDimsArray(parent::AbstractArray{<:Any, N}, dimnames, inds) where {N}
+    return NamedDimsArray(parent, Tuple{Vararg{Any, N}}(dimnames), Tuple{Vararg{Any, N}}(inds))
+end
+
+const NamedDimsVector{T, Denamed <: AbstractVector{T}, DimNames <: Tuple{Any}, Inds <: Tuple{Any}} = NamedDimsArray{
+    T, 1, Denamed, DimNames, Inds
 }
-const NamedDimsMatrix{T, Parent <: AbstractMatrix{T}, DimNames <: Tuple{Any, Any}} = NamedDimsArray{
-    T, 2, Parent, DimNames,
+const NamedDimsMatrix{T, Denamed <: AbstractMatrix{T}, DimNames <: Tuple{Any, Any}, Inds <: Tuple{Any, Any}} = NamedDimsArray{
+    T, 2, Denamed, DimNames, Inds
 }
 
-function NamedDimsArray(parent::AbstractArray, dims)
-    ndims(parent) == length(dims) || throw(ArgumentError("Number of named dims must match ndims."))
-    return NamedDimsArray(parent, Tuple{Vararg{Any, ndims(parent)}}(dims))
+function NamedDimsArray(denamed::AbstractArray, dims)
+    ndims(denamed) == length(dims) || throw(ArgumentError("Number of named dims must match ndims."))
+    return NamedDimsArray(denamed, Tuple{Vararg{Any, ndims(denamed)}}(dims))
+end
+function NamedDimsArray(denamed::AbstractArray, ax::LittleDict)
+    return NamedDimsArray(denamed, keys(ax), values(ax))
 end
 
 # TODO: Delete this, and just wrap the input naively.
@@ -42,9 +57,9 @@ function NamedDimsArray(a::AbstractNamedDimsArray)
 end
 
 # Minimal interface.
-Base.axes(a::NamedDimsArray) = LittleSet(getfield(a, :axes))
-Base.parent(a::NamedDimsArray) = getfield(a, :parent)
-denamed(a::NamedDimsArray) = parent(a)
+Base.axes(a::NamedDimsArray) = LittleDict(a.dimnames, a.inds)
+denamed(a::NamedDimsArray) = a.denamed
+Base.parent(a::NamedDimsArray) = a.denamed
 
 function TypeParameterAccessors.position(
         ::Type{<:AbstractNamedDimsArray}, ::typeof(parenttype)
