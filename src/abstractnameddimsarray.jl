@@ -358,6 +358,7 @@ Base.IndexStyle(s1::IndexStyle, s2::NamedIndexCartesian) = NamedIndexCartesian()
 Base.IndexStyle(s1::NamedIndexCartesian, s2::IndexStyle) = NamedIndexCartesian()
 
 # Like CartesianIndex but with named dimensions.
+## TODO: FIXME ## Delete in favor of using `LittleSet`.
 struct NamedDimsCartesianIndex{N, Index <: Tuple{Vararg{AbstractNamedInteger, N}}} <:
     Base.AbstractCartesianIndex{N}
     I::Index
@@ -371,7 +372,8 @@ function Base.show(io::IO, I::NamedDimsCartesianIndex)
 end
 
 # Like CartesianIndices but with named dimensions.
-## TODO: FIXME ## Generlize AbstractNamedUnitRange constraint.
+## TODO: FIXME ## Generalize AbstractNamedUnitRange constraint (for example
+# to NamedDimsIndices).
 struct NamedDimsCartesianIndices{
         N,
         Indices <: Tuple{Vararg{AbstractNamedUnitRange, N}},
