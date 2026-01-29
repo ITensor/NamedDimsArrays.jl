@@ -52,8 +52,8 @@ function dimnames(a::AbstractNamedDimsArray, dim::Int)
 end
 
 function dim(a::AbstractArray, n)
-    dimname = to_dimname(a, n)
-    return findfirst(==(dimname), inds(a))
+    ind = to_ind(a, n)
+    return findfirst(==(ind), inds(a))
 end
 dims(a::AbstractArray, ns) = map(n -> dim(a, n), ns)
 
@@ -79,17 +79,17 @@ function to_inds(a::AbstractArray, dims)
 end
 function to_inds(a::AbstractArray, axes, dims)
     length(axes) == length(dims) || error("Number of dimensions don't match.")
-    inds = map((axis, dim) -> to_dimname(a, axis, dim), axes, dims)
+    inds = map((axis, dim) -> to_ind(a, axis, dim), axes, dims)
     if any(size(a) .≠ length.(denamed.(inds)))
         error("Input dimensions don't match.")
     end
     return inds
 end
-function to_dimname(a::AbstractArray, axis, dim::AbstractNamedArray)
+function to_ind(a::AbstractArray, axis, dim::AbstractNamedArray)
     # TODO: Check `axis` and `dim` have the same shape?
     return dim
 end
-function to_dimname(a::AbstractArray, axis, dim::AbstractNamedUnitRange)
+function to_ind(a::AbstractArray, axis, dim::AbstractNamedUnitRange)
     # TODO: Check `axis` and `dim` have the same shape?
     return dim
 end
@@ -99,33 +99,33 @@ end
 # a = randn(named(2, "i"), named(2, "j"))
 # aligndims(a, ("i", "j"))
 # ```
-function to_dimname(a::AbstractArray, axis, dim)
+function to_ind(a::AbstractArray, axis, dim)
     return named(axis, dim)
 end
-function to_dimname(a::AbstractArray, axis, dim::Name)
-    return to_dimname(a, axis, name(dim))
+function to_ind(a::AbstractArray, axis, dim::Name)
+    return to_ind(a, axis, name(dim))
 end
 
-function to_dimname(a::AbstractNamedDimsArray, dimname)
+function to_ind(a::AbstractNamedDimsArray, dimname)
     dim = findfirst(dimname_isequal(dimname), inds(a))
-    return to_dimname(a, axes(a, dim), dimname)
+    return to_ind(a, axes(a, dim), dimname)
 end
 
-function to_dimname(a::AbstractNamedDimsArray, axis, dim::AbstractNamedArray)
+function to_ind(a::AbstractNamedDimsArray, axis, dim::AbstractNamedArray)
     return dim
 end
-function to_dimname(a::AbstractNamedDimsArray, axis, dim::AbstractNamedUnitRange)
+function to_ind(a::AbstractNamedDimsArray, axis, dim::AbstractNamedUnitRange)
     return dim
 end
-function to_dimname(a::AbstractNamedDimsArray, axis, dim)
-    return named(denamed(name(axis)), dim)
+function to_ind(a::AbstractNamedDimsArray, axis, dim)
+    return named(denamed(axis), dim)
 end
-function to_dimname(a::AbstractNamedDimsArray, axis, dim::Name)
-    return to_dimname(a, axis, name(dim))
+function to_ind(a::AbstractNamedDimsArray, axis, dim::Name)
+    return to_ind(a, axis, name(dim))
 end
 
 function to_inds(a::AbstractNamedDimsArray, dims)
-    return map(dim -> to_dimname(a, dim), dims)
+    return Base.Fix1(to_ind, a).(dims)
 end
 
 # Generic construction of named dims arrays.
@@ -235,10 +235,10 @@ function Base.AbstractArray{T, N}(a::AbstractNamedDimsArray) where {T, N}
 end
 
 function Base.axes(a::AbstractNamedDimsArray)
-    return LittleSet(map(named, axes(denamed(a)), inds(a)))
+    return inds(a)
 end
 function Base.size(a::AbstractNamedDimsArray)
-    return LittleSet(map(named, size(denamed(a)), inds(a)))
+    return length.(axes(a))
 end
 
 function Base.length(a::AbstractNamedDimsArray)
@@ -371,6 +371,7 @@ function Base.show(io::IO, I::NamedDimsCartesianIndex)
 end
 
 # Like CartesianIndices but with named dimensions.
+## TODO: FIXME ## Generlize AbstractNamedUnitRange constraint.
 struct NamedDimsCartesianIndices{
         N,
         Indices <: Tuple{Vararg{AbstractNamedUnitRange, N}},
@@ -386,18 +387,19 @@ function NamedDimsCartesianIndices(indices::LittleSet)
 end
 
 Base.eltype(I::NamedDimsCartesianIndices) = eltype(typeof(I))
-Base.axes(I::NamedDimsCartesianIndices) = map(only ∘ axes, I.indices)
-Base.size(I::NamedDimsCartesianIndices) = length.(I.indices)
+Base.axes(I::NamedDimsCartesianIndices) = (only ∘ axes ∘ denamed).(I.indices)
+Base.size(I::NamedDimsCartesianIndices) = (length ∘ denamed).(I.indices)
 
 function Base.getindex(a::NamedDimsCartesianIndices{N}, I::Vararg{Int, N}) where {N}
-    # TODO: Check if `inds(a)` is correct here.
-    index = map(inds(a), I) do r, i
+    index = map(a.indices, I) do r, i
         return r[i]
     end
+    ## TODO: FIXME ## Output a `LittleSet` instead.
     return NamedDimsCartesianIndex(index)
 end
 
-inds(I::NamedDimsCartesianIndices) = name.(I.indices)
+## TODO: FIXME ## Delete this.
+## inds(I::NamedDimsCartesianIndices) = I.indices
 function denamed(I::NamedDimsCartesianIndices)
     return CartesianIndices(denamed.(I.indices))
 end
@@ -406,13 +408,13 @@ function Base.eachindex(::NamedIndexCartesian, a1::AbstractArray, a_rest::Abstra
     all(a -> issetequal(inds(a1), inds(a)), a_rest) ||
         throw(NameMismatch("Dimension name mismatch $(inds.((a1, a_rest...)))."))
     # TODO: Check the shapes match.
-    return NamedDimsCartesianIndices(axes(a1))
+    return NamedDimsCartesianIndices(inds(a1))
 end
 
 # Base version ignores dimension names.
 # TODO: Use `mapreduce(isequal, &&, a1, a2)`?
 function Base.isequal(a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray)
-    issetequal(inds(a1), inds(a2)) || return false
+    (inds(a1) == inds(a2)) || return false
     return isequal(denamed(a1), denamed(a2, inds(a1)))
 end
 
@@ -420,7 +422,7 @@ end
 # TODO: Use `mapreduce(==, &&, a1, a2)`?
 # TODO: Handle `missing` values properly.
 function Base.:(==)(a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray)
-    issetequal(inds(a1), inds(a2)) || return false
+    (inds(a1) == inds(a2)) || return false
     return denamed(a1) == denamed(a2, inds(a1))
 end
 

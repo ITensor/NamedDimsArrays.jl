@@ -27,10 +27,10 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         ai, aj = axes(na)
         i = namedoneto(3, "i")
         j = namedoneto(4, "j")
-        @test name(si) == i
-        @test name(sj) == j
-        @test name(ai) == i
-        @test name(aj) == j
+        @test name(si) == "i"
+        @test name(sj) == "j"
+        @test name(ai) == "i"
+        @test name(aj) == "j"
         @test isnamed(na)
         @test inds(na) == (i, j)
         @test inds(na, 1) == i
@@ -235,9 +235,9 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         nb = setinds(na, named(3, "i") => named(3, "k"))
         na[1, 1] = 11
         @test na[1, 1] == 11
-        @test Tuple(size(na)) == (named(3, named(1:3, "i")), named(4, named(1:4, "j")))
-        @test length(na) == named(12, fusednames(named(1:3, "i"), named(1:4, "j")))
-        @test Tuple(axes(na)) == (named(1:3, named(1:3, "i")), named(1:4, named(1:4, "j")))
+        @test Tuple(size(na)) == (named(3, "i"), named(4, "j"))
+        @test length(na) == named(12, fusednames("i", "j"))
+        @test Tuple(axes(na)) == (named(1:3, "i"), named(1:4, "j"))
         @test randn(named.((3, 4), ("i", "j"))) isa NamedDimsArray
         @test na["i" => 1, "j" => 2] == a[1, 2]
         @test na["j" => 2, "i" => 1] == a[1, 2]
@@ -264,7 +264,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         nc = zeros(elt, named.((2, 3), (:i, :j)))
         Is = eachindex(na, nb)
         @test Is isa NamedDimsCartesianIndices{2}
-        @test issetequal(inds(Is), (named(1:2, :i), named(1:3, :j)))
+        @test issetequal(Is.indices, (named(1:2, :i), named(1:3, :j)))
         for I in Is
             @test I isa NamedDimsCartesianIndex{2}
             @test issetequal(name.(Tuple(I)), (:i, :j))
