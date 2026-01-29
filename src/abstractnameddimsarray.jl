@@ -235,10 +235,10 @@ function Base.AbstractArray{T, N}(a::AbstractNamedDimsArray) where {T, N}
 end
 
 function Base.axes(a::AbstractNamedDimsArray)
-    return NaiveOrderedSet(map(named, axes(denamed(a)), inds(a)))
+    return LittleSet(map(named, axes(denamed(a)), inds(a)))
 end
 function Base.size(a::AbstractNamedDimsArray)
-    return NaiveOrderedSet(map(named, size(denamed(a)), inds(a)))
+    return LittleSet(map(named, size(denamed(a)), inds(a)))
 end
 
 function Base.length(a::AbstractNamedDimsArray)
@@ -300,11 +300,11 @@ function Base.similar(
     return similar_nameddims(a, elt, inds)
 end
 
-function Base.similar(a::AbstractArray, inds::NaiveOrderedSet)
+function Base.similar(a::AbstractArray, inds::LittleSet)
     return similar_nameddims(a, eltype(a), inds)
 end
 
-function Base.similar(a::AbstractArray, elt::Type, inds::NaiveOrderedSet)
+function Base.similar(a::AbstractArray, elt::Type, inds::LittleSet)
     return similar_nameddims(a, elt, inds)
 end
 
@@ -381,7 +381,7 @@ struct NamedDimsCartesianIndices{
         return new{length(indices), typeof(indices), Tuple{eltype.(indices)...}}(indices)
     end
 end
-function NamedDimsCartesianIndices(indices::NaiveOrderedSet)
+function NamedDimsCartesianIndices(indices::LittleSet)
     return NamedDimsCartesianIndices(Tuple(indices))
 end
 

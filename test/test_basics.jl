@@ -1,6 +1,6 @@
 using Combinatorics: Combinatorics
 import NamedDimsArrays as NDA
-using NamedDimsArrays: AbstractNamedDimsArray, AbstractNamedDimsMatrix, NaiveOrderedSet,
+using NamedDimsArrays: AbstractNamedDimsArray, AbstractNamedDimsMatrix, LittleSet,
     Name, NameMismatch, NamedDimsCartesianIndex, NamedDimsCartesianIndices, NamedDimsArray,
     NamedDimsMatrix, NamedDimsOperator
 using NamedDimsArrays: aligndims, aligneddims, apply, dename, denamed, dim, dimnames, dims,
@@ -101,13 +101,13 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         ai, aj = axes(na)
         for na′ in (
                 similar(na, Float32, (j, i)),
-                similar(na, Float32, NaiveOrderedSet((j, i))),
+                similar(na, Float32, LittleSet((j, i))),
                 similar(na, Float32, (aj, ai)),
-                similar(na, Float32, NaiveOrderedSet((aj, ai))),
+                similar(na, Float32, LittleSet((aj, ai))),
                 similar(a, Float32, (j, i)),
-                similar(a, Float32, NaiveOrderedSet((j, i))),
+                similar(a, Float32, LittleSet((j, i))),
                 similar(a, Float32, (aj, ai)),
-                similar(a, Float32, NaiveOrderedSet((aj, ai))),
+                similar(a, Float32, LittleSet((aj, ai))),
             )
             @test eltype(na′) ≡ Float32
             @test all(inds(na′) .== (j, i))
@@ -121,13 +121,13 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         ai, aj = axes(na)
         for na′ in (
                 similar(na, (j, i)),
-                similar(na, NaiveOrderedSet((j, i))),
+                similar(na, LittleSet((j, i))),
                 similar(na, (aj, ai)),
-                similar(na, NaiveOrderedSet((aj, ai))),
+                similar(na, LittleSet((aj, ai))),
                 similar(a, (j, i)),
-                similar(a, NaiveOrderedSet((j, i))),
+                similar(a, LittleSet((j, i))),
                 similar(a, (aj, ai)),
-                similar(a, NaiveOrderedSet((aj, ai))),
+                similar(a, LittleSet((aj, ai))),
             )
             @test eltype(na′) ≡ eltype(na)
             @test all(inds(na′) .== (j, i))
@@ -382,14 +382,14 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
             @test !iszero(na)
         end
     end
-    @testset "NaiveOrderedSet" begin
+    @testset "LittleSet" begin
         # Broadcasting
-        s = NaiveOrderedSet((1, 2))
+        s = LittleSet((1, 2))
         @test eltype(s) == Int
         @test s .+ [3, 4] == [4, 6]
         @test s .+ (3, 4) ≡ (4, 6)
 
-        s = NaiveOrderedSet(("a", "b", "c"))
+        s = LittleSet(("a", "b", "c"))
         @test all(s .== ("a", "b", "c"))
         @test values(s) == ("a", "b", "c")
         @test Tuple(s) == ("a", "b", "c")
@@ -401,7 +401,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
                 replace(s, "b" => "x"),
                 map(x -> x == "b" ? "x" : x, s),
             )
-            @test s′ isa NaiveOrderedSet
+            @test s′ isa LittleSet
             @test Tuple(s′) == ("a", "x", "c")
             @test s′[1] == "a"
             @test s′[2] == "x"
