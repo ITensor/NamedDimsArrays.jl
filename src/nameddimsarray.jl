@@ -1,23 +1,23 @@
 using TypeParameterAccessors: TypeParameterAccessors, parenttype
 
 # inds should be a named slice.
-struct NamedDimsArray{T, N, Denamed <: AbstractArray{T, N}, Inds <: Tuple{Vararg{Any, N}}} <:
+struct NamedDimsArray{T, N, Denamed <: AbstractArray{T, N}, DimNames <: Tuple{Vararg{Any, N}}} <:
     AbstractNamedDimsArray{T, N}
     denamed::Denamed
-    inds::Inds
-    function NamedDimsArray{T, N, Denamed, Inds}(
+    dimnames::DimNames
+    function NamedDimsArray{T, N, Denamed, DimNames}(
             denamed::AbstractArray{<:Any, N}, dims::Tuple{Vararg{Any, N}}
-        ) where {T, N, Denamed <: AbstractArray{T, N}, Inds <: Tuple{Vararg{Any, N}}}
-        inds = to_inds(denamed, dims)
-        return new{T, N, Denamed, Inds}(denamed, inds)
+        ) where {T, N, Denamed <: AbstractArray{T, N}, DimNames <: Tuple{Vararg{Any, N}}}
+        dimnames = to_dimnames(denamed, dims)
+        return new{T, N, Denamed, DimNames}(denamed, dimnames)
     end
 end
 function NamedDimsArray(
         denamed::Denamed, dims::Tuple{Vararg{Any, N}}
     ) where {T, N, Denamed <: AbstractArray{T, N}}
     # This checks the shapes of the inputs.
-    inds = to_inds(denamed, dims)
-    return NamedDimsArray{T, N, Denamed, typeof(inds)}(denamed, inds)
+    dimnames = to_dimnames(denamed, dims)
+    return NamedDimsArray{T, N, Denamed, typeof(dimnames)}(denamed, dimnames)
 end
 
 const NamedDimsVector{T, Denamed <: AbstractVector{T}, Inds <: Tuple{Any}} = NamedDimsArray{
@@ -42,7 +42,7 @@ function NamedDimsArray(a::AbstractNamedDimsArray)
 end
 
 # Minimal interface.
-inds(a::NamedDimsArray) = LittleSet(a.inds)
+dimnames(a::NamedDimsArray) = LittleSet(a.dimnames)
 denamed(a::NamedDimsArray) = a.denamed
 Base.parent(a::NamedDimsArray) = denamed(a)
 

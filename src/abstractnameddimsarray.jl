@@ -28,8 +28,11 @@ const NamedDimsAxis = AbstractNamedUnitRange{
     <:Integer, <:AbstractUnitRange, <:NamedDimsIndices,
 }
 
-# Output the dimension names.
-inds(a::AbstractArray) = throw(MethodError(inds, Tuple{typeof(a)}))
+dimnames(a::AbstractNamedDimsArray) = throw(MethodError(inds, Tuple{typeof(a)}))
+function dimnames(a::AbstractNamedDimsArray, dim::Int)
+    return dimnames(a)[dim]
+end
+
 # Unwrapping the names (`NamedDimsArrays.jl` interface).
 # TODO: Use `IsNamed` trait?
 denamed(a::AbstractNamedDimsArray) = throw(MethodError(denamed, Tuple{typeof(a)}))
@@ -40,16 +43,11 @@ function denamed(a::AbstractNamedDimsArray, inds)
     return denamed(aligneddims(a, inds))
 end
 
-isnamed(::Type{<:AbstractNamedDimsArray}) = true
-
+# Output the named axes/indices of the named dims array.
+inds(a::AbstractArray) = LittleSet(named.(axes(denamed(a)), dimnames(a)))
 inds(a::AbstractArray, dim::Int) = inds(a)[dim]
 
-function dimnames(a::AbstractNamedDimsArray)
-    return name.(inds(a))
-end
-function dimnames(a::AbstractNamedDimsArray, dim::Int)
-    return dimnames(a)[dim]
-end
+isnamed(::Type{<:AbstractNamedDimsArray}) = true
 
 function dim(a::AbstractArray, n)
     ind = to_ind(a, n)
@@ -74,24 +72,12 @@ dimname_isequal(r1, r2::AbstractNamedUnitRange) = r1 == name(r2)
 dimname_isequal(r1::AbstractNamedUnitRange, r2::Name) = name(r1) == name(r2)
 dimname_isequal(r1::Name, r2::AbstractNamedUnitRange) = name(r1) == name(r2)
 
-function to_inds(a::AbstractArray, dims)
-    return to_inds(a, axes(a), dims)
+function to_dimnames(a::AbstractArray, dims)
+    return to_dimnames(a, axes(a), dims)
 end
-function to_inds(a::AbstractArray, axes, dims)
+function to_dimnames(a::AbstractArray, axes, dims)
     length(axes) == length(dims) || error("Number of dimensions don't match.")
-    inds = map((axis, dim) -> to_ind(a, axis, dim), axes, dims)
-    if any(size(a) .≠ length.(denamed.(inds)))
-        error("Input dimensions don't match.")
-    end
-    return inds
-end
-function to_ind(a::AbstractArray, axis, dim::AbstractNamedArray)
-    # TODO: Check `axis` and `dim` have the same shape?
-    return dim
-end
-function to_ind(a::AbstractArray, axis, dim::AbstractNamedUnitRange)
-    # TODO: Check `axis` and `dim` have the same shape?
-    return dim
+    return map((axis, dim) -> to_dimname(a, axis, dim), axes, dims)
 end
 # This is the case where just the name of the axis
 # was specified without a range, like:
@@ -99,33 +85,13 @@ end
 # a = randn(named(2, "i"), named(2, "j"))
 # aligndims(a, ("i", "j"))
 # ```
-function to_ind(a::AbstractArray, axis, dim)
-    return named(axis, dim)
+to_dimname(a::AbstractArray, axis, dim) = dim
+function to_dimname(a::AbstractArray, axis, dim::Name)
+    return to_dimname(a, axis, name(dim))
 end
-function to_ind(a::AbstractArray, axis, dim::Name)
-    return to_ind(a, axis, name(dim))
-end
-
-function to_ind(a::AbstractNamedDimsArray, dimname)
-    dim = findfirst(dimname_isequal(dimname), inds(a))
-    return to_ind(a, axes(a, dim), dimname)
-end
-
-function to_ind(a::AbstractNamedDimsArray, axis, dim::AbstractNamedArray)
-    return dim
-end
-function to_ind(a::AbstractNamedDimsArray, axis, dim::AbstractNamedUnitRange)
-    return dim
-end
-function to_ind(a::AbstractNamedDimsArray, axis, dim)
-    return named(denamed(axis), dim)
-end
-function to_ind(a::AbstractNamedDimsArray, axis, dim::Name)
-    return to_ind(a, axis, name(dim))
-end
-
-function to_inds(a::AbstractNamedDimsArray, dims)
-    return Base.Fix1(to_ind, a).(dims)
+function to_dimname(a::AbstractArray, axis, dim::AbstractNamedUnitRange)
+    # TODO: Check `axis` and `dim` have the same shape?
+    return name(dim)
 end
 
 # Generic construction of named dims arrays.
@@ -158,10 +124,10 @@ end
 
 # Output a constructor for a named dims array (that should accept and denamed array and
 # a set of named dimensions/axes/indices) based on the dimension names.
-function nameddimsconstructor(a::AbstractArray, inds)
-    inds′ = to_inds(a, inds)
-    isempty(inds′) && return NamedDimsArray
-    return mapreduce(nameddimsconstructor, combine_nameddimsconstructors, inds′)
+function nameddimsconstructor(a::AbstractArray, dims)
+    dimnames = to_dimnames(a, dims)
+    isempty(dimnames) && return NamedDimsArray
+    return mapreduce(nameddimsconstructor, combine_nameddimsconstructors, dimnames)
 end
 
 nameddimsconstructor(nameddim) = nameddimsconstructor(typeof(nameddim))
@@ -321,9 +287,9 @@ function replaceinds(
     return setinds(a, replace(inds(a), replacements...))
 end
 function replaceinds(a::AbstractNamedDimsArray, replacements::Pair...)
-    old_inds = to_inds(a, first.(replacements))
-    new_inds = named.(denamed.(old_inds), last.(replacements))
-    return replaceinds(a, (old_inds .=> new_inds)...)
+    old_dimnames = to_dimnames(a, first.(replacements))
+    new_dimnames = to_dimnames(a, last.(replacements))
+    return replaceinds(a, (old_dimnames .=> new_dimnames)...)
 end
 function replaceinds(a::AbstractNamedDimsArray, replacements::Dict)
     return replaceinds(a) do name
@@ -474,7 +440,7 @@ end
 function Base.to_indices(
         a::AbstractNamedDimsArray, I::Tuple{AbstractNamedInteger, Vararg{AbstractNamedInteger}}
     )
-    perm = getperm(to_inds(a, name.(I)), inds(a))
+    perm = getperm(to_dimnames(a, name.(I)), dimnames(a))
     # TODO: Throw a `NameMismatch` error.
     @assert isperm(perm)
     I = map(p -> I[p], perm)
@@ -703,15 +669,15 @@ function aligndims(a::AbstractArray, dims)
 end
 
 function aligneddims(a::AbstractArray, dims)
-    new_inds = to_inds(a, dims)
-    perm = getperm(inds(a), new_inds)
+    new_dimnames = to_dimnames(a, dims)
+    perm = getperm(dimnames(a), new_dimnames)
     isperm(perm) || throw(
         NameMismatch(
-            "Dimension name mismatch $(inds(a)), $(new_inds)."
+            "Dimension name mismatch $(inds(a)), $(new_dimnames)."
         ),
     )
     return nameddimsconstructorof(a)(
-        FI.permuteddims(denamed(a), perm), new_inds
+        FI.permuteddims(denamed(a), perm), new_dimnames
     )
 end
 
