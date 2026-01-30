@@ -18,7 +18,7 @@ Base.getindex(s::LittleSet, I::CartesianIndex{1}) = s.values[I]
 Base.get(s::LittleSet, I::Integer, default) = get(s.values, I, default)
 Base.invperm(s::LittleSet) = LittleSet(invperm(s.values))
 # Use `_sort` to handle `Tuple` in Julia v1.10.
-# TODO: Delete once support for that is dropped.
+# TODO: Delete once support for Julia v1.10 is dropped.
 Base.sort(s::LittleSet; kwargs...) = LittleSet(_sort(s.values; kwargs...))
 Base.Broadcast._axes(::Broadcasted, axes::LittleSet) = axes
 Base.Broadcast.BroadcastStyle(::Type{<:LittleSet}) = Style{LittleSet}()
