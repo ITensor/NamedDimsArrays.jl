@@ -259,22 +259,22 @@ end
 function setinds(a::AbstractNamedDimsArray, inds)
     return nameddimsconstructorof(a)(denamed(a), inds)
 end
+function replaceinds(a::AbstractNamedDimsArray, replacements::Dict)
+    # Strip off names from named unit ranges and integers.
+    name_replacements = Dict([name.(kv) for kv in replacements])
+    new_dimnames = replace(dimnames(a)) do name
+        return get(name_replacements, name, name)
+    end
+    return setinds(a, new_dimnames)
+end
 function replaceinds(f, a::AbstractNamedDimsArray)
-    return setinds(a, replace(f, dimnames(a)))
+    replacements = Dict((n => f(n) for n in dimnames(a)))
+    return replaceinds(a, replacements)
 end
 function replaceinds(a::AbstractNamedDimsArray, replacements::Pair...)
-    old_dimnames = name.(first.(replacements))
-    new_dimnames = name.(last.(replacements))
-    return setinds(a, replace(dimnames(a), (old_dimnames .=> new_dimnames)...))
+    return replaceinds(a, Dict(replacements))
 end
-function replaceinds(a::AbstractNamedDimsArray, replacements::Dict)
-    return replaceinds(a) do name
-        return get(replacements, name, name)
-    end
-end
-function mapinds(f, a::AbstractNamedDimsArray)
-    return setinds(a, map(f, inds(a)))
-end
+mapinds(f, a::AbstractNamedDimsArray) = replaceinds(f, a)
 
 # `Base.isempty(a::AbstractArray)` is defined as `length(a) == 0`,
 # which involves comparing a named integer to an denamed integer
