@@ -451,12 +451,13 @@ end
 function Base.to_indices(
         a::AbstractNamedDimsArray, I::Tuple{Pair{<:Any, Int}, Vararg{Pair{<:Any, Int}}}
     )
-    inds = to_inds(a, first.(I))
-    return to_indices(a, map((i, name) -> name[i], last.(I), inds))
+    dimnames = to_dimnames(a, first.(I))
+    return to_indices(a, map((i, name) -> name[i], last.(I), dimnames))
 end
 function Base.to_indices(a::AbstractNamedDimsArray, I::Tuple{Pair, Vararg{Pair}})
-    inds = to_inds(a, first.(I))
-    return map((i, name) -> name[i], last.(I), inds)
+    ## dimnames = to_dimnames(a, first.(I))
+    ## return map((i, name) -> name[i], last.(I), dimnames)
+    return to_indices(a, named.(last.(I), first.(I)))
 end
 
 function Base.to_indices(a::AbstractNamedDimsArray, I::Tuple{NamedDimsCartesianIndex})
@@ -561,7 +562,7 @@ function Base.view(a::AbstractArray, I1::Name, Irest::Name...)
 end
 
 function Base.view(a::AbstractNamedDimsArray, I1::Name, Irest::Name...)
-    return view(a, to_inds(a, (I1, Irest...))...)
+    return view(a, to_dimnames(a, (I1, Irest...))...)
 end
 
 function Base.getindex(a::AbstractArray, I1::Name, Irest::Name...)
@@ -589,8 +590,8 @@ function Base.view(a::AbstractNamedDimsArray, I1::NamedViewIndex, Irest::NamedVi
 end
 function Base.view(a::AbstractNamedDimsArray, I1::Pair, Irest::Pair...)
     I = (I1, Irest...)
-    inds = to_inds(a, first.(I))
-    return view(a, map((i, name) -> name[i], last.(I), inds)...)
+    dimnames = to_dimnames(a, first.(I))
+    return view(a, map((i, name) -> name[i], last.(I), dimnames)...)
 end
 
 function Base.getindex(
@@ -658,14 +659,14 @@ end
 # Permute/align dimensions
 
 function aligndims(a::AbstractArray, dims)
-    new_inds = to_inds(a, dims)
-    perm = Tuple(getperm(inds(a), new_inds))
+    new_dimnames = to_dimnames(a, dims)
+    perm = Tuple(getperm(dimnames(a), new_dimnames))
     isperm(perm) || throw(
         NameMismatch(
-            "Dimension name mismatch $(inds(a)), $(new_inds)."
+            "Dimension name mismatch $(dimnames(a)), $(new_dimnames)."
         ),
     )
-    return nameddimsconstructorof(a)(permutedims(denamed(a), perm), new_inds)
+    return nameddimsconstructorof(a)(permutedims(denamed(a), perm), new_dimnames)
 end
 
 function aligneddims(a::AbstractArray, dims)
@@ -673,7 +674,7 @@ function aligneddims(a::AbstractArray, dims)
     perm = getperm(dimnames(a), new_dimnames)
     isperm(perm) || throw(
         NameMismatch(
-            "Dimension name mismatch $(inds(a)), $(new_dimnames)."
+            "Dimension name mismatch $(dimnames(a)), $(new_dimnames)."
         ),
     )
     return nameddimsconstructorof(a)(

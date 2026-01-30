@@ -148,8 +148,8 @@ denamed(a::NamedDimsOperator) = denamed(state(a))
 inds_map(a::NamedDimsOperator) = getfield(a, :domain_codomain_bijection)
 
 function NamedDimsOperator(a::AbstractNamedDimsArray, domain_codomain_pairs)
-    domain = to_inds(a, first.(domain_codomain_pairs))
-    codomain = to_inds(a, last.(domain_codomain_pairs))
+    domain = to_dimnames(a, first.(domain_codomain_pairs))
+    codomain = to_dimnames(a, last.(domain_codomain_pairs))
     return NamedDimsOperator(a, Bijection(domain .=> codomain))
 end
 
