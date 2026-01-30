@@ -110,7 +110,7 @@ abstract type AbstractNamedDimsOperator{T, N} <: AbstractNamedDimsArray{T, N} en
 
 state(a::AbstractNamedDimsArray) = a
 
-inds(a::AbstractNamedDimsOperator) = inds(state(a))
+dimnames(a::AbstractNamedDimsOperator) = dimnames(state(a))
 
 # TODO: Unify these two functions.
 function operator(a::AbstractNamedDimsArray, domain_codomain_pairs)

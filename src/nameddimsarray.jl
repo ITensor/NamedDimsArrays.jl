@@ -8,15 +8,14 @@ struct NamedDimsArray{T, N, Denamed <: AbstractArray{T, N}, DimNames <: Tuple{Va
     function NamedDimsArray{T, N, Denamed, DimNames}(
             denamed::AbstractArray{<:Any, N}, dims::Tuple{Vararg{Any, N}}
         ) where {T, N, Denamed <: AbstractArray{T, N}, DimNames <: Tuple{Vararg{Any, N}}}
-        dimnames = to_dimnames(denamed, dims)
-        return new{T, N, Denamed, DimNames}(denamed, dimnames)
+        return new{T, N, Denamed, DimNames}(denamed, name.(dims))
     end
 end
 function NamedDimsArray(
         denamed::Denamed, dims::Tuple{Vararg{Any, N}}
     ) where {T, N, Denamed <: AbstractArray{T, N}}
     # This checks the shapes of the inputs.
-    dimnames = to_dimnames(denamed, dims)
+    dimnames = name.(dims)
     return NamedDimsArray{T, N, Denamed, typeof(dimnames)}(denamed, dimnames)
 end
 
