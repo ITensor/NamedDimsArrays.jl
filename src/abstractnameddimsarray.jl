@@ -21,13 +21,6 @@ function FI.ImplementationStyle(type::Type{<:AbstractNamedDimsArray})
     return NamedDimsArrayImplementationStyle()
 end
 
-const NamedDimsIndices = Union{
-    AbstractNamedUnitRange{<:Integer}, AbstractNamedArray{<:Integer},
-}
-const NamedDimsAxis = AbstractNamedUnitRange{
-    <:Integer, <:AbstractUnitRange, <:NamedDimsIndices,
-}
-
 dimnames(a::AbstractNamedDimsArray) = throw(MethodError(dimnames, a))
 function dimnames(a::AbstractNamedDimsArray, dim::Int)
     return dimnames(a)[dim]
@@ -113,7 +106,7 @@ nameddimsconstructor(nameddim) = nameddimsconstructor(typeof(nameddim))
 # depending on the dimension name types, for example
 # output an `ITensor` if the dimension names are `IndexName`s.
 nameddimsconstructor(nameddimtype::Type) = NamedDimsArray
-function nameddimsconstructor(nameddimtype::Type{<:NamedDimsIndices})
+function nameddimsconstructor(nameddimtype::Type{<:AbstractNamedUnitRange})
     return nameddimsconstructor(nametype(nameddimtype))
 end
 function combine_nameddimsconstructors(
@@ -227,13 +220,13 @@ end
 # This is defined explicitly since the Base version expects the eltype
 # to be known at compile time, which isn't true for ITensors.
 function Base.similar(
-        a::AbstractArray, inds::Tuple{NamedDimsIndices, Vararg{NamedDimsIndices}}
+        a::AbstractArray, inds::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}}
     )
     return similar(a, eltype(a), inds)
 end
 
 function Base.similar(
-        a::AbstractArray, elt::Type, inds::Tuple{NamedDimsIndices, Vararg{NamedDimsIndices}}
+        a::AbstractArray, elt::Type, inds::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}}
     )
     return similar_nameddims(a, elt, inds)
 end
@@ -308,8 +301,6 @@ function Base.show(io::IO, I::NamedDimsCartesianIndex)
 end
 
 # Like CartesianIndices but with named dimensions.
-## TODO: FIXME ## Generalize AbstractNamedUnitRange constraint (for example
-# to NamedDimsIndices).
 struct NamedDimsCartesianIndices{
         N,
         Indices <: Tuple{Vararg{AbstractNamedUnitRange, N}},
@@ -613,7 +604,7 @@ function Base.setindex!(
         Irest::NamedViewIndex...,
     )
     I = (I1, Irest...)
-    a[I...] = nameddimsconstructorof(a)(value, I)
+    a[I...] = nameddimsconstructorof(a)(value, name.(I))
     return a
 end
 function Base.setindex!(
@@ -699,7 +690,7 @@ for (f, f′) in [(:rand, :_rand), (:randn, :_randn)]
             return $f(rng, elt, Base.oneto.(dims))
         end
     end
-    for dimtype in [:AbstractNamedInteger, :NamedDimsIndices]
+    for dimtype in [:AbstractNamedInteger, :AbstractNamedUnitRange]
         @eval begin
             function Base.$f(
                     rng::AbstractRNG, elt::Type{<:Number}, dim1::$dimtype, dims::Vararg{$dimtype}

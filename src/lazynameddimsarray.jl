@@ -42,7 +42,7 @@ TA.mul_axes(a::AbstractNamedDimsArray, b::AbstractNamedDimsArray) =
 # Fix ambiguity error.
 function Base.similar(
         a::MulNamedDimsArray, elt::Type,
-        inds::Tuple{NamedDimsIndices, Vararg{NamedDimsIndices}}
+        inds::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}}
     )
     return TA.similar_mul(a, elt, inds)
 end

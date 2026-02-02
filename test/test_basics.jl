@@ -9,9 +9,12 @@ using NamedDimsArrays: aligndims, aligneddims, apply, dename, denamed, dim, dimn
 using Test: @test, @test_throws, @testset
 using VectorInterface: scalartype
 
+module TestBasicsUtils
+    elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
+end
+
 @testset "NamedDimsArrays.jl" begin
-    @testset "Basic functionality (eltype=$elt)" for elt in
-        (Float32, Float64, Complex{Float32}, Complex{Float64})
+    @testset "Basic functionality (eltype=$elt)" for elt in TestBasicsUtils.elts
         a = randn(elt, 3, 4)
         @test !isnamed(a)
         na = nameddims(a, ("i", "j"))
@@ -296,7 +299,7 @@ using VectorInterface: scalartype
             ## @test iszero(a′[2, 2:3, 4])
         end
     end
-    @testset "begin/end (eltype=$elt)" for elt in elts
+    @testset "begin/end (eltype=$elt)" for elt in TestBasicsUtils.elts
         i, j = namedoneto.((2, 3), ("i", "j"))
         a = randn(elt, i, j)
         @test a[begin, begin] == a[1, 1]
@@ -320,7 +323,7 @@ using VectorInterface: scalartype
         @test a[j[end], i[begin]] == a[1, 3]
         @test a[j[end], i[end]] == a[2, 3]
     end
-    @testset "Shorthand constructors (eltype=$elt)" for elt in elts
+    @testset "Shorthand constructors (eltype=$elt)" for elt in TestBasicsUtils.elts
         i, j = named.((2, 2), ("i", "j"))
         value = rand(elt)
         for na in (zeros(elt, i, j), zeros(elt, (i, j)))
