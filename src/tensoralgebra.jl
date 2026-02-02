@@ -164,9 +164,6 @@ for f in [
             x_denamed, y_denamed = TA.$f(denamed(a), dimnames(a), codomain, domain; kwargs...)
             name_x = randname(dimnames(a, 1))
             name_y = name_x
-            # TODO: FIXME: Delete this.
-            # namedindices_x = named(last(axes(x_denamed)), name_x)
-            # namedindices_y = named(first(axes(y_denamed)), name_y)
             dimnames_x = (codomain..., name_x)
             dimnames_y = (name_y, domain...)
             x = nameddims(x_denamed, dimnames_x)
@@ -214,9 +211,6 @@ function svd_nameddims(
     )
     name_u = randname(dimnames(a, 1))
     name_v = randname(dimnames(a, 1))
-    # TODO: FIXME: Delete this.
-    # namedindices_u = named(last(axes(u_denamed)), name_u)
-    # namedindices_v = named(first(axes(v_denamed)), name_v)
     dimnames_u = (codomain..., name_u)
     dimnames_s = (name_u, name_v)
     dimnames_v = (name_v, domain...)
@@ -284,10 +278,6 @@ function eigen_nameddims(
     name_d = randname(dimnames(a, 1))
     name_d′ = randname(name_d)
     name_v = name_d
-    ## TODO: FIXME: Delete this.
-    ## namedindices_d = named(last(axes(d_denamed)), name_d)
-    ## namedindices_d′ = named(first(axes(d_denamed)), name_d′)
-    ## namedindices_v = named(last(axes(v_denamed)), name_v)
     dimnames_d = (name_d′, name_d)
     dimnames_v = (domain..., name_v)
     d = nameddims(d_denamed, dimnames_d)
@@ -328,8 +318,6 @@ function left_null_nameddims(
     domain = name.(dimnames_domain)
     n_denamed = TA.left_null(denamed(a), dimnames(a), codomain, domain; kwargs...)
     name_n = randname(dimnames(a, 1))
-    ## TODO: FIXME: Delete this.
-    ## namedindices_n = named(last(axes(n_denamed)), name_n)
     dimnames_n = (codomain..., name_n)
     return nameddims(n_denamed, dimnames_n)
 end
@@ -355,8 +343,6 @@ function right_null_nameddims(
     domain = name.(dimnames_domain)
     n_denamed = TA.right_null(denamed(a), dimnames(a), codomain, domain; kwargs...)
     name_n = randname(dimnames(a, 1))
-    ## TODO: FIXME: Delete this.
-    ## namedindices_n = named(first(axes(n_denamed)), name_n)
     dimnames_n = (name_n, domain...)
     return nameddims(n_denamed, dimnames_n)
 end

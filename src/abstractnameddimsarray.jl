@@ -287,7 +287,6 @@ Base.IndexStyle(s1::IndexStyle, s2::NamedIndexCartesian) = NamedIndexCartesian()
 Base.IndexStyle(s1::NamedIndexCartesian, s2::IndexStyle) = NamedIndexCartesian()
 
 # Like CartesianIndex but with named dimensions.
-## TODO: FIXME ## Delete in favor of using `LittleSet`.
 struct NamedDimsCartesianIndex{N, Index <: Tuple{Vararg{AbstractNamedInteger, N}}} <:
     Base.AbstractCartesianIndex{N}
     I::Index
@@ -323,7 +322,6 @@ function Base.getindex(a::NamedDimsCartesianIndices{N}, I::Vararg{Int, N}) where
     index = map(a.indices, I) do r, i
         return r[i]
     end
-    ## TODO: FIXME ## Output a `LittleSet` instead.
     return NamedDimsCartesianIndex(index)
 end
 
@@ -708,47 +706,27 @@ for (f, f′) in [(:rand, :_rand), (:randn, :_randn)]
         end
     end
 end
-for f in [:zeros, :ones]
+for f in [:zeros, :ones], dimtype in [:AbstractNamedInteger, :AbstractNamedUnitRange]
     @eval begin
-        # TODO: FIXME: Combine these two definitions into a single one in a loop over `@eval`.
         function Base.$f(
-                elt::Type{<:Number}, ax::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}}
+                elt::Type{<:Number}, ax::Tuple{$dimtype, Vararg{$dimtype}}
             )
             a = $f(elt, denamed.(ax))
             return a[Name.(name.(ax))...]
         end
-        # TODO: FIXME: Combine these two definitions into a single one in a loop over `@eval`.
-        function Base.$f(
-                elt::Type{<:Number}, ax::Tuple{AbstractNamedInteger, Vararg{AbstractNamedInteger}}
-            )
-            a = $f(elt, denamed.(ax))
-            return a[Name.(name.(ax))...]
+        function Base.$f(elt::Type{<:Number}, dim1::$dimtype, dims::Vararg{$dimtype})
+            return $f(elt, (dim1, dims...))
         end
-    end
-    for dimtype in [:AbstractNamedInteger, :AbstractNamedUnitRange]
-        @eval begin
-            function Base.$f(elt::Type{<:Number}, dim1::$dimtype, dims::Vararg{$dimtype})
-                return $f(elt, (dim1, dims...))
-            end
-            Base.$f(dims::Tuple{$dimtype, Vararg{$dimtype}}) = $f(default_eltype(), dims)
-            Base.$f(dim1::$dimtype, dims::Vararg{$dimtype}) = $f((dim1, dims...))
-        end
-    end
-end
-@eval begin
-    # TODO: FIXME: Combine these two definitions into a single one in a loop over `@eval`.
-    function Base.fill(value, ax::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}})
-        a = fill(value, denamed.(ax))
-        return a[Name.(name.(ax))...]
-    end
-    # TODO: FIXME: Combine these two definitions into a single one in a loop over `@eval`.
-    function Base.fill(value, dims::Tuple{AbstractNamedInteger, Vararg{AbstractNamedInteger}})
-        a = fill(value, denamed.(dims))
-        return a[Name.(name.(dims))...]
+        Base.$f(dims::Tuple{$dimtype, Vararg{$dimtype}}) = $f(default_eltype(), dims)
+        Base.$f(dim1::$dimtype, dims::Vararg{$dimtype}) = $f((dim1, dims...))
     end
 end
 for dimtype in [:AbstractNamedInteger, :AbstractNamedUnitRange]
     @eval begin
+        function Base.fill(value, ax::Tuple{$dimtype, Vararg{$dimtype}})
+            a = fill(value, denamed.(ax))
+            return a[Name.(name.(ax))...]
+        end
         function Base.fill(value, dim1::$dimtype, dims::Vararg{$dimtype})
             return fill(value, (dim1, dims...))
         end
