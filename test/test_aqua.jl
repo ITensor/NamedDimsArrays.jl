@@ -9,9 +9,9 @@ using Test: @testset
     # `NamedDimsArraysBlockArraysExt`:
     # ```
     # ┌ Warning: Circular dependency detected.
-│   # Precompilation will be skipped for dependencies in this cycle:
-│   #  ┌ NamedDimsArrays → NamedDimsArraysAdaptExt
-│   #  └─ NamedDimsArrays → NamedDimsArraysBlockArraysExt
+    # Precompilation will be skipped for dependencies in this cycle:
+    #  ┌ NamedDimsArrays → NamedDimsArraysAdaptExt
+    #  └─ NamedDimsArrays → NamedDimsArraysBlockArraysExt
     # ```
     # TODO: Remove the `persistent_tasks` condition when Julia v1.10 is no longer supported.
     Aqua.test_all(
