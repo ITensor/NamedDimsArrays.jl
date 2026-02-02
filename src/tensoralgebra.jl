@@ -3,7 +3,7 @@ import TensorAlgebra as TA
 using TupleTools: TupleTools
 
 # This layer is used to define derivative rules (to skip differentiating `setdiff`).
-inds_setdiff(s1, s2) = setdiff(s1, s2)
+dimnames_setdiff(s1, s2) = setdiff(s1, s2)
 
 function TA.add!(
         dest::AbstractNamedDimsArray, src::AbstractNamedDimsArray, α::Number, β::Number
@@ -107,7 +107,7 @@ function matricize_nameddims(na::AbstractArray, fusions::Vararg{Pair, 2})
     dimnames_fused = last.(fusions)
     if sum(length, dimnames_fuse) < ndims(na)
         # Not all names are specified
-        dimnames_unspecified = inds_setdiff(dimnames(na), dimnames_fuse...)
+        dimnames_unspecified = dimnames_setdiff(dimnames(na), dimnames_fuse...)
         dimnames_fuse = vcat(
             tuple.(dimnames_unspecified), collect(dimnames_fuse)
         )
@@ -117,7 +117,7 @@ function matricize_nameddims(na::AbstractArray, fusions::Vararg{Pair, 2})
     end
     perm = TA.blockedperm(na, dimnames_fuse...)
     a_fused = TA.matricize(denamed(na), perm)
-    return nameddims(a_fused, dimnames_fuse)
+    return nameddims(a_fused, dimnames_fused)
 end
 
 function TA.unmatricize(na::AbstractNamedDimsArray, splitters::Vararg{Pair, 2})
@@ -178,7 +178,7 @@ for f in [
         end
         function $f_nameddims(a::AbstractArray, dimnames_codomain; kwargs...)
             codomain = name.(dimnames_codomain)
-            domain = inds_setdiff(dimnames(a), codomain)
+            domain = dimnames_setdiff(dimnames(a), codomain)
             return TA.$f(a, codomain, domain; kwargs...)
         end
     end
@@ -232,7 +232,7 @@ function svd_nameddims(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
     return TA.svd(
         a,
         dimnames_codomain,
-        inds_setdiff(dimnames(a), name.(dimnames_codomain));
+        dimnames_setdiff(dimnames(a), name.(dimnames_codomain));
         kwargs...,
     )
 end
@@ -262,7 +262,7 @@ function TA.svdvals(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
 end
 function svdvals_nameddims(a::AbstractArray, dimnames_codomain; kwargs...)
     codomain = name.(dimnames_codomain)
-    domain = inds_setdiff(dimnames(a), codomain)
+    domain = dimnames_setdiff(dimnames(a), codomain)
     return TA.svdvals(a, codomain, domain; kwargs...)
 end
 
@@ -339,7 +339,7 @@ function TA.left_null(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
 end
 function left_null_nameddims(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
     codomain = name.(dimnames_codomain)
-    domain = inds_setdiff(dimnames(a), codomain)
+    domain = dimnames_setdiff(dimnames(a), codomain)
     return TA.left_null(a, codomain, domain; kwargs...)
 end
 
@@ -366,7 +366,7 @@ function TA.right_null(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
 end
 function right_null_nameddims(a::AbstractArray, dimnames_codomain; kwargs...)
     codomain = name.(dimnames_codomain)
-    domain = inds_setdiff(dimnames(a), codomain)
+    domain = dimnames_setdiff(dimnames(a), codomain)
     return TA.right_null(a, codomain, domain; kwargs...)
 end
 
