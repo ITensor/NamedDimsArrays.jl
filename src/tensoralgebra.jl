@@ -43,7 +43,7 @@ function mul_nameddims(
     return *(*(a1, a2), a3, a_rest...)
 end
 
-function LinearAlgebra.mul!(
+function LA.mul!(
         a_dest::AbstractNamedDimsArray,
         a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray,
         α::Number, β::Number,
@@ -64,7 +64,7 @@ function mul!_nameddims(
     return a_dest
 end
 
-function LinearAlgebra.mul!(
+function LA.mul!(
         a_dest::AbstractNamedDimsArray,
         a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray,
     )

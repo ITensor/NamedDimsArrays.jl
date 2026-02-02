@@ -751,11 +751,6 @@ function Base.mapreduce(f, op, a::AbstractNamedDimsArray; kwargs...)
     return mapreduce(f, op, denamed(a); kwargs...)
 end
 
-using LinearAlgebra: LinearAlgebra, norm
-function LinearAlgebra.norm(a::AbstractNamedDimsArray; kwargs...)
-    return norm(denamed(a); kwargs...)
-end
-
 # Printing
 
 # Copy of `Base.dims2string` defined in `show.jl`.
