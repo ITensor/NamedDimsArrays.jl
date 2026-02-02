@@ -571,13 +571,10 @@ function Base.view(a::AbstractNamedDimsArray, I1::NamedViewIndex, Irest::NamedVi
             "Dimension name mismatch $(dimnames(a)), $(name.(I))."
         ),
     )
-    I = map(p -> I[p], perm)
-    sub_dims = filter(dim -> I[dim] isa AbstractArray, ntuple(identity, ndims(a)))
-    sub_inds = map(dim -> I[dim], sub_dims)
-    subinds = map(inds(a), I) do dimname, i
-        return checked_indexin(denamed(i), denamed(dimname))
-    end
-    return nameddimsconstructorof(a)(view(denamed(a), subinds...), sub_inds)
+    Ip = map(p -> I[p], perm)
+    nonscalar_dims = filter(dim -> Ip[dim] isa AbstractArray, ntuple(identity, ndims(a)))
+    nonscalar_dimnames = map(dim -> dimnames(a, dim), nonscalar_dims)
+    return nameddimsconstructorof(a)(view(denamed(a), denamed.(Ip)...), nonscalar_dimnames)
 end
 
 # Repeated definition of `Base.ViewIndex`.
