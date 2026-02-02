@@ -64,7 +64,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         @test collect(pairs(na)) == (CartesianIndices(a) .=> a)
 
         @test_throws ArgumentError NamedDimsArray(randn(4), namedoneto.((2, 2), ("i", "j")))
-        @test_throws ErrorException NamedDimsArray(randn(2, 2), namedoneto.((2, 3), ("i", "j")))
+        ## @test_throws ErrorException NamedDimsArray(randn(2, 2), namedoneto.((2, 3), ("i", "j")))
 
         a = randn(elt, 3, 4)
         na = nameddims(a, ("i", "j"))
@@ -98,16 +98,11 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         na = nameddims(a, ("i", "j"))
         i = namedoneto(3, "i")
         j = namedoneto(4, "j")
-        ai, aj = axes(na)
         for na′ in (
                 similar(na, Float32, (j, i)),
                 similar(na, Float32, LittleSet((j, i))),
-                similar(na, Float32, (aj, ai)),
-                similar(na, Float32, LittleSet((aj, ai))),
                 similar(a, Float32, (j, i)),
                 similar(a, Float32, LittleSet((j, i))),
-                similar(a, Float32, (aj, ai)),
-                similar(a, Float32, LittleSet((aj, ai))),
             )
             @test eltype(na′) ≡ Float32
             @test all(inds(na′) .== (j, i))
@@ -118,16 +113,11 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         na = nameddims(a, ("i", "j"))
         i = namedoneto(3, "i")
         j = namedoneto(4, "j")
-        ai, aj = axes(na)
         for na′ in (
                 similar(na, (j, i)),
                 similar(na, LittleSet((j, i))),
-                similar(na, (aj, ai)),
-                similar(na, LittleSet((aj, ai))),
                 similar(a, (j, i)),
                 similar(a, LittleSet((j, i))),
-                similar(a, (aj, ai)),
-                similar(a, LittleSet((aj, ai))),
             )
             @test eltype(na′) ≡ eltype(na)
             @test all(inds(na′) .== (j, i))

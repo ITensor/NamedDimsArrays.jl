@@ -208,16 +208,10 @@ VectorInterface.scalartype(a::AbstractNamedDimsArray) = scalartype(denamed(a))
 Base.axes(a::AbstractNamedDimsArray, dimname::Name) = axes(a, dim(a, dimname))
 Base.size(a::AbstractNamedDimsArray, dimname::Name) = size(a, dim(a, dimname))
 
-to_nameddimsaxes(dims) = map(to_nameddimsaxis, dims)
-to_nameddimsaxis(ax::NamedDimsAxis) = ax
-to_nameddimsaxis(I::NamedDimsIndices) = named(denamed(only(axes(I))), I)
-
-function similar_nameddims(a::AbstractNamedDimsArray, elt::Type, inds)
-    ax = to_nameddimsaxes(inds)
+function similar_nameddims(a::AbstractNamedDimsArray, elt::Type, ax)
     return nameddimsconstructorof(a)(similar(denamed(a), elt, denamed.(Tuple(ax))), name.(ax))
 end
-function similar_nameddims(a::AbstractArray, elt::Type, inds)
-    ax = to_nameddimsaxes(inds)
+function similar_nameddims(a::AbstractArray, elt::Type, ax)
     return nameddims(similar(a, elt, denamed.(Tuple(ax))), name.(ax))
 end
 
@@ -342,8 +336,6 @@ function Base.getindex(a::NamedDimsCartesianIndices{N}, I::Vararg{Int, N}) where
     return NamedDimsCartesianIndex(index)
 end
 
-## TODO: FIXME ## Delete this.
-## inds(I::NamedDimsCartesianIndices) = I.indices
 function denamed(I::NamedDimsCartesianIndices)
     return CartesianIndices(denamed.(I.indices))
 end
@@ -571,19 +563,20 @@ function Base.view(a::AbstractNamedDimsArray, I1::NamedViewIndex, Irest::NamedVi
             "Dimension name mismatch $(dimnames(a)), $(name.(I))."
         ),
     )
-    Ip = map(p -> I[p], perm)
-    nonscalar_dims = filter(dim -> Ip[dim] isa AbstractArray, ntuple(identity, ndims(a)))
-    nonscalar_dimnames = map(dim -> dimnames(a, dim), nonscalar_dims)
-    return nameddimsconstructorof(a)(view(denamed(a), denamed.(Ip)...), nonscalar_dimnames)
+    Ip = map(p -> denamed(I[p]), perm)
+    return view_nameddims(a, Ip...)
 end
 
 # Repeated definition of `Base.ViewIndex`.
 const ViewIndex = Union{Real, AbstractArray}
 
+# Slicing with unnamed indices, such as:
+# a = NamedDimsArray(rand(3,4), (:x, :y))
+# b = view(a, 1:2, 2)
 function view_nameddims(a::AbstractNamedDimsArray, I...)
-    sub_dims = filter(dim -> !(I[dim] isa Real), ntuple(identity, ndims(a)))
-    sub_inds = map(dim -> inds(a, dim)[I[dim]], sub_dims)
-    return nameddimsconstructorof(a)(view(denamed(a), I...), sub_inds)
+    nonscalar_dims = filter(dim -> I[dim] isa AbstractArray, ntuple(identity, ndims(a)))
+    nonscalar_dimnames = map(dim -> dimnames(a, dim), nonscalar_dims)
+    return nameddimsconstructorof(a)(view(denamed(a), I...), nonscalar_dimnames)
 end
 
 function Base.view(a::AbstractNamedDimsArray, I::ViewIndex...)
