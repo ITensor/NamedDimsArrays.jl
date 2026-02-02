@@ -5,7 +5,7 @@ using NamedDimsArrays: AbstractNamedDimsArray, AbstractNamedDimsMatrix, LittleSe
     NamedDimsMatrix, NamedDimsOperator
 using NamedDimsArrays: aligndims, aligneddims, apply, dename, denamed, dim, dimnames, dims,
     fusednames, isnamed, mapinds, name, named, nameddims, inds, namedoneto, operator,
-    product, replaceinds, setinds, state, @names
+    product, replacedimnames, replaceinds, setinds, state, @names
 using Test: @test, @test_throws, @testset
 using VectorInterface: scalartype
 
@@ -220,7 +220,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         nb = setinds(na, ("k", "j"))
         @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
         @test denamed(nb) == a
-        nb = replaceinds(na, "i" => "k")
+        nb = replacedimnames(na, "i" => "k")
         @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
         @test denamed(nb) == a
         nb = replaceinds(na, named(1:3, "i") => named(1:3, "k"))

@@ -532,9 +532,7 @@ function Base.getindex(a::Array, I1::AbstractNamedUnitRange{<:Integer})
 end
 function Base.view(a::AbstractArray, I1::NamedViewIndex, Irest::NamedViewIndex...)
     I = (I1, Irest...)
-    sub_dims = filter(dim -> I[dim] isa AbstractArray, ntuple(identity, ndims(a)))
-    sub_inds = map(dim -> I[dim], sub_dims)
-    return nameddims(view(a, denamed.(I)...), sub_inds)
+    return nameddims(view(a, denamed.(I)...), name.(I))
 end
 
 # TODO: Should this be a view?
