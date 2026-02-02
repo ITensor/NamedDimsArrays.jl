@@ -570,11 +570,17 @@ end
 # Repeated definition of `Base.ViewIndex`.
 const ViewIndex = Union{Real, AbstractArray}
 
+# Like `Base.ScalarIndex` but as a trait function.
+# This catches cases like `Colon`, `BlockArrays.Block`, etc. which are not AbstractArray
+# indices but also aren't scalar indices.
+isscalarindex(I) = false
+isscalarindex(I::Real) = true
+
 # Slicing with unnamed indices, such as:
 # a = NamedDimsArray(rand(3,4), (:x, :y))
 # b = view(a, 1:2, 2)
 function view_nameddims(a::AbstractNamedDimsArray, I...)
-    nonscalar_dims = filter(dim -> I[dim] isa AbstractArray, ntuple(identity, ndims(a)))
+    nonscalar_dims = filter(dim -> !isscalarindex(I[dim]), ntuple(identity, ndims(a)))
     nonscalar_dimnames = map(dim -> dimnames(a, dim), nonscalar_dims)
     return nameddimsconstructorof(a)(view(denamed(a), I...), nonscalar_dimnames)
 end

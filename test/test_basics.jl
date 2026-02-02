@@ -9,9 +9,9 @@ using NamedDimsArrays: aligndims, aligneddims, apply, dename, denamed, dim, dimn
 using Test: @test, @test_throws, @testset
 using VectorInterface: scalartype
 
-const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
 @testset "NamedDimsArrays.jl" begin
-    @testset "Basic functionality (eltype=$elt)" for elt in elts
+    @testset "Basic functionality (eltype=$elt)" for elt in
+        (Float32, Float64, Complex{Float32}, Complex{Float64})
         a = randn(elt, 3, 4)
         @test !isnamed(a)
         na = nameddims(a, ("i", "j"))

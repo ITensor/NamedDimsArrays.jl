@@ -7,14 +7,14 @@ TA.@scaledarray_type ScaledNamedDimsArray AbstractNamedDimsArray
 TA.@scaledarray ScaledNamedDimsArray AbstractNamedDimsArray
 TA.:*ₗ(α::Number, a::AbstractNamedDimsArray) = ScaledNamedDimsArray(α, a)
 Base.copy(a::ScaledNamedDimsArray) = copy_lazynameddims(a)
-inds(a::ScaledNamedDimsArray) = inds(TA.unscaled(a))
+dimnames(a::ScaledNamedDimsArray) = dimnames(TA.unscaled(a))
 denamed(a::ScaledNamedDimsArray) = coeff(a) *ₗ denamed(TA.unscaled(a))
 
 TA.@conjarray_type ConjNamedDimsArray AbstractNamedDimsArray
 TA.@conjarray ConjNamedDimsArray AbstractNamedDimsArray
 TA.conjed(a::AbstractNamedDimsArray) = ConjNamedDimsArray(a)
 Base.copy(a::ConjNamedDimsArray) = copy_lazynameddims(a)
-inds(a::ConjNamedDimsArray) = inds(conjed(a))
+dimnames(a::ConjNamedDimsArray) = dimnames(conjed(a))
 denamed(a::ConjNamedDimsArray) = conjed(denamed(conjed(a)))
 aligneddims(a::ConjNamedDimsArray, dims) = conjed(aligneddims(conjed(a), dims))
 
@@ -22,11 +22,11 @@ TA.@addarray_type AddNamedDimsArray AbstractNamedDimsArray
 TA.@addarray AddNamedDimsArray AbstractNamedDimsArray
 TA.:+ₗ(a::AbstractNamedDimsArray, b::AbstractNamedDimsArray) = AddNamedDimsArray(a, b)
 Base.copy(a::AddNamedDimsArray) = copy_lazynameddims(a)
-inds(a::AddNamedDimsArray) = inds(first(TA.addends(a)))
+dimnames(a::AddNamedDimsArray) = dimnames(first(TA.addends(a)))
 function denamed(a::AddNamedDimsArray)
     a′ = denamed(first(TA.addends(a)))
     for addend in Iterators.rest(TA.addends(a))
-        a′ = a′ +ₗ denamed(addend, inds(first(TA.addends(a))))
+        a′ = a′ +ₗ denamed(addend, dimnames(first(TA.addends(a))))
     end
     return a′
 end
@@ -50,6 +50,14 @@ end
 function Base.similar(a::MulNamedDimsArray, elt::Type, inds::LittleSet)
     return TA.similar_mul(a, elt, inds)
 end
+# We overload this since the generic implementation of `inds(::AbstractArray)` calls
+# `denamed(a)`, which for performance reasons we don't want to define for
+# `MulNamedDimsArray` (maybe we could define it in terms of lazy `TensorAlgebra.contract``,
+# i.e. `contracted`, but that isn't defined right now and would be more complicated).
+# Note that this implicitly defined `axes(a::MulNamedDimsArray)` since that is defined as
+# `inds(a)` by default.
 # TODO: Don't convert to `Tuple`?
-inds(a::MulNamedDimsArray) = Tuple(symdiff(inds.(TA.factors(a))...))
+inds(a::MulNamedDimsArray) = LittleSet(Tuple(symdiff(inds.(TA.factors(a))...)))
+# TODO: Don't convert to `Tuple`?
+dimnames(a::MulNamedDimsArray) = LittleSet(Tuple(symdiff(dimnames.(TA.factors(a))...)))
 denamed(a::MulNamedDimsArray) = error("`denamed` is not defined for `MulNamedDimsArray`.")
