@@ -7,25 +7,6 @@ struct NamedDimsArray{T, N, Denamed <: AbstractArray{T, N}, DimNames <: Tuple{Va
     dimnames::DimNames
 end
 
-## function NamedDimsArray(a::AbstractArray, dims)
-##     inds = to_inds(a, dims)
-##     a′ = a[denamed.(inds)...]
-##     dimnames = name.(inds)
-##     return _NamedDimsArray(a′, dimnames)
-## end
-
-## function NamedDimsArray{T, N, Denamed, DimNames}(
-##         denamed::AbstractArray{<:Any, N}, dims::Tuple{Vararg{Any, N}}
-##     ) where {T, N, Denamed <: AbstractArray{T, N}, DimNames <: Tuple{Vararg{Any, N}}}
-##     return new{T, N, Denamed, DimNames}(denamed, name.(dims))
-## end
-## function NamedDimsArray(
-##         denamed::Denamed, dims::Tuple{Vararg{Any, N}}
-##     ) where {T, N, Denamed <: AbstractArray{T, N}}
-##     dimnames = name.(dims)
-##     return NamedDimsArray{T, N, Denamed, typeof(dimnames)}(denamed, dimnames)
-## end
-
 const NamedDimsVector{T, Denamed <: AbstractVector{T}, Inds <: Tuple{Any}} = NamedDimsArray{
     T, 1, Denamed, Inds,
 }
