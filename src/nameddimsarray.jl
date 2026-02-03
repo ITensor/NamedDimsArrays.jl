@@ -1,50 +1,31 @@
 using TypeParameterAccessors: TypeParameterAccessors, parenttype
 
-# inds should be a named slice.
-struct NamedDimsArray{T, N, Parent <: AbstractArray{T, N}, DimNames <: Tuple{Vararg{Any, N}}} <:
+# TODO: Check `allunique(dimnames)`?
+struct NamedDimsArray{T, N, Denamed <: AbstractArray{T, N}, DimNames <: Tuple{Vararg{Any, N}}} <:
     AbstractNamedDimsArray{T, N}
-    parent::Parent
-    inds::DimNames
-    function NamedDimsArray{T, N, Parent, DimNames}(
-            parent::AbstractArray{<:Any, N}, dims::Tuple{Vararg{Any, N}}
-        ) where {T, N, Parent <: AbstractArray{T, N}, DimNames <: Tuple{Vararg{Any, N}}}
-        inds = to_inds(parent, dims)
-        return new{T, N, Parent, DimNames}(parent, inds)
-    end
-end
-function NamedDimsArray(
-        parent::Parent, dims::Tuple{Vararg{Any, N}}
-    ) where {T, N, Parent <: AbstractArray{T, N}}
-    # This checks the shapes of the inputs.
-    inds = to_inds(parent, dims)
-    return NamedDimsArray{T, N, Parent, typeof(inds)}(parent, inds)
+    denamed::Denamed
+    dimnames::DimNames
 end
 
-const NamedDimsVector{T, Parent <: AbstractVector{T}, DimNames <: Tuple{Any}} = NamedDimsArray{
-    T, 1, Parent, DimNames,
+const NamedDimsVector{T, Denamed <: AbstractVector{T}, Inds <: Tuple{Any}} = NamedDimsArray{
+    T, 1, Denamed, Inds,
 }
-const NamedDimsMatrix{T, Parent <: AbstractMatrix{T}, DimNames <: Tuple{Any, Any}} = NamedDimsArray{
-    T, 2, Parent, DimNames,
+const NamedDimsMatrix{T, Denamed <: AbstractMatrix{T}, Inds <: Tuple{Any, Any}} = NamedDimsArray{
+    T, 2, Denamed, Inds,
 }
 
-function NamedDimsArray(parent::AbstractArray, dims)
-    ndims(parent) == length(dims) || throw(ArgumentError("Number of named dims must match ndims."))
-    return NamedDimsArray(parent, Tuple{Vararg{Any, ndims(parent)}}(dims))
+# TODO: Check `allunique(dimnames)`?
+function NamedDimsArray(denamed::AbstractArray, dims)
+    ndims(denamed) == length(dims) || throw(ArgumentError("Number of named dims must match ndims."))
+    return NamedDimsArray(denamed, Tuple{Vararg{Any, ndims(denamed)}}(dims))
 end
-
-# TODO: Delete this, and just wrap the input naively.
-function NamedDimsArray(a::AbstractNamedDimsArray, inds)
-    return error("Already named.")
-end
-
-function NamedDimsArray(a::AbstractNamedDimsArray)
-    return NamedDimsArray(denamed(a), inds(a))
-end
+NamedDimsArray(a::AbstractNamedDimsArray, inds) = throw(ArgumentError("Already named."))
+NamedDimsArray(a::AbstractNamedDimsArray) = NamedDimsArray(denamed(a), dimnames(a))
 
 # Minimal interface.
-inds(a::NamedDimsArray) = getfield(a, :inds)
-Base.parent(a::NamedDimsArray) = getfield(a, :parent)
-denamed(a::NamedDimsArray) = parent(a)
+dimnames(a::NamedDimsArray) = LittleSet(a.dimnames)
+denamed(a::NamedDimsArray) = a.denamed
+Base.parent(a::NamedDimsArray) = denamed(a)
 
 function TypeParameterAccessors.position(
         ::Type{<:AbstractNamedDimsArray}, ::typeof(parenttype)

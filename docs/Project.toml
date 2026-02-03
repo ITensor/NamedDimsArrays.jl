@@ -11,5 +11,5 @@ NamedDimsArrays = {path = ".."}
 [compat]
 Documenter = "1"
 Literate = "2"
-NamedDimsArrays = "0.13"
+NamedDimsArrays = "0.14"
 TensorAlgebra = "0.6"

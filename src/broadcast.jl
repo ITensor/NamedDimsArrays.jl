@@ -85,8 +85,8 @@ function BC.check_broadcast_shape(ax1::LittleSet, ax2::LittleSet)
 end
 
 function set_check_broadcast_shape(
-        ax1::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange, N}},
-        ax2::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange, N}},
+        ax1::Tuple{Any, Vararg{Any, N}},
+        ax2::Tuple{Any, Vararg{Any, N}},
     ) where {N}
     perm = getperm(ax2, ax1)
     ax2_aligned = map(i -> ax2[i], perm)

@@ -3,19 +3,23 @@ using Base.Broadcast: AbstractArrayStyle, Broadcasted, Style
 struct LittleSet{Values}
     values::Values
 end
-Base.values(s::LittleSet) = s.values
-Base.Tuple(s::LittleSet) = Tuple(values(s))
-Base.eltype(s::LittleSet) = eltype(values(s))
-Base.length(s::LittleSet) = length(values(s))
-Base.axes(s::LittleSet) = axes(values(s))
+Base.Tuple(s::LittleSet) = Tuple(s.values)
+Base.eltype(s::LittleSet) = eltype(s.values)
+Base.length(s::LittleSet) = length(s.values)
+Base.axes(s::LittleSet) = axes(s.values)
 Base.keys(s::LittleSet) = Base.OneTo(length(s))
-Base.:(==)(s1::LittleSet, s2::LittleSet) = issetequal(values(s1), values(s2))
-Base.iterate(s::LittleSet, args...) = iterate(values(s), args...)
-Base.getindex(s::LittleSet, I::Int) = values(s)[I]
+Base.:(==)(s1::LittleSet, s2::LittleSet) = issetequal(s1.values, s2.values)
+Base.:(==)(s1::LittleSet, s2) = s1.values == s2
+Base.:(==)(s1, s2::LittleSet) = s1 == s2.values
+Base.iterate(s::LittleSet, args...) = iterate(s.values, args...)
+Base.getindex(s::LittleSet, I::Int) = s.values[I]
 # TODO: Required in Julia 1.10, delete when we drop support for that.
-Base.getindex(s::LittleSet, I::CartesianIndex{1}) = values(s)[I]
-Base.get(s::LittleSet, I::Integer, default) = get(values(s), I, default)
-Base.invperm(s::LittleSet) = LittleSet(invperm(values(s)))
+Base.getindex(s::LittleSet, I::CartesianIndex{1}) = s.values[I]
+Base.get(s::LittleSet, I::Integer, default) = get(s.values, I, default)
+Base.invperm(s::LittleSet) = LittleSet(invperm(s.values))
+# Use `_sort` to handle `Tuple` in Julia v1.10.
+# TODO: Delete once support for Julia v1.10 is dropped.
+Base.sort(s::LittleSet; kwargs...) = LittleSet(_sort(s.values; kwargs...))
 Base.Broadcast._axes(::Broadcasted, axes::LittleSet) = axes
 Base.Broadcast.BroadcastStyle(::Type{<:LittleSet}) = Style{LittleSet}()
 Base.Broadcast.BroadcastStyle(::Style{Tuple}, ::Style{LittleSet}) = Style{Tuple}()
@@ -26,23 +30,23 @@ Base.to_shape(s::LittleSet) = s
 
 # Needed for functionality such as `CartesianIndices(::AbstractNamedDimsArray)`,
 # `pairs(::AbstractNamedDimsArray)`, etc.
-Base.CartesianIndices(s::LittleSet) = CartesianIndices(values(s))
+Base.CartesianIndices(s::LittleSet) = CartesianIndices(s.values)
 
 function Base.copy(
         bc::Broadcasted{Style{LittleSet}, <:Any, <:Any, <:Tuple{<:LittleSet}}
     )
-    return LittleSet(bc.f.(values(only(bc.args))))
+    return LittleSet(bc.f.(only(bc.args).values))
 end
 # Multiple arguments not supported.
 function Base.copy(bc::Broadcasted{Style{LittleSet}})
     return error("This broadcasting expression of `LittleSet` is not supported.")
 end
 function Base.map(f::Function, s::LittleSet)
-    return LittleSet(map(f, values(s)))
+    return LittleSet(map(f, s.values))
 end
 function Base.replace(f::Union{Function, Type}, s::LittleSet; kwargs...)
-    return LittleSet(replace(f, values(s); kwargs...))
+    return LittleSet(replace(f, s.values; kwargs...))
 end
 function Base.replace(s::LittleSet, replacements::Pair...; kwargs...)
-    return LittleSet(replace(values(s), replacements...; kwargs...))
+    return LittleSet(replace(s.values, replacements...; kwargs...))
 end

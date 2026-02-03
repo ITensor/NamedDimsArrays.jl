@@ -57,10 +57,10 @@ a2 = randn(j, k)
 
 @test dimnames(a1) == ("i", "j")
 @test inds(a1) == (i, j)
-@test axes(a1, 1) == named(1:2, i)
-@test axes(a1, 2) == named(1:2, j)
-@test size(a1, 1) == named(2, i)
-@test size(a1, 2) == named(2, j)
+@test axes(a1, 1) == named(1:2, "i")
+@test axes(a1, 2) == named(1:2, "j")
+@test size(a1, 1) == named(2, "i")
+@test size(a1, 2) == named(2, "j")
 
 # Indexing
 @test a1[j => 2, i => 1] == a1[1, 2]
@@ -94,17 +94,17 @@ b_dest = b1 * b2
 
 # Non-contiguous slicing
 c1 = a1[i[[2, 1]], j[[2, 1]]]
-@test inds(c1) == (i[[2, 1]], j[[2, 1]])
-@test dename(c1, (i[[2, 1]], j[[2, 1]])) == dename(a1, (i, j))[[2, 1], [2, 1]]
-@test c1[i[2], j[1]] == a1[i[2], j[1]]
+@test inds(c1) == (i, j)
+@test dename(c1, (i, j)) == dename(a1, (i, j))[[2, 1], [2, 1]]
+@test c1[i[1], j[2]] == a1[i[2], j[1]]
 @test c1[2, 1] == a1[1, 2]
 
 a1[i[[2, 1]], j[[2, 1]]] = [22 21; 12 11]
 @test a1[i[1], j[1]] == 11
 
-x = randn(i[1:2], j[2:2])
+x = randn(i[Base.OneTo(2)], j[Base.OneTo(1)])
 a1[i[1:2], j[2:2]] = x
-@test a1[i[1], j[2]] == x[i[1], j[2]]
+@test a1[i[1], j[2]] == x[i[1], j[1]]
 ````
 
 ---

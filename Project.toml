@@ -1,10 +1,9 @@
 name = "NamedDimsArrays"
 uuid = "60cbd0c0-df58-4cb7-918c-6f5607b73fde"
 authors = ["ITensor developers <support@itensor.org> and contributors"]
-version = "0.13.8"
+version = "0.14.0"
 
 [deps]
-Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 ArrayLayouts = "4c555306-a7a7-4459-81d9-ec55ddd5c99a"
 Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
 FillArrays = "1a297f60-69ca-5386-bcde-b61e274b549b"
@@ -19,11 +18,13 @@ VectorInterface = "409d34a3-91d5-4945-b6ec-7529ddf182d8"
 
 [weakdeps]
 AbstractTrees = "1520ce14-60c1-5f80-bbc7-55ef81b5835c"
+Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
 Mooncake = "da2b9cff-9c12-43a0-ae48-6db2b0edb7d6"
 
 [extensions]
 NamedDimsArraysAbstractTreesExt = "AbstractTrees"
+NamedDimsArraysAdaptExt = "Adapt"
 NamedDimsArraysBlockArraysExt = "BlockArrays"
 NamedDimsArraysMooncakeExt = "Mooncake"
 
