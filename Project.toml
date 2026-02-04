@@ -1,7 +1,10 @@
 name = "NamedDimsArrays"
 uuid = "60cbd0c0-df58-4cb7-918c-6f5607b73fde"
+version = "0.14.1"
 authors = ["ITensor developers <support@itensor.org> and contributors"]
-version = "0.14.0"
+
+[workspace]
+projects = ["benchmark", "dev", "docs", "examples", "test"]
 
 [deps]
 ArrayLayouts = "4c555306-a7a7-4459-81d9-ec55ddd5c99a"
@@ -40,11 +43,8 @@ LinearAlgebra = "1.10"
 Mooncake = "0.4.202, 0.5"
 Random = "1.10"
 SimpleTraits = "0.9.4"
-TensorAlgebra = "0.6.12"
+TensorAlgebra = "0.6.12, 0.7"
 TupleTools = "1.6"
 TypeParameterAccessors = "0.4"
 VectorInterface = "0.5.0"
 julia = "1.10"
-
-[workspace]
-projects = ["benchmark", "dev", "docs", "examples", "test"]
