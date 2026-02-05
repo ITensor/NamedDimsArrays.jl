@@ -1,7 +1,7 @@
 name = "NamedDimsArrays"
 uuid = "60cbd0c0-df58-4cb7-918c-6f5607b73fde"
 authors = ["ITensor developers <support@itensor.org> and contributors"]
-version = "0.14.1"
+version = "0.14.2"
 
 [deps]
 ArrayLayouts = "4c555306-a7a7-4459-81d9-ec55ddd5c99a"
