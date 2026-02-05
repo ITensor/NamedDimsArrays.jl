@@ -4,82 +4,73 @@
 # https://en.wikipedia.org/wiki/Choi%E2%80%93Jamio%C5%82kowski_isomorphism
 state(a) = throw(MethodError(state, (a,)))
 # Operator representation of the named state given pairs of named codomain and domain indices.
-function operator(a, codomain_domain_pairs)
-    throw(MethodError(operator, (a, codomain_domain_pairs)))
-end
+operator(a, codomain, domain) = throw(MethodError(operator, (a, codomain, domain)))
 
-# Get the named domain indices of the operator.
-domain(a) = throw(MethodError(domain, (a,)))
-# Get the named codomain indices of the operator.
-codomain(a) = throw(MethodError(codomain, (a,)))
+# Get the codomain dimension names of the operator.
+codomainnames(a) = throw(MethodError(codomainnames, (a,)))
+# Get the domain dimension names of the operator.
+domainnames(a) = throw(MethodError(domainnames, (a,)))
 
-# Given a named codomain index, return the corresponding named domain index.
+# Given a domain dimension name, return the corresponding codomain dimension name.
 # If it doesn't exist, return the index itself.
-get_domain_ind(a, i) = throw(MethodError(get_domain_ind, (a, i)))
-# Given a named domain index, return the corresponding named codomain index.
+get_codomain_name(a, i) = throw(MethodError(get_codomain_name, (a, i)))
+# Given a codomain dimension name, return the corresponding domain dimension name.
 # If it doesn't exist, return the index itself.
-get_codomain_ind(a, i) = throw(MethodError(get_codomain_ind, (a, i)))
-
-# TODO: Should this be `adjoint`?
-function dag(a::AbstractNamedDimsArray, inds_map)
-    a = conj(a)
-    a′ = mapinds(a) do i
-        return get(inds_map, i, i)
-    end
-    return a′
-end
+get_domain_name(a, i) = throw(MethodError(get_domain_name, (a, i)))
 
 function apply(x::AbstractNamedDimsArray, y::AbstractNamedDimsArray)
     xy = x * y
-    return mapinds(xy) do i
-        return get_domain_ind(x, i)
+    return mapdimnames(xy) do i
+        return get_domain_name(x, i)
     end
 end
 
 function apply_dag(x::AbstractNamedDimsArray, y::AbstractNamedDimsArray)
     xy = x * y
-    return mapinds(xy) do i
-        return get_codomain_ind(y, i)
+    return mapdimnames(xy) do i
+        return get_codomain_name(y, i)
     end
 end
 
+# TODO: Define versions that accept codomain and domain names,
+# i.e. `transpose(a, codomain, domain)` and `adjoint(a, codomain, domain)` (?).
 function Base.transpose(a::AbstractNamedDimsArray)
-    c = codomain(a)
-    d = domain(a)
+    c = codomainnames(a)
+    d = domainnames(a)
     a_map = merge(Dict(c .=> d), Dict(d .=> c))
-    a′ = mapinds(state(a)) do i
+    a′ = mapdimnames(state(a)) do i
         return get(a_map, i, i)
     end
-    return operator(a′, c .=> d)
+    return operator(a′, c, d)
 end
-
 function Base.adjoint(a::AbstractNamedDimsArray)
     return transpose(conj(a))
 end
 
 function product(x::AbstractNamedDimsArray, y::AbstractNamedDimsArray)
-    c = codomain(x)
-    d = domain(x)
+    c = codomainnames(x)
+    d = domainnames(x)
     c′ = randname.(c)
     x′_map = merge(Dict(c .=> c′), Dict(d .=> c))
-    x′ = mapinds(parent(x)) do i
+    x′ = mapdimnames(parent(x)) do i
         return get(x′_map, i, i)
     end
     x′y = x′ * parent(y)
     x′y_map = Dict(c′ .=> c)
-    xy = mapinds(x′y) do i
+    xy = mapdimnames(x′y) do i
         return get(x′y_map, i, i)
     end
-    return operator(xy, c .=> d)
+    return operator(xy, c, d)
 end
 
 struct Bijection{Codomain, Domain} <: AbstractDict{Domain, Codomain}
     domain_to_codomain::Dict{Domain, Codomain}
     codomain_to_domain::Dict{Codomain, Domain}
 end
-function Bijection(domain_codomain_pairs)
-    domain_to_codomain = Dict(domain_codomain_pairs)
-    codomain_to_domain = Dict(reverse(kv) for kv in domain_codomain_pairs)
+function Bijection(domain, codomain)
+    pairs = domain .=> codomain
+    domain_to_codomain = Dict(pairs)
+    codomain_to_domain = Dict(reverse(kv) for kv in pairs)
     return Bijection(domain_to_codomain, codomain_to_domain)
 end
 function Base.get(b::Bijection, k, default)
@@ -88,37 +79,28 @@ end
 function inverse(b::Bijection)
     return Bijection(b.codomain_to_domain, b.domain_to_codomain)
 end
-function domain(b::Bijection)
-    return keys(b.domain_to_codomain)
-end
 function codomain(b::Bijection)
     return values(b.domain_to_codomain)
+end
+function domain(b::Bijection)
+    return values(b.codomain_to_domain)
 end
 Base.iterate(b::Bijection) = iterate(b.domain_to_codomain)
 Base.iterate(b::Bijection, state) = iterate(b.domain_to_codomain, state)
 Base.length(b::Bijection) = length(b.domain_to_codomain)
 
-# Bijection between the named codomain and domain indices of the operator.
-# It should act like a dictionary from the domain to the codomain,
-# but then under `inverse` it should act like a dictionary from the codomain to the domain.
-# Primarily it should define `get`.
-function inds_map(a)
-    return Bijection(domain(a) .=> codomain(a))
-end
-
 abstract type AbstractNamedDimsOperator{T, N} <: AbstractNamedDimsArray{T, N} end
 
 state(a::AbstractNamedDimsArray) = a
-
 dimnames(a::AbstractNamedDimsOperator) = dimnames(state(a))
 
 # TODO: Unify these two functions.
-function operator(a::AbstractNamedDimsArray, domain_codomain_pairs)
-    return NamedDimsOperator(a, domain_codomain_pairs)
-end
 function operator(a::AbstractArray, codomain, domain)
     na = nameddims(a, (codomain..., domain...))
-    return operator(na, domain .=> codomain)
+    return operator(na, codomain, domain)
+end
+function operator(a::AbstractNamedDimsArray, codomain, domain)
+    return NamedDimsOperator(a, codomain, domain)
 end
 
 # This helps preserve the NamedDimsArray type when multiplying,
@@ -130,27 +112,24 @@ Base.:*(a::AbstractNamedDimsArray, b::AbstractNamedDimsOperator) = state(a) * st
 for f in MATRIX_FUNCTIONS
     @eval begin
         function Base.$f(a::AbstractNamedDimsOperator)
-            c = codomain(a)
-            d = domain(a)
-            return operator($f(state(a), c, d), c .=> d)
+            c = codomainnames(a)
+            d = domainnames(a)
+            return operator($f(state(a), c, d), c, d)
         end
     end
 end
 struct NamedDimsOperator{T, N, P <: AbstractNamedDimsArray{T, N}, D, C} <:
     AbstractNamedDimsOperator{T, N}
     parent::P
-    domain_codomain_bijection::Bijection{D, C}
+    dimnames_bijection::Bijection{D, C}
 end
 
-Base.parent(a::NamedDimsOperator) = getfield(a, :parent)
-state(a::NamedDimsOperator) = parent(a)
+state(a::NamedDimsOperator) = a.parent
+Base.parent(a::NamedDimsOperator) = state(a)
 denamed(a::NamedDimsOperator) = denamed(state(a))
-inds_map(a::NamedDimsOperator) = getfield(a, :domain_codomain_bijection)
 
-function NamedDimsOperator(a::AbstractNamedDimsArray, domain_codomain_pairs)
-    domain = to_dimnames(a, first.(domain_codomain_pairs))
-    codomain = to_dimnames(a, last.(domain_codomain_pairs))
-    return NamedDimsOperator(a, Bijection(domain .=> codomain))
+function NamedDimsOperator(a::AbstractNamedDimsArray, codomainnames, domainnames)
+    return NamedDimsOperator(a, Bijection(domainnames, codomainnames))
 end
 
 using TypeParameterAccessors: TypeParameterAccessors, parenttype
@@ -160,22 +139,18 @@ end
 statetype(type::Type{<:NamedDimsOperator}) = parenttype(type)
 
 function nameddimsof(a::NamedDimsOperator, b::AbstractArray)
-    return NamedDimsOperator(nameddimsof(state(a), b), inds_map(a))
+    return NamedDimsOperator(nameddimsof(state(a), b), a.dimnames_bijection)
 end
 function nameddimsconstructorof(type::Type{<:NamedDimsOperator})
     return nameddimsconstructorof(statetype(type))
 end
 
-# TODO: Make abstract?
-domain(a::NamedDimsOperator) = domain(inds_map(a))
-# TODO: Make abstract?
-codomain(a::NamedDimsOperator) = codomain(inds_map(a))
+codomainnames(a::NamedDimsOperator) = codomain(a.dimnames_bijection)
+domainnames(a::NamedDimsOperator) = domain(a.dimnames_bijection)
 
-# TODO: Make abstract?
-function get_domain_ind(a::NamedDimsOperator, i)
-    return get(inverse(inds_map(a)), i, i)
+function get_codomain_name(a::NamedDimsOperator, i)
+    return get(a.dimnames_bijection, i, i)
 end
-# TODO: Make abstract?
-function get_codomain_ind(a::NamedDimsOperator, i)
-    return get(inds_map(a), i, i)
+function get_domain_name(a::NamedDimsOperator, i)
+    return get(inverse(a.dimnames_bijection), i, i)
 end
