@@ -1,5 +1,5 @@
 import TensorAlgebra as TA
-using TensorAlgebra: +ₗ, *ₗ, conjed
+using TensorAlgebra: *ₗ, +ₗ, conjed
 
 copy_lazynameddims(a::AbstractArray) = copyto!(similar(a), a)
 
@@ -35,10 +35,13 @@ TA.@mularray_type MulNamedDimsArray AbstractNamedDimsArray
 TA.@mularray MulNamedDimsArray AbstractNamedDimsArray
 TA.:*ₗ(a::AbstractNamedDimsArray, b::AbstractNamedDimsArray) = MulNamedDimsArray(a, b)
 Base.copy(a::MulNamedDimsArray) = copy_lazynameddims(a)
-TA.mul_ndims(a::AbstractNamedDimsArray, b::AbstractNamedDimsArray) = length(TA.mul_axes(a, b))
+function TA.mul_ndims(a::AbstractNamedDimsArray, b::AbstractNamedDimsArray)
+    return length(TA.mul_axes(a, b))
+end
 # TODO: Don't convert to `Tuple`?
-TA.mul_axes(a::AbstractNamedDimsArray, b::AbstractNamedDimsArray) =
-    LittleSet(Tuple(symdiff(axes(a), axes(b))))
+function TA.mul_axes(a::AbstractNamedDimsArray, b::AbstractNamedDimsArray)
+    return LittleSet(Tuple(symdiff(axes(a), axes(b))))
+end
 # Fix ambiguity error.
 function Base.similar(
         a::MulNamedDimsArray, elt::Type,

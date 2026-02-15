@@ -1,10 +1,9 @@
 using Combinatorics: Combinatorics
-using NamedDimsArrays: AbstractNamedDimsArray, AbstractNamedDimsMatrix, LittleSet,
-    Name, NameMismatch, NamedDimsCartesianIndex, NamedDimsCartesianIndices, NamedDimsArray,
-    NamedDimsMatrix
-using NamedDimsArrays: aligndims, aligneddims, apply, dename, denamed, dim, dimnames, dims,
-    fusednames, isnamed, mapinds, name, named, nameddims, inds, namedoneto, product,
-    replacedimnames, replaceinds, setinds, @names
+using NamedDimsArrays: @names, AbstractNamedDimsArray, AbstractNamedDimsMatrix, LittleSet,
+    Name, NameMismatch, NamedDimsArray, NamedDimsCartesianIndex, NamedDimsCartesianIndices,
+    NamedDimsMatrix, aligndims, aligneddims, apply, dename, denamed, dim, dimnames, dims,
+    fusednames, inds, isnamed, mapinds, name, named, nameddims, namedoneto, product,
+    replacedimnames, replaceinds, setinds
 using Test: @test, @test_throws, @testset
 using VectorInterface: scalartype
 
@@ -408,7 +407,8 @@ end
             "2×2 Matrix{Int64}:\n 1  2\n 3  4"
 
         a = NamedDimsArray([1 2; 3 4], ("i", "j"))
-        @test sprint(show, a) == "[1 2; 3 4][named(Base.OneTo(2), \"i\"), named(Base.OneTo(2), \"j\")]"
+        @test sprint(show, a) ==
+            "[1 2; 3 4][named(Base.OneTo(2), \"i\"), named(Base.OneTo(2), \"j\")]"
     end
 
     @testset "@names" begin

@@ -202,7 +202,10 @@ Base.axes(a::AbstractNamedDimsArray, dimname::Name) = axes(a, dim(a, dimname))
 Base.size(a::AbstractNamedDimsArray, dimname::Name) = size(a, dim(a, dimname))
 
 function similar_nameddims(a::AbstractNamedDimsArray, elt::Type, ax)
-    return nameddimsconstructorof(a)(similar(denamed(a), elt, denamed.(Tuple(ax))), name.(ax))
+    return nameddimsconstructorof(a)(
+        similar(denamed(a), elt, denamed.(Tuple(ax))),
+        name.(ax)
+    )
 end
 function similar_nameddims(a::AbstractArray, elt::Type, ax)
     return nameddims(similar(a, elt, denamed.(Tuple(ax))), name.(ax))
@@ -226,7 +229,8 @@ function Base.similar(
 end
 
 function Base.similar(
-        a::AbstractArray, elt::Type, inds::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}}
+        a::AbstractArray, elt::Type,
+        inds::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}}
     )
     return similar_nameddims(a, elt, inds)
 end
@@ -387,7 +391,10 @@ function Base.to_indices(a::AbstractNamedDimsArray, I::Tuple)
     return to_indices(a, Tuple(axes(a)), I)
 end
 # Fix ambiguity error with Base.
-function Base.to_indices(a::AbstractNamedDimsArray, I::Tuple{Union{Integer, CartesianIndex}})
+function Base.to_indices(
+        a::AbstractNamedDimsArray,
+        I::Tuple{Union{Integer, CartesianIndex}}
+    )
     return to_indices(a, Tuple(axes(a)), I)
 end
 function Base.checkbounds(::Type{Bool}, a::AbstractNamedDimsArray, I::Int...)
@@ -451,7 +458,8 @@ function Base.setindex!(a::AbstractNamedDimsArray, value, I::CartesianIndex)
 end
 
 function Base.setindex!(
-        a::AbstractNamedDimsArray, value, I1::AbstractNamedInteger, Irest::AbstractNamedInteger...
+        a::AbstractNamedDimsArray, value, I1::AbstractNamedInteger,
+        Irest::AbstractNamedInteger...
     )
     setindex!(a, value, to_indices(a, (I1, Irest...))...)
     return a
@@ -481,7 +489,8 @@ end
 # Slicing
 
 # Like `const ViewIndex = Union{Real,AbstractArray}`.
-const NamedViewIndex = Union{AbstractNamedInteger, AbstractNamedUnitRange, AbstractNamedArray}
+const NamedViewIndex =
+    Union{AbstractNamedInteger, AbstractNamedUnitRange, AbstractNamedArray}
 
 using ArrayLayouts: ArrayLayouts, MemoryLayout
 
@@ -525,7 +534,7 @@ function Base.view(a::AbstractNamedDimsArray, I1::Name, Irest::Name...)
         throw(
         NameMismatch(
             "Dimension name mismatch $(dimnames(a)), $(name.((I1, Irest...)))."
-        ),
+        )
     )
     return a
 end
@@ -550,7 +559,7 @@ function Base.view(a::AbstractNamedDimsArray, I1::NamedViewIndex, Irest::NamedVi
     isperm(perm) || throw(
         NameMismatch(
             "Dimension name mismatch $(dimnames(a)), $(name.(I))."
-        ),
+        )
     )
     Ip = map(p -> denamed(I[p]), perm)
     return view_nameddims(a, Ip...)
@@ -590,7 +599,7 @@ function Base.setindex!(
         a::AbstractNamedDimsArray,
         value::AbstractNamedDimsArray,
         I1::NamedViewIndex,
-        Irest::NamedViewIndex...,
+        Irest::NamedViewIndex...
     )
     view(a, I1, Irest...) .= value
     return a
@@ -599,7 +608,7 @@ function Base.setindex!(
         a::AbstractNamedDimsArray,
         value::AbstractArray,
         I1::NamedViewIndex,
-        Irest::NamedViewIndex...,
+        Irest::NamedViewIndex...
     )
     I = (I1, Irest...)
     a[I...] = nameddimsconstructorof(a)(value, name.(I))
@@ -609,7 +618,7 @@ function Base.setindex!(
         a::AbstractNamedDimsArray,
         value::AbstractNamedDimsArray,
         I1::ViewIndex,
-        Irest::ViewIndex...,
+        Irest::ViewIndex...
     )
     view(a, I1, Irest...) .= value
     return a
@@ -629,7 +638,7 @@ function aligndims(a::AbstractArray, dims)
     isperm(perm) || throw(
         NameMismatch(
             "Dimension name mismatch $(dimnames(a)), $(new_dimnames)."
-        ),
+        )
     )
     return nameddimsconstructorof(a)(permutedims(denamed(a), perm), new_dimnames)
 end
@@ -640,7 +649,7 @@ function aligneddims(a::AbstractArray, dims)
     isperm(perm) || throw(
         NameMismatch(
             "Dimension name mismatch $(dimnames(a)), $(new_dimnames)."
-        ),
+        )
     )
     return nameddimsconstructorof(a)(
         FI.permuteddims(denamed(a), perm), new_dimnames
@@ -675,7 +684,7 @@ for (f, f′) in [(:rand, :_rand), (:randn, :_randn)]
         function Base.$f(
                 rng::AbstractRNG,
                 elt::Type{<:Number},
-                ax::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}},
+                ax::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}}
             )
             a = $f′(rng, elt, denamed.(ax))
             return a[Name.(name.(ax))...]
@@ -683,7 +692,7 @@ for (f, f′) in [(:rand, :_rand), (:randn, :_randn)]
         function Base.$f(
                 rng::AbstractRNG,
                 elt::Type{<:Number},
-                dims::Tuple{AbstractNamedInteger, Vararg{AbstractNamedInteger}},
+                dims::Tuple{AbstractNamedInteger, Vararg{AbstractNamedInteger}}
             )
             return $f(rng, elt, Base.oneto.(dims))
         end
@@ -691,7 +700,8 @@ for (f, f′) in [(:rand, :_rand), (:randn, :_randn)]
     for dimtype in [:AbstractNamedInteger, :AbstractNamedUnitRange]
         @eval begin
             function Base.$f(
-                    rng::AbstractRNG, elt::Type{<:Number}, dim1::$dimtype, dims::Vararg{$dimtype}
+                    rng::AbstractRNG, elt::Type{<:Number}, dim1::$dimtype,
+                    dims::Vararg{$dimtype}
                 )
                 return $f(rng, elt, (dim1, dims...))
             end
@@ -761,7 +771,10 @@ function dims_to_string(d)
 end
 
 using TypeParameterAccessors: type_parameters, unspecify_type_parameters
-function concretetype_to_string_truncated(type::Type; param_truncation_length = typemax(Int))
+function concretetype_to_string_truncated(
+        type::Type;
+        param_truncation_length = typemax(Int)
+    )
     isconcretetype(type) || throw(ArgumentError("Type must be concrete."))
     alias = Base.make_typealias(type)
     base_type, params = if isnothing(alias)

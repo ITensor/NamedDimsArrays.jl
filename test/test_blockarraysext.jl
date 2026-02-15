@@ -1,5 +1,5 @@
 using BlockArrays: Block, BlockArray
-using NamedDimsArrays: dename, denamed, nameddims, inds
+using NamedDimsArrays: dename, denamed, inds, nameddims
 using Test: @test, @testset
 
 @testset "NamedDimsArraysBlockArraysExt" begin

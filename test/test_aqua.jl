@@ -1,5 +1,5 @@
-using NamedDimsArrays: NamedDimsArrays
 using Aqua: Aqua
+using NamedDimsArrays: NamedDimsArrays
 using Test: @testset
 
 @testset "Code quality (Aqua.jl)" begin
@@ -17,6 +17,6 @@ using Test: @testset
     Aqua.test_all(
         NamedDimsArrays;
         ambiguities = false,
-        persistent_tasks = VERSION ≥ v"1.12-",
+        persistent_tasks = VERSION ≥ v"1.12-"
     )
 end

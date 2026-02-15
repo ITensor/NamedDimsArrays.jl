@@ -1,5 +1,5 @@
-using NamedDimsArrays
 using BenchmarkTools
+using NamedDimsArrays
 
 SUITE = BenchmarkGroup()
 SUITE["rand"] = @benchmarkable rand(10)

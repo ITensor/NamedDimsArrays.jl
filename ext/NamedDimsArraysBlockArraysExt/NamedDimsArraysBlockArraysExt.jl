@@ -1,12 +1,8 @@
 module NamedDimsArraysBlockArraysExt
 using ArrayLayouts: ArrayLayouts
 using BlockArrays: Block, BlockRange
-using NamedDimsArrays:
-    AbstractNamedDimsArray,
-    AbstractNamedDimsMatrix,
-    AbstractNamedUnitRange,
-    getindex_named,
-    view_nameddims
+using NamedDimsArrays: AbstractNamedDimsArray, AbstractNamedDimsMatrix,
+    AbstractNamedUnitRange, getindex_named, view_nameddims
 
 function Base.getindex(r::AbstractNamedUnitRange{<:Integer}, I::Block{1})
     # TODO: Use `Derive.@interface NamedArrayInterface() r[I]` instead.

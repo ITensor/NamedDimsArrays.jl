@@ -1,4 +1,4 @@
-using NamedDimsArrays: AbstractNamedInteger, NamedInteger, denamed, named, name
+using NamedDimsArrays: AbstractNamedInteger, NamedInteger, denamed, name, named
 using Test: @test, @testset
 
 @testset "Named integer" begin

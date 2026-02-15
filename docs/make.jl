@@ -1,5 +1,5 @@
-using NamedDimsArrays: NamedDimsArrays
 using Documenter: Documenter, DocMeta, deploydocs, makedocs
+using NamedDimsArrays: NamedDimsArrays
 
 DocMeta.setdocmeta!(
     NamedDimsArrays, :DocTestSetup, :(using NamedDimsArrays); recursive = true
@@ -14,9 +14,9 @@ makedocs(;
     format = Documenter.HTML(;
         canonical = "https://itensor.github.io/NamedDimsArrays.jl",
         edit_link = "main",
-        assets = ["assets/favicon.ico", "assets/extras.css"],
+        assets = ["assets/favicon.ico", "assets/extras.css"]
     ),
-    pages = ["Home" => "index.md", "Reference" => "reference.md"],
+    pages = ["Home" => "index.md", "Reference" => "reference.md"]
 )
 
 deploydocs(;
