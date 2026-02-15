@@ -73,7 +73,11 @@ _parse_name(ex::Symbol) = :($(Name(ex)))
 function _parse_name(ex)
     Meta.isexpr(ex, :ref) || throw(ArgumentError("invalid @names expression: $ex"))
     length(ex.args) > 1 ||
-        throw(ArgumentError("@names indexing expression requires at least one set of indices"))
+        throw(
+        ArgumentError(
+            "@names indexing expression requires at least one set of indices"
+        )
+    )
     sym = QuoteNode(first(ex.args))
     if length(ex.args) == 2
         return :([$Name(Symbol($sym, :_, x)) for x in $(ex.args[2])])

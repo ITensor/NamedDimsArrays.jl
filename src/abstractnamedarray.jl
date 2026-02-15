@@ -2,8 +2,10 @@ using TypeParameterAccessors: unspecify_type_parameters
 
 abstract type AbstractNamedArray{T, N, Value <: AbstractArray, Name} <: AbstractArray{T, N} end
 
-const AbstractNamedVector{T, Value <: AbstractVector, Name} = AbstractNamedArray{T, 1, Value, Name}
-const AbstractNamedMatrix{T, Value <: AbstractVector, Name} = AbstractNamedArray{T, 2, Value, Name}
+const AbstractNamedVector{T, Value <: AbstractVector, Name} =
+    AbstractNamedArray{T, 1, Value, Name}
+const AbstractNamedMatrix{T, Value <: AbstractVector, Name} =
+    AbstractNamedArray{T, 2, Value, Name}
 
 # Minimal interface.
 denamed(a::AbstractNamedArray) = throw(MethodError(denamed, Tuple{typeof(a)}))

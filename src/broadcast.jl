@@ -1,9 +1,8 @@
+import TensorAlgebra as TA
+using ..NamedDimsArrays: AbstractNamedDimsArray, AbstractNamedUnitRange, LittleSet,
+    NamedDimsArrays, dename, denamed, getperm, inds, name, named, nameddimsconstructorof
 using Base.Broadcast: Broadcast as BC, Broadcasted, broadcast_shape, broadcasted,
     check_broadcast_shape, combine_axes
-using ..NamedDimsArrays: NamedDimsArrays, AbstractNamedDimsArray,
-    AbstractNamedUnitRange, LittleSet, dename, denamed, getperm, inds, name, named,
-    nameddimsconstructorof
-import TensorAlgebra as TA
 
 abstract type AbstractNamedDimsArrayStyle{N} <: BC.AbstractArrayStyle{N} end
 
@@ -54,7 +53,7 @@ end
 
 function set_promote_shape(
         ax1::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange, N}},
-        ax2::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange, N}},
+        ax2::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange, N}}
     ) where {N}
     perm = getperm(ax2, ax1)
     ax2_aligned = map(i -> ax2[i], perm)
@@ -86,7 +85,7 @@ end
 
 function set_check_broadcast_shape(
         ax1::Tuple{Any, Vararg{Any, N}},
-        ax2::Tuple{Any, Vararg{Any, N}},
+        ax2::Tuple{Any, Vararg{Any, N}}
     ) where {N}
     perm = getperm(ax2, ax1)
     ax2_aligned = map(i -> ax2[i], perm)

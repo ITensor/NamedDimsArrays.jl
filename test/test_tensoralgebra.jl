@@ -3,10 +3,15 @@ using NamedDimsArrays: NamedDimsArrays, dename, denamed, inds, namedoneto
 using StableRNGs: StableRNG
 using TensorAlgebra: TensorAlgebra, contract, left_null, left_orth, left_polar, matricize,
     orth, polar, right_null, right_orth, right_polar, unmatricize
-using Test: @test, @testset, @test_broken
+using Test: @test, @test_broken, @testset
 
 @testset "TensorAlgebra (eltype=$(elt))" for elt in
-    (Float32, Float64, Complex{Float32}, Complex{Float64})
+    (
+        Float32,
+        Float64,
+        Complex{Float32},
+        Complex{Float64},
+    )
     @testset "contract" begin
         i = namedoneto(2, "i")
         j = namedoneto(2, "j")
@@ -24,7 +29,10 @@ using Test: @test, @testset, @test_broken
         # Fuse all dimensions.
         @test dename(na_fused, ("a", "b")) ≈ reshape(
             dename(na, (k, i, j, l)),
-            (denamed(length(k)) * denamed(length(i)), denamed(length(j)) * denamed(length(l))),
+            (
+                denamed(length(k)) * denamed(length(i)),
+                denamed(length(j)) * denamed(length(l)),
+            )
         )
     end
     @testset "unmatricize" begin
@@ -34,7 +42,10 @@ using Test: @test, @testset, @test_broken
         # Split all dimensions.
         na_split = unmatricize(na, "a" => (k, i), "b" => (j, l))
         @test dename(na_split, ("k", "i", "j", "l")) ≈
-            reshape(dename(na, ("a", "b")), (denamed(k), denamed(i), denamed(j), denamed(l)))
+            reshape(
+            dename(na, ("a", "b")),
+            (denamed(k), denamed(i), denamed(j), denamed(l))
+        )
     end
     @testset "Matrix functions" begin
         for f in NamedDimsArrays.MATRIX_FUNCTIONS

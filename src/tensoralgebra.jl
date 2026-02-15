@@ -32,13 +32,13 @@ end
 # that optimize matrix multiplication sequence.
 function Base.:*(
         a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray,
-        a3::AbstractNamedDimsArray, a_rest::AbstractNamedDimsArray...,
+        a3::AbstractNamedDimsArray, a_rest::AbstractNamedDimsArray...
     )
     return mul_nameddims(a1, a2, a3, a_rest...)
 end
 function mul_nameddims(
         a1::AbstractArray, a2::AbstractArray,
-        a3::AbstractArray, a_rest::AbstractArray...,
+        a3::AbstractArray, a_rest::AbstractArray...
     )
     return *(*(a1, a2), a3, a_rest...)
 end
@@ -46,38 +46,38 @@ end
 function LA.mul!(
         a_dest::AbstractNamedDimsArray,
         a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray,
-        α::Number, β::Number,
+        α::Number, β::Number
     )
     return mul!_nameddims(a_dest, a1, a2, α, β)
 end
 function mul!_nameddims(
         a_dest::AbstractArray,
         a1::AbstractArray, a2::AbstractArray,
-        α::Number, β::Number,
+        α::Number, β::Number
     )
     TA.contractadd!(
         denamed(a_dest), dimnames(a_dest),
         denamed(a1), dimnames(a1),
         denamed(a2), dimnames(a2),
-        α, β,
+        α, β
     )
     return a_dest
 end
 
 function LA.mul!(
         a_dest::AbstractNamedDimsArray,
-        a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray,
+        a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray
     )
     return mul!_nameddims(a_dest, a1, a2)
 end
 function mul!_nameddims(
         a_dest::AbstractArray,
-        a1::AbstractArray, a2::AbstractArray,
+        a1::AbstractArray, a2::AbstractArray
     )
     TA.contract!(
         denamed(a_dest), dimnames(a_dest),
         denamed(a1), dimnames(a1),
-        denamed(a2), dimnames(a2),
+        denamed(a2), dimnames(a2)
     )
     return a_dest
 end
@@ -161,7 +161,8 @@ for f in [
             )
             codomain = name.(dimnames_codomain)
             domain = name.(dimnames_domain)
-            x_denamed, y_denamed = TA.$f(denamed(a), dimnames(a), codomain, domain; kwargs...)
+            x_denamed, y_denamed =
+                TA.$f(denamed(a), dimnames(a), codomain, domain; kwargs...)
             name_x = randname(dimnames(a, 1))
             name_y = name_x
             dimnames_x = (codomain..., name_x)
@@ -227,7 +228,7 @@ function svd_nameddims(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
         a,
         dimnames_codomain,
         dimnames_setdiff(dimnames(a), name.(dimnames_codomain));
-        kwargs...,
+        kwargs...
     )
 end
 function LA.svd(a::AbstractNamedDimsArray, args...; kwargs...)
@@ -247,7 +248,7 @@ function svdvals_nameddims(
         dimnames(a),
         name.(dimnames_codomain),
         name.(dimnames_domain);
-        kwargs...,
+        kwargs...
     )
 end
 
@@ -357,8 +358,10 @@ function right_null_nameddims(a::AbstractArray, dimnames_codomain; kwargs...)
 end
 
 const MATRIX_FUNCTIONS = [
-    :exp, :cis, :log, :sqrt, :cbrt, :cos, :sin, :tan, :csc, :sec, :cot, :cosh, :sinh, :tanh,
-    :csch, :sech, :coth, :acos, :asin, :atan, :acsc, :asec, :acot, :acosh, :asinh, :atanh,
+    :exp, :cis, :log, :sqrt, :cbrt, :cos, :sin, :tan, :csc, :sec, :cot, :cosh, :sinh,
+    :tanh,
+    :csch, :sech, :coth, :acos, :asin, :atan, :acsc, :asec, :acot, :acosh, :asinh,
+    :atanh,
     :acsch, :asech, :acoth,
 ]
 

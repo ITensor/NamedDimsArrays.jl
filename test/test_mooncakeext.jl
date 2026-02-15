@@ -1,9 +1,9 @@
 using LinearAlgebra: mul!
-import Mooncake
+using Mooncake: Mooncake
 using NamedDimsArrays: AbstractNamedUnitRange, Name, NamedDimsArray, NamedUnitRange,
     blockedperm_nameddims, combine_nameddimsconstructors, dimnames, dimnames_setdiff, inds,
     name, nameddimsconstructorof, randname, to_inds
-import Random
+using Random: Random
 using TensorAlgebra: blockedperm
 using Test: @test, @testset
 
@@ -29,13 +29,20 @@ using Test: @test, @testset
         )
         Mooncake.TestUtils.test_rule(
             rng, combine_nameddimsconstructors, NamedDimsArray, NamedDimsArray;
-            mode, is_primitive,
+            mode, is_primitive
         )
         Mooncake.TestUtils.test_rule(rng, dimnames, a1; mode, is_primitive)
         Mooncake.TestUtils.test_rule(rng, dimnames, a1, 1; mode, is_primitive)
         Mooncake.TestUtils.test_rule(rng, inds, a1; mode, is_primitive)
         Mooncake.TestUtils.test_rule(rng, inds, a1, 1; mode, is_primitive)
-        Mooncake.TestUtils.test_rule(rng, dimnames_setdiff, (i, j), (j, k); mode, is_primitive)
+        Mooncake.TestUtils.test_rule(
+            rng,
+            dimnames_setdiff,
+            (i, j),
+            (j, k);
+            mode,
+            is_primitive
+        )
         Mooncake.TestUtils.test_rule(rng, name, i; mode, is_primitive)
         Mooncake.TestUtils.test_rule(rng, nameddimsconstructorof, a1; mode, is_primitive)
         Mooncake.TestUtils.test_rule(rng, randname, i; mode, is_primitive)

@@ -10,14 +10,19 @@ const GROUP = uppercase(
         get(ENV, "GROUP", "ALL")
     else
         only(match(pat, ARGS[arg_id]).captures)
-    end,
+    end
 )
 
-"match files of the form `test_*.jl`, but exclude `*setup*.jl`"
+"""
+match files of the form `test_*.jl`, but exclude `*setup*.jl`
+"""
 function istestfile(fn)
-    return endswith(fn, ".jl") && startswith(basename(fn), "test_") && !contains(fn, "setup")
+    return endswith(fn, ".jl") && startswith(basename(fn), "test_") &&
+        !contains(fn, "setup")
 end
-"match files of the form `*.jl`, but exclude `*_notest.jl` and `*setup*.jl`"
+"""
+match files of the form `*.jl`, but exclude `*_notest.jl` and `*setup*.jl`
+"""
 function isexamplefile(fn)
     return endswith(fn, ".jl") && !endswith(fn, "_notest.jl") && !contains(fn, "setup")
 end
@@ -26,7 +31,8 @@ end
     # tests in groups based on folder structure
     for testgroup in filter(isdir, readdir(@__DIR__))
         if GROUP == "ALL" || GROUP == uppercase(testgroup)
-            for file in filter(istestfile, readdir(joinpath(@__DIR__, testgroup); join = true))
+            for file in
+                filter(istestfile, readdir(joinpath(@__DIR__, testgroup); join = true))
                 @eval @safetestset $file begin
                     include($file)
                 end
@@ -55,7 +61,7 @@ end
                             :macrocall,
                             GlobalRef(Suppressor, Symbol("@suppress")),
                             LineNumberNode(@__LINE__, @__FILE__),
-                            :(include($filename)),
+                            :(include($filename))
                         )
                     )
                 end

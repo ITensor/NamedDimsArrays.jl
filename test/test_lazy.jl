@@ -1,5 +1,5 @@
 using NamedDimsArrays: NamedDimsArrays as NDA, Name, nameddims
-using TensorAlgebra: +ₗ, *ₗ, conjed
+using TensorAlgebra: *ₗ, +ₗ, conjed
 using Test: @test, @testset
 
 @testset "Lazy named dims arrays" begin
