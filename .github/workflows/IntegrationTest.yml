@@ -7,8 +7,12 @@ on:
     paths:
       - "Project.toml"
   pull_request:
-    paths:
-      - "Project.toml"
+    types:
+      - "opened"
+      - "synchronize"
+      - "reopened"
+      - "ready_for_review"
+      - "converted_to_draft"
 jobs:
   integration-test:
     name: "IntegrationTest"
@@ -24,3 +28,14 @@ jobs:
     with:
       localregistry: "https://github.com/ITensor/ITensorRegistry.git"
       pkg: "${{ matrix.pkg }}"
+  integrationtests-gate:
+    name: "IntegrationTest"
+    needs: "integrationtests"
+    if: "${{ always() }}"
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: "Fail if any matrix leg failed"
+        run: |
+          echo "integrationtests.result = ${{ needs.integrationtests.result }}"
+          test "${{ needs.integrationtests.result }}" = "success"
+          
