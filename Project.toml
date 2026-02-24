@@ -1,6 +1,6 @@
 name = "NamedDimsArrays"
 uuid = "60cbd0c0-df58-4cb7-918c-6f5607b73fde"
-version = "0.14.9"
+version = "0.14.10"
 authors = ["ITensor developers <support@itensor.org> and contributors"]
 
 [workspace]
