@@ -1,11 +1,12 @@
 using Documenter: Documenter, DocMeta, deploydocs, makedocs
+using ITensorFormatter: ITensorFormatter
 using NamedDimsArrays: NamedDimsArrays
 
 DocMeta.setdocmeta!(
     NamedDimsArrays, :DocTestSetup, :(using NamedDimsArrays); recursive = true
 )
 
-include("make_index.jl")
+ITensorFormatter.make_index!(pkgdir(NamedDimsArrays))
 
 makedocs(;
     modules = [NamedDimsArrays],
