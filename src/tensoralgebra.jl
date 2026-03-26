@@ -5,13 +5,6 @@ using TupleTools: TupleTools
 # This layer is used to define derivative rules (to skip differentiating `setdiff`).
 dimnames_setdiff(s1, s2) = setdiff(s1, s2)
 
-function TA.add!(
-        dest::AbstractNamedDimsArray, src::AbstractNamedDimsArray, α::Number, β::Number
-    )
-    TA.add!(denamed(dest), denamed(src, dimnames(dest)), α, β)
-    return dest
-end
-
 Base.:*(a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray) = mul_nameddims(a1, a2)
 function mul_nameddims(a1::AbstractArray, a2::AbstractArray)
     a_dest, dimnames_dest = TA.contract(
