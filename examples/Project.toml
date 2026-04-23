@@ -8,4 +8,4 @@ path = ".."
 
 [compat]
 NamedDimsArrays = "0.15"
-TensorAlgebra = "0.8"
+TensorAlgebra = "0.8, 0.9"
