@@ -1,9 +1,9 @@
 using Combinatorics: Combinatorics
 using NamedDimsArrays: @names, AbstractNamedDimsArray, AbstractNamedDimsMatrix, LittleSet,
     Name, NameMismatch, NamedDimsArray, NamedDimsCartesianIndex, NamedDimsCartesianIndices,
-    NamedDimsMatrix, aligndims, aligneddims, apply, dename, denamed, dim, dimnames, dims,
-    fusednames, inds, isnamed, mapinds, name, named, nameddims, namedoneto, product,
-    replacedimnames, replaceinds, setinds
+    NamedDimsMatrix, aligndims, aligneddims, apply, dename, denamed, denamedtype, dim,
+    dimnames, dims, fusednames, inds, isnamed, mapinds, name, named, nameddims, namedoneto,
+    nametype, product, replacedimnames, replaceinds, setinds
 using Test: @test, @test_throws, @testset
 using VectorInterface: scalartype
 
@@ -43,6 +43,8 @@ end
         @test dim(na, "j") == 2
         @test dims(na, ("j", "i")) == (2, 1)
         @test na[1, 1] == a[1, 1]
+        @test denamedtype(typeof(na)) === typeof(a)
+        @test nametype(typeof(na)) === String
 
         # equals (==)/isequal
         a = randn(elt, 3, 4)
