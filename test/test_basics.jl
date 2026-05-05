@@ -402,10 +402,11 @@ end
         end
 
         s = LittleSet((1, 2, 3))
+        @test LittleSet(s).values isa Tuple
         @test LittleSet(s) == s
         sp = LittleSet{NTuple{3, Float64}}(s)
         @test eltype(sp) === Float64
-        @test sp.values == (1.0, 2.0, 3.0)
+        @test values(sp) == (1.0, 2.0, 3.0)
     end
     @testset "show" begin
         a = NamedDimsArray([1 2; 3 4], ("i", "j"))
