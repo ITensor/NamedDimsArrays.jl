@@ -398,6 +398,12 @@ end
             @test s′[2] == "x"
             @test s′[3] == "c"
         end
+
+        s = LittleSet((1, 2, 3))
+        @test LittleSet(s) == s
+        sp = LittleSet{NTuple{3, Float64}}(s)
+        @test eltype(sp) === Float64
+        @test sp.values == (1.0, 2.0, 3.0)
     end
     @testset "show" begin
         a = NamedDimsArray([1 2; 3 4], ("i", "j"))
