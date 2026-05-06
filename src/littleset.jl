@@ -3,6 +3,8 @@ using Base.Broadcast: AbstractArrayStyle, Broadcasted, Style
 struct LittleSet{Values}
     values::Values
 end
+LittleSet(s::LittleSet{V}) where {V} = LittleSet{V}(s)
+LittleSet{V1}(s::LittleSet{V2}) where {V1, V2} = LittleSet{V1}(s.values)
 Base.Tuple(s::LittleSet) = Tuple(s.values)
 Base.eltype(s::LittleSet) = eltype(s.values)
 Base.length(s::LittleSet) = length(s.values)
