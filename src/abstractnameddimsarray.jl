@@ -26,6 +26,29 @@ function dimnames(a::AbstractNamedDimsArray, dim::Int)
     return dimnames(a)[dim]
 end
 
+"""
+    dimnametype(a::AbstractNamedDimsArray)
+    dimnametype(type::Type{<:AbstractNamedDimsArray})
+
+The type of an individual dimension name of `a`.
+
+This is the named-dims analog of `nametype` for single-named values (such as a
+`NamedInteger` or `NamedUnitRange`): rather than the name attached to one value,
+it reports the type that the array's dimension names share. For example it is
+`Symbol` or `String` for a plain `NamedDimsArray`, and `IndexName` for an
+`ITensor`.
+
+The primary method dispatches on the array type, and `dimnametype(a)` forwards
+to `dimnametype(typeof(a))`. Like `dimnames`, there is no generic fallback: a
+concrete array type defines `dimnametype` for its type only when it guarantees a
+dimension-name type. This keeps the result type-stable and well-defined even for
+order-0 arrays, where the dimension-name collection is empty and an `eltype`
+based computation would degrade to `Union{}`.
+"""
+function dimnametype end
+dimnametype(a::AbstractNamedDimsArray) = dimnametype(typeof(a))
+dimnametype(type::Type{<:AbstractNamedDimsArray}) = throw(MethodError(dimnametype, type))
+
 # Unwrapping the names (`NamedDimsArrays.jl` interface).
 # TODO: Use `IsNamed` trait?
 denamed(a::AbstractNamedDimsArray) = throw(MethodError(denamed, a))
