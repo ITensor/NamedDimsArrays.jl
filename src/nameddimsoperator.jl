@@ -118,6 +118,47 @@ for f in MATRIX_FUNCTIONS
         end
     end
 end
+
+"""
+    similar_operator(prototype::AbstractNamedDimsArray, codomain_axes) -> NamedDimsOperator
+
+Allocate an operator-shaped array (codomain ∪ domain) backed by storage
+similar to `prototype`. The domain axes copy the codomain axes' lengths
+but get fresh dimension names via [`randname`](@ref).
+"""
+function similar_operator(prototype::AbstractNamedDimsArray, codomain_axes)
+    co_axes = Tuple(codomain_axes)
+    dom_axes = setname.(co_axes, randname.(name.(co_axes)))
+    a = similar(denamed(prototype), (co_axes..., dom_axes...))
+    return operator(a, collect(name.(co_axes)), collect(name.(dom_axes)))
+end
+
+# Operator entries for the gram factorizations defined in `tensoralgebra.jl`.
+# Placed here because `AbstractNamedDimsOperator` is defined below
+# `tensoralgebra.jl` in the include order.
+for f in (:gram_eigh_full, :gram_eigh_full_with_pinv)
+    @eval begin
+        function TA.$f(a::AbstractNamedDimsOperator; kwargs...)
+            return TA.$f(state(a), codomainnames(a), domainnames(a); kwargs...)
+        end
+    end
+end
+
+function Base.one(a::AbstractNamedDimsOperator)
+    c = codomainnames(a)
+    d = domainnames(a)
+    a_denamed = denamed(state(a))
+    style = TA.FusionStyle(a_denamed)
+    ndims_codomain = Val(length(c))
+    a_mat = TA.matricize(style, a_denamed, ndims_codomain)
+    id_mat = similar(a_mat)
+    copyto!(id_mat, LA.I)
+    biperm = TA.trivialbiperm(ndims_codomain, Val(ndims(a_denamed)))
+    co_axes, dom_axes = TA.blocks(axes(a_denamed)[biperm])
+    id_denamed = TA.unmatricize(style, id_mat, co_axes, dom_axes)
+    id_nda = nameddims(id_denamed, dimnames(state(a)))
+    return operator(id_nda, c, d)
+end
 struct NamedDimsOperator{T, N, P <: AbstractNamedDimsArray{T, N}, D, C} <:
     AbstractNamedDimsOperator{T, N}
     parent::P

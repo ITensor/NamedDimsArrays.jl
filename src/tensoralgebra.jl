@@ -350,6 +350,65 @@ function right_null_nameddims(a::AbstractArray, dimnames_codomain; kwargs...)
     return TA.right_null(a, codomain, domain; kwargs...)
 end
 
+function TA.gram_eigh_full(
+        a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
+    )
+    return gram_eigh_full_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
+end
+function gram_eigh_full_nameddims(
+        a::AbstractArray, dimnames_codomain, dimnames_domain; kwargs...
+    )
+    codomain = name.(dimnames_codomain)
+    domain = name.(dimnames_domain)
+    x_denamed = TA.gram_eigh_full(denamed(a), dimnames(a), codomain, domain; kwargs...)
+    name_x = randname(dimnames(a, 1))
+    dimnames_x = (codomain..., name_x)
+    return nameddims(x_denamed, dimnames_x)
+end
+
+function TA.gram_eigh_full(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
+    return gram_eigh_full_nameddims(a, dimnames_codomain; kwargs...)
+end
+function gram_eigh_full_nameddims(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
+    codomain = name.(dimnames_codomain)
+    domain = dimnames_setdiff(dimnames(a), codomain)
+    return TA.gram_eigh_full(a, codomain, domain; kwargs...)
+end
+
+function TA.gram_eigh_full_with_pinv(
+        a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
+    )
+    return gram_eigh_full_with_pinv_nameddims(
+        a, dimnames_codomain, dimnames_domain; kwargs...
+    )
+end
+function gram_eigh_full_with_pinv_nameddims(
+        a::AbstractArray, dimnames_codomain, dimnames_domain; kwargs...
+    )
+    codomain = name.(dimnames_codomain)
+    domain = name.(dimnames_domain)
+    x_denamed, y_denamed = TA.gram_eigh_full_with_pinv(
+        denamed(a), dimnames(a), codomain, domain; kwargs...
+    )
+    name_xy = randname(dimnames(a, 1))
+    dimnames_x = (codomain..., name_xy)
+    dimnames_y = (name_xy, codomain...)
+    return nameddims(x_denamed, dimnames_x), nameddims(y_denamed, dimnames_y)
+end
+
+function TA.gram_eigh_full_with_pinv(
+        a::AbstractNamedDimsArray, dimnames_codomain; kwargs...
+    )
+    return gram_eigh_full_with_pinv_nameddims(a, dimnames_codomain; kwargs...)
+end
+function gram_eigh_full_with_pinv_nameddims(
+        a::AbstractNamedDimsArray, dimnames_codomain; kwargs...
+    )
+    codomain = name.(dimnames_codomain)
+    domain = dimnames_setdiff(dimnames(a), codomain)
+    return TA.gram_eigh_full_with_pinv(a, codomain, domain; kwargs...)
+end
+
 const MATRIX_FUNCTIONS = [
     :exp, :cis, :log, :sqrt, :cbrt, :cos, :sin, :tan, :csc, :sec, :cot, :cosh, :sinh,
     :tanh,

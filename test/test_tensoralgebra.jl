@@ -1,8 +1,9 @@
-using LinearAlgebra: factorize, lq, norm, qr, svd
+using LinearAlgebra: LinearAlgebra, factorize, lq, norm, qr, svd
 using NamedDimsArrays: NamedDimsArrays, dename, denamed, inds, namedoneto
 using StableRNGs: StableRNG
-using TensorAlgebra: TensorAlgebra, contract, left_null, left_orth, left_polar, matricize,
-    orth, polar, right_null, right_orth, right_polar, unmatricize
+using TensorAlgebra: TensorAlgebra, contract, gram_eigh_full, gram_eigh_full_with_pinv,
+    left_null, left_orth, left_polar, matricize, orth, polar, right_null, right_orth,
+    right_polar, unmatricize
 using Test: @test, @test_broken, @testset
 
 @testset "TensorAlgebra (eltype=$(elt))" for elt in
@@ -117,6 +118,43 @@ using Test: @test, @test_broken, @testset
         for n in (right_null(a, (i, k), (j, l)), right_null(a, (i, k)))
             @test (j, l) ⊆ inds(n)
             @test norm(n * a) ≈ 0
+        end
+    end
+    @testset "gram_eigh_full" begin
+        # Build a Hermitian PSD a ≈ b * b' over an aux dim, with codomain
+        # (i, k) and domain (j, l) sharing the same axis lengths.
+        i, j, k, l, aux = namedoneto.((2, 2, 2, 2, 5), ("i", "j", "k", "l", "aux"))
+        b = randn(elt, i, k, aux)
+        # b * conj(b') with conjugate's (i, k) relabeled to (j, l) to form
+        # the operator-shaped Hermitian.
+        b_dom = NamedDimsArrays.replacedimnames(conj(b), "i" => "j", "k" => "l")
+        a = b * b_dom
+
+        for X in (gram_eigh_full(a, (i, k), (j, l)), gram_eigh_full(a, (i, k)))
+            rank_name = only(setdiff(NamedDimsArrays.dimnames(X), ("i", "k")))
+            X_conj = NamedDimsArrays.replacedimnames(conj(X), "i" => "j", "k" => "l")
+            @test (i, k) ⊆ inds(X)
+            @test X * X_conj ≈ a
+        end
+
+        for (X, Y) in (
+                gram_eigh_full_with_pinv(a, (i, k), (j, l)),
+                gram_eigh_full_with_pinv(a, (i, k)),
+            )
+            rank_name = only(setdiff(NamedDimsArrays.dimnames(X), ("i", "k")))
+            @test rank_name == only(setdiff(NamedDimsArrays.dimnames(Y), ("i", "k")))
+            X_conj = NamedDimsArrays.replacedimnames(conj(X), "i" => "j", "k" => "l")
+            @test X * X_conj ≈ a
+            # `Y * X` contracts the shared rank name and the shared codomain
+            # names ((i, k)), reducing to a scalar (the rank), so check the
+            # matrix-level identity via parent storage.
+            Xp = denamed(X)
+            Yp = denamed(Y)
+            # Both arrays have axis order (codomain..., rank) and (rank,
+            # codomain...). Matricize each, multiply, and compare to I.
+            Xmat = reshape(dename(X, ("i", "k", rank_name)), 4, :)
+            Ymat = reshape(dename(Y, (rank_name, "i", "k")), :, 4)
+            @test Ymat * Xmat ≈ LinearAlgebra.I(size(Xmat, 2))
         end
     end
 end
