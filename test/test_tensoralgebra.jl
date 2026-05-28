@@ -121,20 +121,20 @@ using Test: @test, @test_broken, @testset
         end
     end
     @testset "gram_eigh_full" begin
-        # Build a Hermitian PSD a ≈ b * b' over an aux dim, with codomain
+        # Build a Hermitian PSD a ≈ conj(b) * b over an aux dim, with codomain
         # (i, k) and domain (j, l) sharing the same axis lengths.
         i, j, k, l, aux = namedoneto.((2, 2, 2, 2, 5), ("i", "j", "k", "l", "aux"))
-        b = randn(elt, i, k, aux)
-        # b * conj(b') with conjugate's (i, k) relabeled to (j, l) to form
-        # the operator-shaped Hermitian.
-        b_dom = NamedDimsArrays.replacedimnames(conj(b), "i" => "j", "k" => "l")
-        a = b * b_dom
+        b = randn(elt, aux, i, k)
+        # conj(b) * b with the non-conjugated copy's (i, k) relabeled to
+        # (j, l) to form the operator-shaped Hermitian a ≈ X' * X.
+        b_dom = NamedDimsArrays.replacedimnames(b, "i" => "j", "k" => "l")
+        a = conj(b) * b_dom
 
         for X in (gram_eigh_full(a, (i, k), (j, l)), gram_eigh_full(a, (i, k)))
             rank_name = only(setdiff(NamedDimsArrays.dimnames(X), ("i", "k")))
-            X_conj = NamedDimsArrays.replacedimnames(conj(X), "i" => "j", "k" => "l")
+            X_dom = NamedDimsArrays.replacedimnames(X, "i" => "j", "k" => "l")
             @test (i, k) ⊆ inds(X)
-            @test X * X_conj ≈ a
+            @test conj(X) * X_dom ≈ a
         end
 
         for (X, Y) in (
@@ -143,18 +143,16 @@ using Test: @test, @test_broken, @testset
             )
             rank_name = only(setdiff(NamedDimsArrays.dimnames(X), ("i", "k")))
             @test rank_name == only(setdiff(NamedDimsArrays.dimnames(Y), ("i", "k")))
-            X_conj = NamedDimsArrays.replacedimnames(conj(X), "i" => "j", "k" => "l")
-            @test X * X_conj ≈ a
-            # `Y * X` contracts the shared rank name and the shared codomain
-            # names ((i, k)), reducing to a scalar (the rank), so check the
-            # matrix-level identity via parent storage.
-            Xp = denamed(X)
-            Yp = denamed(Y)
-            # Both arrays have axis order (codomain..., rank) and (rank,
-            # codomain...). Matricize each, multiply, and compare to I.
-            Xmat = reshape(dename(X, ("i", "k", rank_name)), 4, :)
-            Ymat = reshape(dename(Y, (rank_name, "i", "k")), :, 4)
-            @test Ymat * Xmat ≈ LinearAlgebra.I(size(Xmat, 2))
+            X_dom = NamedDimsArrays.replacedimnames(X, "i" => "j", "k" => "l")
+            @test conj(X) * X_dom ≈ a
+            # `X * Y` contracts the shared codomain names ((i, k)) and the
+            # shared rank name, reducing to a scalar (the rank), so check the
+            # matrix-level identity `X * Y ≈ I_rank` via parent storage.
+            # `X` has axis order (rank, codomain...); `Y` has
+            # (codomain..., rank).
+            Xmat = reshape(dename(X, (rank_name, "i", "k")), :, 4)
+            Ymat = reshape(dename(Y, ("i", "k", rank_name)), 4, :)
+            @test Xmat * Ymat ≈ LinearAlgebra.I(size(Xmat, 1))
         end
     end
 end

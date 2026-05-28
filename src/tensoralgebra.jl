@@ -362,7 +362,7 @@ function gram_eigh_full_nameddims(
     domain = name.(dimnames_domain)
     x_denamed = TA.gram_eigh_full(denamed(a), dimnames(a), codomain, domain; kwargs...)
     name_x = randname(dimnames(a, 1))
-    dimnames_x = (codomain..., name_x)
+    dimnames_x = (name_x, codomain...)
     return nameddims(x_denamed, dimnames_x)
 end
 
@@ -391,8 +391,8 @@ function gram_eigh_full_with_pinv_nameddims(
         denamed(a), dimnames(a), codomain, domain; kwargs...
     )
     name_xy = randname(dimnames(a, 1))
-    dimnames_x = (codomain..., name_xy)
-    dimnames_y = (name_xy, codomain...)
+    dimnames_x = (name_xy, codomain...)
+    dimnames_y = (codomain..., name_xy)
     return nameddims(x_denamed, dimnames_x), nameddims(y_denamed, dimnames_y)
 end
 
