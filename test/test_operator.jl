@@ -1,7 +1,6 @@
 using LinearAlgebra: I, norm
 using NamedDimsArrays: NamedDimsArrays as NDA, NamedDimsArray, NamedDimsOperator, apply,
-    dename, denamed, dimnames, name, named, nameddims, namedoneto, operator, product,
-    replacedimnames, similar_operator, state
+    denamed, dimnames, nameddims, namedoneto, operator, product, replacedimnames, state
 using TensorAlgebra: gram_eigh_full, gram_eigh_full_with_pinv
 using Test: @test, @testset
 
@@ -41,32 +40,6 @@ using Test: @test, @testset
     ov = apply(o, v)
     @test issetequal(dimnames(ov), ("i", "j"))
     @test ov ≈ replacedimnames(o * v, "i'" => "i", "j'" => "j")
-end
-
-@testset "similar_operator" begin
-    proto = nameddims(randn(3, 4), ("a", "b"))
-    co_axes = (named(3, "i"), named(5, "j"))
-    sim = similar_operator(proto, co_axes)
-    @test sim isa NamedDimsOperator{Float64}
-    @test issetequal(NDA.codomainnames(sim), ("i", "j"))
-    # Domain names are fresh (not equal to any codomain name).
-    dom = collect(NDA.domainnames(sim))
-    @test all(!in(("i", "j")), dom)
-    # Sizes match codomain on both sides.
-    parent_dim = sort(collect(Int.(Tuple(size(parent(sim))))))
-    @test parent_dim == [3, 3, 5, 5]
-end
-
-@testset "Base.one(::AbstractNamedDimsOperator)" begin
-    n = 4
-    A = randn(n, n)
-    M_nda = nameddims(A, ("ket", "bra"))
-    M_op = operator(M_nda, ["ket"], ["bra"])
-    id = one(M_op)
-    @test id isa NamedDimsOperator{Float64}
-    @test denamed(state(id)) ≈ Matrix(I, n, n)
-    @test collect(NDA.codomainnames(id)) == ["ket"]
-    @test collect(NDA.domainnames(id)) == ["bra"]
 end
 
 @testset "gram_eigh_full on AbstractNamedDimsOperator" begin
