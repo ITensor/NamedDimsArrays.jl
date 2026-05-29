@@ -399,7 +399,7 @@ end
 """
     TensorAlgebra.gram_eigh_full_with_pinv(a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...) -> x, y
 
-Like [`TensorAlgebra.gram_eigh_full`](@ref), but additionally returns a
+Like `TensorAlgebra.gram_eigh_full`, but additionally returns a
 named array `y` such that `x * y` projects onto the rank subspace
 (equal to the identity when `a` is full rank). `x` has the rank-name
 first, `y` has it last, both sharing the codomain dimension names of

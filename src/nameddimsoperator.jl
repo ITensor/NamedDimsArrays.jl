@@ -167,7 +167,7 @@ true
 const _gram_eigh_full_with_pinv_operator_docstring = """
     TensorAlgebra.gram_eigh_full_with_pinv(a::AbstractNamedDimsOperator; kwargs...) -> x, y
 
-Like [`TensorAlgebra.gram_eigh_full`](@ref), but additionally returns a
+Like `TensorAlgebra.gram_eigh_full`, but additionally returns a
 named array `y` such that `x * y` projects onto the rank subspace
 (equal to the identity when `a` is full rank). The codomain and domain
 partition is taken from `codomainnames(a)` and `domainnames(a)`.
