@@ -1,3 +1,5 @@
+using OrderedCollections: OrderedDict
+
 # Named dimension operator minimal interface.
 
 # Choi state representation of the named operator.
@@ -64,13 +66,13 @@ function product(x::AbstractNamedDimsArray, y::AbstractNamedDimsArray)
 end
 
 struct Bijection{Codomain, Domain} <: AbstractDict{Domain, Codomain}
-    domain_to_codomain::Dict{Domain, Codomain}
-    codomain_to_domain::Dict{Codomain, Domain}
+    domain_to_codomain::OrderedDict{Domain, Codomain}
+    codomain_to_domain::OrderedDict{Codomain, Domain}
 end
 function Bijection(domain, codomain)
     pairs = domain .=> codomain
-    domain_to_codomain = Dict(pairs)
-    codomain_to_domain = Dict(reverse(kv) for kv in pairs)
+    domain_to_codomain = OrderedDict(pairs)
+    codomain_to_domain = OrderedDict(reverse(kv) for kv in pairs)
     return Bijection(domain_to_codomain, codomain_to_domain)
 end
 function Base.get(b::Bijection, k, default)
@@ -79,8 +81,10 @@ end
 function inverse(b::Bijection)
     return Bijection(b.codomain_to_domain, b.domain_to_codomain)
 end
+# Both accessors iterate `codomain_to_domain` so that successive calls return
+# values in lock-step positional order (codomain[i] paired with domain[i]).
 function codomain(b::Bijection)
-    return values(b.domain_to_codomain)
+    return keys(b.codomain_to_domain)
 end
 function domain(b::Bijection)
     return values(b.codomain_to_domain)
@@ -122,9 +126,81 @@ end
 # Operator entries for the gram factorizations defined in `tensoralgebra.jl`.
 # Placed here because `AbstractNamedDimsOperator` is defined below
 # `tensoralgebra.jl` in the include order.
+#
+# Per-method docstrings are factored out into `const` strings and attached
+# inside the `@eval` loop via `@doc`. This keeps the loop body uniform when
+# methods need distinct user-facing docs (including jldoctest examples) that
+# don't share enough structure to warrant `$($f)`-interpolation.
+
+const _gram_eigh_full_operator_docstring = """
+    TensorAlgebra.gram_eigh_full(a::AbstractNamedDimsOperator; kwargs...) -> x
+
+Gram factorization of a Hermitian positive semi-definite named operator
+`a`, returning `x` such that `conj(x) * x_dom ≈ state(a)`, where `x_dom`
+is `x` with its codomain dimension names replaced by the corresponding
+domain names of `a`. The codomain and domain partition is taken from
+`codomainnames(a)` and `domainnames(a)`.
+
+`kwargs` are forwarded to `TensorAlgebra.gram_eigh_full` on the
+underlying named array (e.g. `atol`, `rtol`).
+
+# Examples
+
+```jldoctest
+julia> using NamedDimsArrays: namedoneto, operator, replacedimnames, state
+
+julia> using TensorAlgebra: gram_eigh_full
+
+julia> i, j, k, l, aux = namedoneto.((2, 2, 2, 2, 8), ("i", "j", "k", "l", "aux"));
+
+julia> b = randn(aux, i, k);
+
+julia> a = operator(conj(b) * replacedimnames(b, "i" => "j", "k" => "l"), ("i", "k"), ("j", "l"));
+
+julia> x = gram_eigh_full(a);
+
+julia> conj(x) * replacedimnames(x, "i" => "j", "k" => "l") ≈ state(a)
+true
+```
+"""
+
+const _gram_eigh_full_with_pinv_operator_docstring = """
+    TensorAlgebra.gram_eigh_full_with_pinv(a::AbstractNamedDimsOperator; kwargs...) -> x, y
+
+Like [`TensorAlgebra.gram_eigh_full`](@ref), but additionally returns a
+named array `y` such that `x * y` projects onto the rank subspace
+(equal to the identity when `a` is full rank). The codomain and domain
+partition is taken from `codomainnames(a)` and `domainnames(a)`.
+
+# Examples
+
+```jldoctest
+julia> using LinearAlgebra: I
+
+julia> using NamedDimsArrays: dename, dimnames, namedoneto, operator, replacedimnames
+
+julia> using TensorAlgebra: gram_eigh_full_with_pinv
+
+julia> i, j, k, l, aux = namedoneto.((2, 2, 2, 2, 8), ("i", "j", "k", "l", "aux"));
+
+julia> b = randn(aux, i, k);
+
+julia> a = operator(conj(b) * replacedimnames(b, "i" => "j", "k" => "l"), ("i", "k"), ("j", "l"));
+
+julia> x, y = gram_eigh_full_with_pinv(a);
+
+julia> rname = only(setdiff(dimnames(x), ("i", "k")));
+
+julia> reshape(dename(x, (rname, "i", "k")), :, 4) *
+       reshape(dename(y, ("i", "k", rname)), 4, :) ≈ I
+true
+```
+"""
+
 for f in (:gram_eigh_full, :gram_eigh_full_with_pinv)
+    doc_sym = Symbol("_", f, "_operator_docstring")
     @eval begin
-        function TA.$f(a::AbstractNamedDimsOperator; kwargs...)
+        @doc $doc_sym function TA.$f(a::AbstractNamedDimsOperator; kwargs...)
             return TA.$f(state(a), codomainnames(a), domainnames(a); kwargs...)
         end
     end
