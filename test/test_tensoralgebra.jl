@@ -130,17 +130,13 @@ using Test: @test, @test_broken, @testset
         b_dom = NamedDimsArrays.replacedimnames(b, "i" => "j", "k" => "l")
         a = conj(b) * b_dom
 
-        for X in (gram_eigh_full(a, (i, k), (j, l)), gram_eigh_full(a, (i, k)))
-            rank_name = only(setdiff(NamedDimsArrays.dimnames(X), ("i", "k")))
+        let X = gram_eigh_full(a, (i, k), (j, l))
             X_dom = NamedDimsArrays.replacedimnames(X, "i" => "j", "k" => "l")
             @test (i, k) ⊆ inds(X)
             @test conj(X) * X_dom ≈ a
         end
 
-        for (X, Y) in (
-                gram_eigh_full_with_pinv(a, (i, k), (j, l)),
-                gram_eigh_full_with_pinv(a, (i, k)),
-            )
+        let (X, Y) = gram_eigh_full_with_pinv(a, (i, k), (j, l))
             rank_name = only(setdiff(NamedDimsArrays.dimnames(X), ("i", "k")))
             @test rank_name == only(setdiff(NamedDimsArrays.dimnames(Y), ("i", "k")))
             X_dom = NamedDimsArrays.replacedimnames(X, "i" => "j", "k" => "l")

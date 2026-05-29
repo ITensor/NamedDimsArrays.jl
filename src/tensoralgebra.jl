@@ -366,15 +366,6 @@ function gram_eigh_full_nameddims(
     return nameddims(x_denamed, dimnames_x)
 end
 
-function TA.gram_eigh_full(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
-    return gram_eigh_full_nameddims(a, dimnames_codomain; kwargs...)
-end
-function gram_eigh_full_nameddims(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
-    codomain = name.(dimnames_codomain)
-    domain = dimnames_setdiff(dimnames(a), codomain)
-    return TA.gram_eigh_full(a, codomain, domain; kwargs...)
-end
-
 function TA.gram_eigh_full_with_pinv(
         a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
     )
@@ -394,19 +385,6 @@ function gram_eigh_full_with_pinv_nameddims(
     dimnames_x = (name_xy, codomain...)
     dimnames_y = (codomain..., name_xy)
     return nameddims(x_denamed, dimnames_x), nameddims(y_denamed, dimnames_y)
-end
-
-function TA.gram_eigh_full_with_pinv(
-        a::AbstractNamedDimsArray, dimnames_codomain; kwargs...
-    )
-    return gram_eigh_full_with_pinv_nameddims(a, dimnames_codomain; kwargs...)
-end
-function gram_eigh_full_with_pinv_nameddims(
-        a::AbstractNamedDimsArray, dimnames_codomain; kwargs...
-    )
-    codomain = name.(dimnames_codomain)
-    domain = dimnames_setdiff(dimnames(a), codomain)
-    return TA.gram_eigh_full_with_pinv(a, codomain, domain; kwargs...)
 end
 
 const MATRIX_FUNCTIONS = [
