@@ -1,5 +1,6 @@
 using LinearAlgebra: LinearAlgebra, factorize, lq, norm, qr, svd
-using NamedDimsArrays: NamedDimsArrays, dename, denamed, inds, namedoneto
+using NamedDimsArrays:
+    NamedDimsArrays, dename, denamed, dimnames, inds, namedoneto, randname, replacedimnames
 using StableRNGs: StableRNG
 using TensorAlgebra: TensorAlgebra, contract, gram_eigh_full, gram_eigh_full_with_pinv,
     left_null, left_orth, left_polar, matricize, orth, polar, right_null, right_orth,
@@ -127,28 +128,27 @@ using Test: @test, @test_broken, @testset
         b = randn(elt, aux, i, k)
         # conj(b) * b with the non-conjugated copy's (i, k) relabeled to
         # (j, l) to form the operator-shaped Hermitian a ≈ X' * X.
-        b_dom = NamedDimsArrays.replacedimnames(b, "i" => "j", "k" => "l")
+        b_dom = replacedimnames(b, "i" => "j", "k" => "l")
         a = conj(b) * b_dom
 
         let X = gram_eigh_full(a, (i, k), (j, l))
-            X_dom = NamedDimsArrays.replacedimnames(X, "i" => "j", "k" => "l")
+            X_dom = replacedimnames(X, "i" => "j", "k" => "l")
             @test (i, k) ⊆ inds(X)
             @test conj(X) * X_dom ≈ a
         end
 
         let (X, Y) = gram_eigh_full_with_pinv(a, (i, k), (j, l))
-            rank_name = only(setdiff(NamedDimsArrays.dimnames(X), ("i", "k")))
-            @test rank_name == only(setdiff(NamedDimsArrays.dimnames(Y), ("i", "k")))
-            X_dom = NamedDimsArrays.replacedimnames(X, "i" => "j", "k" => "l")
+            rank_name = only(setdiff(dimnames(X), ("i", "k")))
+            @test rank_name == only(setdiff(dimnames(Y), ("i", "k")))
+            X_dom = replacedimnames(X, "i" => "j", "k" => "l")
             @test conj(X) * X_dom ≈ a
-            # `X * Y` contracts the shared codomain names ((i, k)) and the
-            # shared rank name, reducing to a scalar (the rank), so check the
-            # matrix-level identity `X * Y ≈ I_rank` via parent storage.
-            # `X` has axis order (rank, codomain...); `Y` has
-            # (codomain..., rank).
-            Xmat = reshape(dename(X, (rank_name, "i", "k")), :, 4)
-            Ymat = reshape(dename(Y, ("i", "k", rank_name)), 4, :)
-            @test Xmat * Ymat ≈ LinearAlgebra.I(size(Xmat, 1))
+            # Rename one rank dimension so `X * Y` contracts only on
+            # the shared codomain names `(i, k)` and leaves a
+            # (rank × rank) named identity.
+            fresh_rank = randname(rank_name)
+            Y_fresh = replacedimnames(Y, rank_name => fresh_rank)
+            XYmat = dename(X * Y_fresh, (rank_name, fresh_rank))
+            @test XYmat ≈ LinearAlgebra.I(size(XYmat, 1))
         end
     end
 end
