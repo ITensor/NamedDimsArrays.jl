@@ -36,7 +36,7 @@ denamed(a::NamedDimsArray) = a.denamed
 Base.parent(a::NamedDimsArray) = denamed(a)
 
 denamedtype(T::Type{<:NamedDimsArray}) = get_type_parameters(T, Position(3))
-nametype(T::Type{<:NamedDimsArray}) = eltype(get_type_parameters(T, Position(4)))
+dimnametype(T::Type{<:NamedDimsArray}) = eltype(get_type_parameters(T, Position(4)))
 
 function TypeParameterAccessors.position(
         ::Type{<:AbstractNamedDimsArray}, ::typeof(parenttype)
