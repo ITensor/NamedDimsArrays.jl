@@ -350,6 +350,109 @@ function right_null_nameddims(a::AbstractArray, dimnames_codomain; kwargs...)
     return TA.right_null(a, codomain, domain; kwargs...)
 end
 
+"""
+    TensorAlgebra.gram_eigh_full(a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...) -> x
+
+Gram factorization of a Hermitian positive semi-definite named array `a`,
+returning `x` such that `a ≈ conj(x) * x_dom`, where `x_dom` is `x` with
+its codomain dimension names replaced by the corresponding domain names.
+The new rank dimension is given a fresh name.
+
+`kwargs` are forwarded to `TensorAlgebra.gram_eigh_full` on the underlying
+unnamed array (e.g. `atol`, `rtol`).
+
+# Examples
+
+```jldoctest
+julia> using NamedDimsArrays: dimnames, namedoneto, replacedimnames
+
+julia> using TensorAlgebra: gram_eigh_full
+
+julia> i, j, k, l, aux = namedoneto.((2, 2, 2, 2, 8), ("i", "j", "k", "l", "aux"));
+
+julia> b = randn(aux, i, k);
+
+julia> a = conj(b) * replacedimnames(b, "i" => "j", "k" => "l");
+
+julia> x = gram_eigh_full(a, (i, k), (j, l));
+
+julia> conj(x) * replacedimnames(x, "i" => "j", "k" => "l") ≈ a
+true
+```
+"""
+function TA.gram_eigh_full(
+        a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
+    )
+    return gram_eigh_full_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
+end
+function gram_eigh_full_nameddims(
+        a::AbstractArray, dimnames_codomain, dimnames_domain; kwargs...
+    )
+    codomain = name.(dimnames_codomain)
+    domain = name.(dimnames_domain)
+    x_denamed = TA.gram_eigh_full(denamed(a), dimnames(a), codomain, domain; kwargs...)
+    name_x = randname(dimnames(a, 1))
+    dimnames_x = (name_x, codomain...)
+    return nameddims(x_denamed, dimnames_x)
+end
+
+"""
+    TensorAlgebra.gram_eigh_full_with_pinv(a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...) -> x, y
+
+Like `TensorAlgebra.gram_eigh_full`, but additionally returns a
+named array `y` such that `x * y` projects onto the rank subspace
+(equal to the identity when `a` is full rank). `x` has the rank-name
+first, `y` has it last, both sharing the codomain dimension names of
+`a`.
+
+# Examples
+
+```jldoctest
+julia> using LinearAlgebra: I
+
+julia> using NamedDimsArrays: dename, dimnames, namedoneto, replacedimnames
+
+julia> using TensorAlgebra: gram_eigh_full_with_pinv
+
+julia> i, j, k, l, aux = namedoneto.((2, 2, 2, 2, 8), ("i", "j", "k", "l", "aux"));
+
+julia> b = randn(aux, i, k);
+
+julia> a = conj(b) * replacedimnames(b, "i" => "j", "k" => "l");
+
+julia> x, y = gram_eigh_full_with_pinv(a, (i, k), (j, l));
+
+julia> conj(x) * replacedimnames(x, "i" => "j", "k" => "l") ≈ a
+true
+
+julia> rname = only(setdiff(dimnames(x), ("i", "k")));
+
+julia> reshape(dename(x, (rname, "i", "k")), :, 4) *
+       reshape(dename(y, ("i", "k", rname)), 4, :) ≈ I
+true
+```
+"""
+function TA.gram_eigh_full_with_pinv(
+        a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
+    )
+    return gram_eigh_full_with_pinv_nameddims(
+        a, dimnames_codomain, dimnames_domain; kwargs...
+    )
+end
+function gram_eigh_full_with_pinv_nameddims(
+        a::AbstractArray, dimnames_codomain, dimnames_domain; kwargs...
+    )
+    codomain = name.(dimnames_codomain)
+    domain = name.(dimnames_domain)
+    x_denamed, y_denamed = TA.gram_eigh_full_with_pinv(
+        denamed(a), dimnames(a), codomain, domain; kwargs...
+    )
+    name_xy = randname(dimnames(a, 1))
+    dimnames_x = (name_xy, codomain...)
+    dimnames_y = (codomain..., name_xy)
+    return nameddims(x_denamed, dimnames_x), nameddims(y_denamed, dimnames_y)
+end
+
 const MATRIX_FUNCTIONS = [
     :exp, :cis, :log, :sqrt, :cbrt, :cos, :sin, :tan, :csc, :sec, :cot, :cosh, :sinh,
     :tanh,

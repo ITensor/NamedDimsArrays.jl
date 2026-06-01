@@ -1,8 +1,10 @@
-using LinearAlgebra: factorize, lq, norm, qr, svd
-using NamedDimsArrays: NamedDimsArrays, dename, denamed, inds, namedoneto
+using LinearAlgebra: LinearAlgebra, factorize, lq, norm, qr, svd
+using NamedDimsArrays:
+    NamedDimsArrays, dename, denamed, dimnames, inds, namedoneto, randname, replacedimnames
 using StableRNGs: StableRNG
-using TensorAlgebra: TensorAlgebra, contract, left_null, left_orth, left_polar, matricize,
-    orth, polar, right_null, right_orth, right_polar, unmatricize
+using TensorAlgebra: TensorAlgebra, contract, gram_eigh_full, gram_eigh_full_with_pinv,
+    left_null, left_orth, left_polar, matricize, orth, polar, right_null, right_orth,
+    right_polar, unmatricize
 using Test: @test, @test_broken, @testset
 
 @testset "TensorAlgebra (eltype=$(elt))" for elt in
@@ -117,6 +119,36 @@ using Test: @test, @test_broken, @testset
         for n in (right_null(a, (i, k), (j, l)), right_null(a, (i, k)))
             @test (j, l) ⊆ inds(n)
             @test norm(n * a) ≈ 0
+        end
+    end
+    @testset "gram_eigh_full" begin
+        # Build a Hermitian PSD a ≈ conj(b) * b over an aux dim, with codomain
+        # (i, k) and domain (j, l) sharing the same axis lengths.
+        i, j, k, l, aux = namedoneto.((2, 2, 2, 2, 5), ("i", "j", "k", "l", "aux"))
+        b = randn(elt, aux, i, k)
+        # conj(b) * b with the non-conjugated copy's (i, k) relabeled to
+        # (j, l) to form the operator-shaped Hermitian a ≈ X' * X.
+        b_dom = replacedimnames(b, "i" => "j", "k" => "l")
+        a = conj(b) * b_dom
+
+        let X = gram_eigh_full(a, (i, k), (j, l))
+            X_dom = replacedimnames(X, "i" => "j", "k" => "l")
+            @test (i, k) ⊆ inds(X)
+            @test conj(X) * X_dom ≈ a
+        end
+
+        let (X, Y) = gram_eigh_full_with_pinv(a, (i, k), (j, l))
+            rank_name = only(setdiff(dimnames(X), ("i", "k")))
+            @test rank_name == only(setdiff(dimnames(Y), ("i", "k")))
+            X_dom = replacedimnames(X, "i" => "j", "k" => "l")
+            @test conj(X) * X_dom ≈ a
+            # Rename one rank dimension so `X * Y` contracts only on
+            # the shared codomain names `(i, k)` and leaves a
+            # (rank × rank) named identity.
+            fresh_rank = randname(rank_name)
+            Y_fresh = replacedimnames(Y, rank_name => fresh_rank)
+            XYmat = dename(X * Y_fresh, (rank_name, fresh_rank))
+            @test XYmat ≈ LinearAlgebra.I(size(XYmat, 1))
         end
     end
 end

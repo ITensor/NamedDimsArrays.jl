@@ -1,5 +1,7 @@
+using LinearAlgebra: I, norm
 using NamedDimsArrays: NamedDimsArrays as NDA, NamedDimsArray, NamedDimsOperator, apply,
-    dimnames, namedoneto, operator, product, replacedimnames, state
+    denamed, dimnames, nameddims, namedoneto, operator, product, replacedimnames, state
+using TensorAlgebra: gram_eigh_full, gram_eigh_full_with_pinv
 using Test: @test, @testset
 
 @testset "operator" begin
@@ -38,4 +40,26 @@ using Test: @test, @testset
     ov = apply(o, v)
     @test issetequal(dimnames(ov), ("i", "j"))
     @test ov ≈ replacedimnames(o * v, "i'" => "i", "j'" => "j")
+end
+
+@testset "gram_eigh_full on AbstractNamedDimsOperator" begin
+    n = 5
+    B = randn(n, n)
+    A = B * B'  # Hermitian PSD
+    M_nda = nameddims(A, ("ket", "bra"))
+    M_op = operator(M_nda, ["ket"], ["bra"])
+
+    X_op = gram_eigh_full(M_op)
+    X_arr = gram_eigh_full(M_nda, ("ket",), ("bra",))
+    # Operator entry forwards to the named-array entry: same data, same shape.
+    @test size(parent(X_op)) == size(parent(X_arr))
+
+    Xp = parent(X_op)
+    @test Xp' * Xp ≈ A
+
+    X2, Y2 = gram_eigh_full_with_pinv(M_op)
+    Xp2 = parent(X2)
+    Yp2 = parent(Y2)
+    @test Xp2' * Xp2 ≈ A
+    @test Xp2 * Yp2 ≈ I(n)
 end
