@@ -1,4 +1,5 @@
 import FunctionImplementations as FI
+import LinearAlgebra
 using TypeParameterAccessors: unspecify_type_parameters
 
 # Some of the interface is inspired by:
@@ -52,7 +53,12 @@ dimnametype(type::Type{<:AbstractNamedDimsArray}) = throw(MethodError(dimnametyp
 # Unwrapping the names (`NamedDimsArrays.jl` interface).
 # TODO: Use `IsNamed` trait?
 denamed(a::AbstractNamedDimsArray) = throw(MethodError(denamed, a))
-denamed(a::AbstractNamedDimsArray, inds) = denamed(aligneddims(a, inds))
+function denamed(a::AbstractNamedDimsArray, inds)
+    # Skip the lazy `PermutedDimsArray` wrap when the requested order already
+    # matches `a`'s — the wrapper otherwise hides storage-type dispatch.
+    name.(inds) == dimnames(a) && return denamed(a)
+    return denamed(aligneddims(a, inds))
+end
 dename(a::AbstractNamedDimsArray, inds) = denamed(aligndims(a, inds))
 
 # Output the named axes/indices of the named dims array.
@@ -160,6 +166,18 @@ function checked_indexin(x::AbstractUnitRange, y::AbstractUnitRange)
 end
 
 Base.copy(a::AbstractNamedDimsArray) = nameddimsof(a, copy(denamed(a)))
+
+# Avoid the default broadcast path, which scalar-indexes block-structured storage.
+Base.conj(a::AbstractNamedDimsArray) = nameddimsof(a, conj(denamed(a)))
+Base.:*(a::AbstractNamedDimsArray, x::Number) = nameddimsof(a, denamed(a) * x)
+Base.:*(x::Number, a::AbstractNamedDimsArray) = a * x
+Base.:/(a::AbstractNamedDimsArray, x::Number) = nameddimsof(a, denamed(a) / x)
+
+# `LinearAlgebra.normalize` infers result eltype via `typeof(first(a)/nrm)`, which
+# scalar-indexes block-structured storage. `a / norm(a, p)` already preserves names.
+function LinearAlgebra.normalize(a::AbstractNamedDimsArray, p::Real = 2)
+    return a / LinearAlgebra.norm(a, p)
+end
 
 function Base.copyto!(a_dest::AbstractNamedDimsArray, a_src::AbstractNamedDimsArray)
     a′_dest = denamed(a_dest)
