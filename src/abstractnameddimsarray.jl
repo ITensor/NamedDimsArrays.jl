@@ -186,6 +186,12 @@ function TensorAlgebra.projectto!(dest::AbstractNamedDimsArray, src::AbstractArr
     TensorAlgebra.projectto!(denamed(dest), src)
     return dest
 end
+function TensorAlgebra.checked_projectto!(
+        dest::AbstractNamedDimsArray, src::AbstractArray; kwargs...
+    )
+    TensorAlgebra.checked_projectto!(denamed(dest), src; kwargs...)
+    return dest
+end
 
 function Base.copyto!(a_dest::AbstractNamedDimsArray, a_src::AbstractNamedDimsArray)
     a′_dest = denamed(a_dest)
