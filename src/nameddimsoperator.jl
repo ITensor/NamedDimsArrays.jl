@@ -82,13 +82,16 @@ end
 function inverse(b::Bijection)
     return Bijection(b.codomain_to_domain, b.domain_to_codomain)
 end
-# Both accessors iterate `codomain_to_domain` so that successive calls return
-# values in lock-step positional order (codomain[i] paired with domain[i]).
+# Both accessors return the `keys(::OrderedDict)` of the dict that has the
+# requested side as its key type, so the result is a `Base.KeySet` that
+# compares correctly with `==`. The two dicts are constructed from the same
+# pairs in the constructor, so `codomain(b)[i]` and `domain(b)[i]` remain in
+# lock-step positional order.
 function codomain(b::Bijection)
     return keys(b.codomain_to_domain)
 end
 function domain(b::Bijection)
-    return values(b.codomain_to_domain)
+    return keys(b.domain_to_codomain)
 end
 Base.iterate(b::Bijection) = iterate(b.domain_to_codomain)
 Base.iterate(b::Bijection, state) = iterate(b.domain_to_codomain, state)
@@ -215,14 +218,14 @@ end
 Return the identity operator with the same codomain/domain names and shape as
 `op`. `op` is treated as a shape prototype and is not mutated.
 
+The identity acts as the multiplicative identity for `NamedDimsArrays.apply`: it
+contracts on the domain names and renames the resulting codomain names back to
+the domain names, leaving the input unchanged.
+
 # Examples
 
 ```jldoctest
-julia> using LinearAlgebra: I
-
-julia> using NamedDimsArrays: dename, namedoneto, operator, state
-
-julia> using TensorAlgebra: matricize
+julia> using NamedDimsArrays: apply, namedoneto, operator
 
 julia> i, j, k, l = namedoneto.((2, 3, 2, 3), ("i", "j", "k", "l"));
 
@@ -230,7 +233,9 @@ julia> op = operator(randn(i, j, k, l), ("i", "j"), ("k", "l"));
 
 julia> Id = one(op);
 
-julia> dename(matricize(state(Id), (i, j) => "row", (k, l) => "col"), ("row", "col")) ≈ I
+julia> v = randn(k, l);
+
+julia> apply(Id, v) ≈ v
 true
 ```
 """

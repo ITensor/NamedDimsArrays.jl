@@ -462,22 +462,24 @@ Return an identity-operator-shaped named array sharing `a`'s dimension names,
 codomain/domain partition, and element type. The fused codomain and domain sizes
 must match. `a` is treated as a shape prototype and is not mutated.
 
+The identity acts as the multiplicative identity for `NamedDimsArrays.apply`: it
+contracts on the domain names and renames the resulting codomain names back to
+the domain names, leaving the input unchanged.
+
 # Examples
 
 ```jldoctest
-julia> using LinearAlgebra: I
-
-julia> using NamedDimsArrays: dename, namedoneto
-
-julia> using TensorAlgebra: matricize
+julia> using NamedDimsArrays: apply, namedoneto, operator
 
 julia> i, j, k, l = namedoneto.((2, 3, 2, 3), ("i", "j", "k", "l"));
 
 julia> a = randn(i, j, k, l);
 
-julia> Id = one(a, (i, j), (k, l));
+julia> Id = operator(one(a, (i, j), (k, l)), ("i", "j"), ("k", "l"));
 
-julia> dename(matricize(Id, (i, j) => "row", (k, l) => "col"), ("row", "col")) ≈ I
+julia> v = randn(k, l);
+
+julia> apply(Id, v) ≈ v
 true
 ```
 """

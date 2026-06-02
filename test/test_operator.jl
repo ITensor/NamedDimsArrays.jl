@@ -51,8 +51,8 @@ end
     op = operator(randn(i, j, k, l), ("i", "j"), ("k", "l"))
     Id = one(op)
     @test Id isa NamedDimsOperator{Float64}
-    @test collect(codomainnames(Id)) == collect(codomainnames(op))
-    @test collect(domainnames(Id)) == collect(domainnames(op))
+    @test codomainnames(Id) == codomainnames(op)
+    @test domainnames(Id) == domainnames(op)
     Id_mat = matricize(state(Id), (i, j) => "row", (k, l) => "col")
     @test dename(Id_mat, ("row", "col")) ≈ I(6)
 end
@@ -78,19 +78,19 @@ end
     # Five-arg canonical: explicit element type, axes, codomain, domain names.
     op = similar_operator(randn(3, 3), Float32, (Base.OneTo(3),), ("i'",), ("i",))
     @test op isa NamedDimsOperator{Float32}
-    @test collect(codomainnames(op)) == ["i'"]
-    @test collect(domainnames(op)) == ["i"]
+    @test issetequal(codomainnames(op), ("i'",))
+    @test issetequal(domainnames(op), ("i",))
 
     # Codomain names default to fresh `randname` outputs.
     op = similar_operator(randn(3, 3), Float64, (Base.OneTo(3),), ("i",))
     @test op isa NamedDimsOperator{Float64}
-    @test collect(domainnames(op)) == ["i"]
+    @test issetequal(domainnames(op), ("i",))
     @test only(codomainnames(op)) != "i"
 
     # Named-axes form reuses each axis's name as the domain.
     i = namedoneto(3, "i")
     op = similar_operator(randn(3, 3), Float64, (i,))
-    @test collect(domainnames(op)) == ["i"]
+    @test issetequal(domainnames(op), ("i",))
     @test only(codomainnames(op)) != "i"
 
     # Element type defaults to `eltype(prototype)`.
