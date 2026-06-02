@@ -1,4 +1,5 @@
 using OrderedCollections: OrderedDict
+using Random: Random
 
 # Named dimension operator minimal interface.
 
@@ -206,6 +207,107 @@ for f in (:gram_eigh_full, :gram_eigh_full_with_pinv)
             return TA.$f(state(a), codomainnames(a), domainnames(a); kwargs...)
         end
     end
+end
+
+"""
+    Base.one(op::AbstractNamedDimsOperator) -> Id
+
+Return the identity operator with the same codomain/domain names and shape as
+`op`. `op` is treated as a shape prototype and is not mutated.
+
+# Examples
+
+```jldoctest
+julia> using LinearAlgebra: I
+
+julia> using NamedDimsArrays: dename, namedoneto, operator, state
+
+julia> using TensorAlgebra: matricize
+
+julia> i, j, k, l = namedoneto.((2, 3, 2, 3), ("i", "j", "k", "l"));
+
+julia> op = operator(randn(i, j, k, l), ("i", "j"), ("k", "l"));
+
+julia> Id = one(op);
+
+julia> dename(matricize(state(Id), (i, j) => "row", (k, l) => "col"), ("row", "col")) ≈ I
+true
+```
+"""
+function Base.one(op::AbstractNamedDimsOperator)
+    co, dom = codomainnames(op), domainnames(op)
+    return operator(one(state(op), co, dom), co, dom)
+end
+
+# === similar_operator ===
+#
+# Allocate an operator with the user-supplied side as the domain (input) and
+# the codomain (output) derived by `conj`-ing the domain axes and either
+# randomizing the codomain names or accepting them explicitly. The 5-arg form
+# is canonical; the others fill in defaults.
+
+"""
+    similar_operator(prototype, [T,] unnamed_domain_axes, [codomain_names,] domain_names) -> op
+    similar_operator(prototype, [T,] named_domain_axes) -> op
+
+Allocate an operator-shaped named array with undefined data, with the
+user-supplied side as the domain (input) and the codomain (output) derived by
+`conj`-ing the domain axes. Element type defaults to `eltype(prototype)`;
+codomain names default to fresh `randname`-generated names. The first form
+takes unnamed (raw) axes and explicit names; the second takes already-named
+axes and reuses their names as the domain.
+
+The codomain axes are taken to be `conj.(unnamed_domain_axes)` — for plain
+axes this is a no-op, while graded axes flip their sector arrows.
+"""
+function similar_operator(
+        prototype, ::Type{T}, unnamed_domain_axes, codomain_names, domain_names
+    ) where {T}
+    unnamed_codomain_axes = conj.(unnamed_domain_axes)
+    codomain_axes = named.(unnamed_codomain_axes, codomain_names)
+    domain_axes = named.(unnamed_domain_axes, domain_names)
+    raw = similar(prototype, T, (codomain_axes..., domain_axes...))
+    return operator(raw, codomain_names, domain_names)
+end
+function similar_operator(
+        prototype, ::Type{T}, unnamed_domain_axes, domain_names
+    ) where {T}
+    codomain_names = randname.(domain_names)
+    return similar_operator(
+        prototype, T, unnamed_domain_axes, codomain_names, domain_names
+    )
+end
+function similar_operator(prototype, ::Type{T}, named_domain_axes) where {T}
+    return similar_operator(
+        prototype, T, denamed.(named_domain_axes), name.(named_domain_axes)
+    )
+end
+function similar_operator(prototype, unnamed_domain_axes, codomain_names, domain_names)
+    return similar_operator(
+        prototype, eltype(prototype), unnamed_domain_axes, codomain_names, domain_names
+    )
+end
+function similar_operator(prototype, unnamed_domain_axes, domain_names)
+    return similar_operator(prototype, eltype(prototype), unnamed_domain_axes, domain_names)
+end
+function similar_operator(prototype, named_domain_axes)
+    return similar_operator(prototype, eltype(prototype), named_domain_axes)
+end
+
+# === Random fills for operators ===
+#
+# Peel down to the concrete storage so `Random.randn!` / `Random.rand!` see the
+# runtime eltype. This works around the ITensor `eltype(typeof(::ITensor)) === Any`
+# issue, where dispatching on `Type{Any}` would otherwise fail.
+
+function Random.randn!(rng::Random.AbstractRNG, op::AbstractNamedDimsOperator)
+    Random.randn!(rng, denamed(state(op)))
+    return op
+end
+
+function Random.rand!(rng::Random.AbstractRNG, op::AbstractNamedDimsOperator)
+    Random.rand!(rng, denamed(state(op)))
+    return op
 end
 
 struct NamedDimsOperator{T, N, P <: AbstractNamedDimsArray{T, N}, D, C} <:

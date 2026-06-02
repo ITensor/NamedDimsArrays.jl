@@ -455,6 +455,46 @@ function gram_eigh_full_with_pinv_nameddims(
     return nameddims(x_denamed, dimnames_x), nameddims(y_denamed, dimnames_y)
 end
 
+"""
+    Base.one(a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain) -> Id
+
+Return an identity-operator-shaped named array sharing `a`'s dimension names,
+codomain/domain partition, and element type. The fused codomain and domain sizes
+must match. `a` is treated as a shape prototype and is not mutated.
+
+# Examples
+
+```jldoctest
+julia> using LinearAlgebra: I
+
+julia> using NamedDimsArrays: dename, namedoneto
+
+julia> using TensorAlgebra: matricize
+
+julia> i, j, k, l = namedoneto.((2, 3, 2, 3), ("i", "j", "k", "l"));
+
+julia> a = randn(i, j, k, l);
+
+julia> Id = one(a, (i, j), (k, l));
+
+julia> dename(matricize(Id, (i, j) => "row", (k, l) => "col"), ("row", "col")) ≈ I
+true
+```
+"""
+function Base.one(
+        a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain
+    )
+    return one_nameddims(a, dimnames_codomain, dimnames_domain)
+end
+function one_nameddims(
+        a::AbstractArray, dimnames_codomain, dimnames_domain
+    )
+    codomain = name.(dimnames_codomain)
+    domain = name.(dimnames_domain)
+    raw = TA.one(denamed(a), dimnames(a), codomain, domain)
+    return nameddims(raw, (codomain..., domain...))
+end
+
 const MATRIX_FUNCTIONS = [
     :exp, :cis, :log, :sqrt, :cbrt, :cos, :sin, :tan, :csc, :sec, :cot, :cosh, :sinh,
     :tanh,

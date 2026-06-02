@@ -1,6 +1,7 @@
 module NamedDimsArrays
 
-export NamedDimsArray, aligndims, dimnametype, named, nameddims, operator
+export NamedDimsArray, aligndims, dimnametype, named, nameddims, operator,
+    similar_operator
 using Compat: @compat
 @compat public to_inds
 @compat public @names
