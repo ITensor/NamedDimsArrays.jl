@@ -55,11 +55,11 @@ end
     @test size(parent(X_op)) == size(parent(X_arr))
 
     Xp = parent(X_op)
-    @test Xp' * Xp ≈ A
+    @test Xp * Xp' ≈ A
 
     X2, Y2 = gram_eigh_full_with_pinv(M_op)
     Xp2 = parent(X2)
     Yp2 = parent(Y2)
-    @test Xp2' * Xp2 ≈ A
-    @test Xp2 * Yp2 ≈ I(n)
+    @test Xp2 * Xp2' ≈ A
+    @test Yp2 * Xp2 ≈ I(n)
 end

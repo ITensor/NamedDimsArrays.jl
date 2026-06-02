@@ -9,6 +9,10 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 [sources.NamedDimsArrays]
 path = ".."
 
+[sources.TensorAlgebra]
+rev = "mf/gram-eigh-balanced"
+url = "https://github.com/ITensor/TensorAlgebra.jl"
+
 [compat]
 Documenter = "1"
 ITensorFormatter = "0.2.27"

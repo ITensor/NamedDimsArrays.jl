@@ -20,6 +20,10 @@ VectorInterface = "409d34a3-91d5-4945-b6ec-7529ddf182d8"
 [sources.NamedDimsArrays]
 path = ".."
 
+[sources.TensorAlgebra]
+rev = "mf/gram-eigh-balanced"
+url = "https://github.com/ITensor/TensorAlgebra.jl"
+
 [compat]
 AbstractTrees = "0.4.5"
 Adapt = "4"

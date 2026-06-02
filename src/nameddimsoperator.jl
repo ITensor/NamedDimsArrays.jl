@@ -136,9 +136,10 @@ const _gram_eigh_full_operator_docstring = """
     TensorAlgebra.gram_eigh_full(a::AbstractNamedDimsOperator; kwargs...) -> x
 
 Gram factorization of a Hermitian positive semi-definite named operator
-`a`, returning `x` such that `conj(x) * x_dom ≈ state(a)`, where `x_dom`
-is `x` with its codomain dimension names replaced by the corresponding
-domain names of `a`. The codomain and domain partition is taken from
+`a`, returning `x` such that `x * x_cod ≈ state(a)`, where `x_cod` is
+`conj(x)` with its domain dimension names replaced by the corresponding
+codomain names of `a`. `x` carries `a`'s domain dimension names and a
+fresh trailing rank name. The codomain and domain partition is taken from
 `codomainnames(a)` and `domainnames(a)`.
 
 `kwargs` are forwarded to `TensorAlgebra.gram_eigh_full` on the
@@ -159,7 +160,7 @@ julia> a = operator(conj(b) * replacedimnames(b, "i" => "j", "k" => "l"), ("i", 
 
 julia> x = gram_eigh_full(a);
 
-julia> conj(x) * replacedimnames(x, "i" => "j", "k" => "l") ≈ state(a)
+julia> replacedimnames(x, "j" => "i", "l" => "k") * conj(x) ≈ state(a)
 true
 ```
 """
@@ -168,9 +169,10 @@ const _gram_eigh_full_with_pinv_operator_docstring = """
     TensorAlgebra.gram_eigh_full_with_pinv(a::AbstractNamedDimsOperator; kwargs...) -> x, y
 
 Like `TensorAlgebra.gram_eigh_full`, but additionally returns a
-named array `y` such that `x * y` projects onto the rank subspace
-(equal to the identity when `a` is full rank). The codomain and domain
-partition is taken from `codomainnames(a)` and `domainnames(a)`.
+named array `y` that is a left inverse of `x`: `y * x ≈ I` on the
+rank subspace (equal to the identity when `a` is full rank). The
+codomain and domain partition is taken from `codomainnames(a)` and
+`domainnames(a)`.
 
 # Examples
 
@@ -189,10 +191,10 @@ julia> a = operator(conj(b) * replacedimnames(b, "i" => "j", "k" => "l"), ("i", 
 
 julia> x, y = gram_eigh_full_with_pinv(a);
 
-julia> rname = only(setdiff(dimnames(x), ("i", "k")));
+julia> rname = only(setdiff(dimnames(x), ("j", "l")));
 
-julia> reshape(dename(x, (rname, "i", "k")), :, 4) *
-       reshape(dename(y, ("i", "k", rname)), 4, :) ≈ I
+julia> reshape(dename(y, (rname, "j", "l")), :, 4) *
+       reshape(dename(x, ("j", "l", rname)), 4, :) ≈ I
 true
 ```
 """
