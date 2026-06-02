@@ -271,7 +271,7 @@ function similar_operator(
     unnamed_codomain_axes = conj.(unnamed_domain_axes)
     codomain_axes = named.(unnamed_codomain_axes, codomain_names)
     domain_axes = named.(unnamed_domain_axes, domain_names)
-    raw = similar(prototype, T, (codomain_axes..., domain_axes...))
+    raw = TA.similar_map(prototype, T, codomain_axes, domain_axes)
     return operator(raw, codomain_names, domain_names)
 end
 function similar_operator(
