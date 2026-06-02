@@ -246,30 +246,28 @@ end
 
 # === similar_operator ===
 #
-# Allocate an operator with the user-supplied side as the domain (input) and
-# the codomain (output) derived by `conj`-ing the domain axes and either
-# randomizing the codomain names or accepting them explicitly. The 5-arg form
-# is canonical; the others fill in defaults.
+# Allocate an operator with the user-supplied axes as the domain (input). The
+# codomain (output) shares the domain direction and either takes
+# explicitly-supplied names or fresh `randname` outputs. The 5-arg form is
+# canonical, the others fill in defaults. The bra/ket flip on the storage side
+# is handled inside `TA.similar_map`.
 
 """
     similar_operator(prototype, [T,] unnamed_domain_axes, [codomain_names,] domain_names) -> op
     similar_operator(prototype, [T,] named_domain_axes) -> op
 
 Allocate an operator-shaped named array with undefined data, with the
-user-supplied side as the domain (input) and the codomain (output) derived by
-`conj`-ing the domain axes. Element type defaults to `eltype(prototype)`;
-codomain names default to fresh `randname`-generated names. The first form
-takes unnamed (raw) axes and explicit names; the second takes already-named
-axes and reuses their names as the domain.
-
-The codomain axes are taken to be `conj.(unnamed_domain_axes)` — for plain
-axes this is a no-op, while graded axes flip their sector arrows.
+user-supplied side as the domain (input) and a matching codomain (output).
+Element type defaults to `eltype(prototype)`. Codomain names default to fresh
+`randname`-generated names. The first form takes unnamed (raw) axes and
+explicit names, the second takes already-named axes and reuses their names as
+the domain. Storage layout (including the bra/ket flip on the domain side for
+graded axes) is delegated to `TensorAlgebra.similar_map`.
 """
 function similar_operator(
         prototype, ::Type{T}, unnamed_domain_axes, codomain_names, domain_names
     ) where {T}
-    unnamed_codomain_axes = conj.(unnamed_domain_axes)
-    codomain_axes = named.(unnamed_codomain_axes, codomain_names)
+    codomain_axes = named.(unnamed_domain_axes, codomain_names)
     domain_axes = named.(unnamed_domain_axes, domain_names)
     raw = TA.similar_map(prototype, T, codomain_axes, domain_axes)
     return operator(raw, codomain_names, domain_names)
