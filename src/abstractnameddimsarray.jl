@@ -1,5 +1,6 @@
 import FunctionImplementations as FI
 import LinearAlgebra
+import TensorAlgebra
 using TypeParameterAccessors: unspecify_type_parameters
 
 # Some of the interface is inspired by:
@@ -177,6 +178,13 @@ Base.:/(a::AbstractNamedDimsArray, x::Number) = nameddimsof(a, denamed(a) / x)
 # scalar-indexes block-structured storage. `a / norm(a, p)` already preserves names.
 function LinearAlgebra.normalize(a::AbstractNamedDimsArray, p::Real = 2)
     return a / LinearAlgebra.norm(a, p)
+end
+
+# Route `projectto!` through the underlying storage: the destination is named,
+# the source is unnamed (raw dense data, axes implicitly match the storage).
+function TensorAlgebra.projectto!(dest::AbstractNamedDimsArray, src::AbstractArray)
+    TensorAlgebra.projectto!(denamed(dest), src)
+    return dest
 end
 
 function Base.copyto!(a_dest::AbstractNamedDimsArray, a_src::AbstractNamedDimsArray)
