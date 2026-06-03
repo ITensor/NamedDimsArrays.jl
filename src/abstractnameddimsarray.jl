@@ -798,6 +798,11 @@ for dimtype in [:AbstractNamedInteger, :AbstractNamedUnitRange]
     end
 end
 
+function Base.fill!(a::AbstractNamedDimsArray, v)
+    fill!(denamed(a), v)
+    return a
+end
+
 function Base.map!(f, a_dest::AbstractNamedDimsArray, a_srcs::AbstractNamedDimsArray...)
     a′_dest = denamed(a_dest)
     # TODO: Use `denamed` to do the permutations lazily.
