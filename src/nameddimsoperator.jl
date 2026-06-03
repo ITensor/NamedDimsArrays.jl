@@ -297,19 +297,17 @@ function similar_operator(prototype, named_domain_axes)
     return similar_operator(prototype, eltype(prototype), named_domain_axes)
 end
 
-# === Random fills for operators ===
-#
-# Peel down to the concrete storage so `Random.randn!` / `Random.rand!` see the
-# runtime eltype. This works around the ITensor `eltype(typeof(::ITensor)) === Any`
-# issue, where dispatching on `Type{Any}` would otherwise fail.
+# Forward `Random.randn!` / `Random.rand!` to the operator's state, which
+# itself peels to the concrete storage via the generic AbstractNamedDimsArray
+# method.
 
 function Random.randn!(rng::Random.AbstractRNG, op::AbstractNamedDimsOperator)
-    Random.randn!(rng, denamed(state(op)))
+    Random.randn!(rng, state(op))
     return op
 end
 
 function Random.rand!(rng::Random.AbstractRNG, op::AbstractNamedDimsOperator)
-    Random.rand!(rng, denamed(state(op)))
+    Random.rand!(rng, state(op))
     return op
 end
 

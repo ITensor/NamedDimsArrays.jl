@@ -100,7 +100,7 @@ end
 
 @testset "randn!(::AbstractNamedDimsOperator) / rand!" begin
     op = operator(zeros(3, 3), ("i'",), ("i",))
-    rng = StableRNG(0)
+    rng = StableRNG(123)
     Random.randn!(rng, op)
     @test !all(iszero, denamed(state(op)))
 

@@ -1,6 +1,6 @@
 using FunctionImplementations: FunctionImplementations as FI
 using LinearAlgebra: LinearAlgebra
-using TensorAlgebra: TensorAlgebra
+using Random: Random
 using TypeParameterAccessors: unspecify_type_parameters
 
 # Some of the interface is inspired by:
@@ -175,17 +175,15 @@ function LinearAlgebra.normalize(a::AbstractNamedDimsArray, p::Real = 2)
     return a / LinearAlgebra.norm(a, p)
 end
 
-# Route `projectto!` through the underlying storage: the destination is named,
-# the source is unnamed (raw dense data, axes implicitly match the storage).
-function TensorAlgebra.projectto!(dest::AbstractNamedDimsArray, src::AbstractArray)
-    TensorAlgebra.projectto!(denamed(dest), src)
-    return dest
+# Forward `Random.randn!` / `Random.rand!` to the concrete storage so they
+# see the runtime eltype.
+function Random.randn!(rng::Random.AbstractRNG, a::AbstractNamedDimsArray)
+    Random.randn!(rng, denamed(a))
+    return a
 end
-function TensorAlgebra.checked_projectto!(
-        dest::AbstractNamedDimsArray, src::AbstractArray; kwargs...
-    )
-    TensorAlgebra.checked_projectto!(denamed(dest), src; kwargs...)
-    return dest
+function Random.rand!(rng::Random.AbstractRNG, a::AbstractNamedDimsArray)
+    Random.rand!(rng, denamed(a))
+    return a
 end
 
 function Base.copyto!(a_dest::AbstractNamedDimsArray, a_src::AbstractNamedDimsArray)
