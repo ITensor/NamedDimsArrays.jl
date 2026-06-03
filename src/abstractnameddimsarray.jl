@@ -56,8 +56,9 @@ dimnametype(type::Type{<:AbstractNamedDimsArray}) = throw(MethodError(dimnametyp
 denamed(a::AbstractNamedDimsArray) = throw(MethodError(denamed, a))
 function denamed(a::AbstractNamedDimsArray, inds)
     # Skip the lazy `PermutedDimsArray` wrap when the requested order already
-    # matches `a`'s — the wrapper otherwise hides storage-type dispatch.
-    name.(inds) == dimnames(a) && return denamed(a)
+    # matches `a`'s; compare via `Tuple` because `LittleSet ==` is
+    # set-equality and would mask a permutation.
+    Tuple(name.(inds)) == Tuple(dimnames(a)) && return denamed(a)
     return denamed(aligneddims(a, inds))
 end
 dename(a::AbstractNamedDimsArray, inds) = denamed(aligndims(a, inds))
@@ -167,12 +168,6 @@ function checked_indexin(x::AbstractUnitRange, y::AbstractUnitRange)
 end
 
 Base.copy(a::AbstractNamedDimsArray) = nameddimsof(a, copy(denamed(a)))
-
-# Avoid the default broadcast path, which scalar-indexes block-structured storage.
-Base.conj(a::AbstractNamedDimsArray) = nameddimsof(a, conj(denamed(a)))
-Base.:*(a::AbstractNamedDimsArray, x::Number) = nameddimsof(a, denamed(a) * x)
-Base.:*(x::Number, a::AbstractNamedDimsArray) = a * x
-Base.:/(a::AbstractNamedDimsArray, x::Number) = nameddimsof(a, denamed(a) / x)
 
 # `LinearAlgebra.normalize` infers result eltype via `typeof(first(a)/nrm)`, which
 # scalar-indexes block-structured storage. `a / norm(a, p)` already preserves names.
