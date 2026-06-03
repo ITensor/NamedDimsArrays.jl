@@ -1,6 +1,6 @@
-import FunctionImplementations as FI
-import LinearAlgebra
-import TensorAlgebra
+using FunctionImplementations: FunctionImplementations as FI
+using LinearAlgebra: LinearAlgebra
+using TensorAlgebra: TensorAlgebra
 using TypeParameterAccessors: unspecify_type_parameters
 
 # Some of the interface is inspired by:

@@ -1,5 +1,5 @@
-import LinearAlgebra as LA
-import TensorAlgebra as TA
+using LinearAlgebra: LinearAlgebra as LA
+using TensorAlgebra: TensorAlgebra as TA
 using TupleTools: TupleTools
 
 # This layer is used to define derivative rules (to skip differentiating `setdiff`).
