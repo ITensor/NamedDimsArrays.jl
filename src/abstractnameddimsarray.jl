@@ -820,6 +820,10 @@ function Base.mapreduce(f, op, a::AbstractNamedDimsArray; kwargs...)
     return mapreduce(f, op, denamed(a); kwargs...)
 end
 
+function LinearAlgebra.promote_leaf_eltypes(a::AbstractNamedDimsArray)
+    return LinearAlgebra.promote_leaf_eltypes(denamed(a))
+end
+
 # Printing
 
 # Copy of `Base.dims2string` defined in `show.jl`.
