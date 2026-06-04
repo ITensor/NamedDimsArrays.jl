@@ -36,6 +36,11 @@ function Base.hash(r::AbstractNamedUnitRange, h::UInt)
     return hash(name(r), h)
 end
 
+# Forward `conj` to the underlying range so graded axes flip their sector
+# arrows. The `Base.conj(::AbstractArray{<:Real}) = x` fallback would
+# otherwise short-circuit before the inner range is touched.
+Base.conj(r::AbstractNamedUnitRange) = named(conj(denamed(r)), name(r))
+
 # Unit range functionality.
 Base.first(r::AbstractNamedUnitRange) = named(first(denamed(r)), name(r))
 Base.last(r::AbstractNamedUnitRange) = named(last(denamed(r)), name(r))

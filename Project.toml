@@ -1,6 +1,6 @@
 name = "NamedDimsArrays"
 uuid = "60cbd0c0-df58-4cb7-918c-6f5607b73fde"
-version = "0.15.6"
+version = "0.15.7"
 authors = ["ITensor developers <support@itensor.org> and contributors"]
 
 [workspace]
@@ -25,6 +25,10 @@ AbstractTrees = "1520ce14-60c1-5f80-bbc7-55ef81b5835c"
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
 Mooncake = "da2b9cff-9c12-43a0-ae48-6db2b0edb7d6"
+
+[sources.TensorAlgebra]
+rev = "mf/gram-eigh-balanced"
+url = "https://github.com/ITensor/TensorAlgebra.jl"
 
 [extensions]
 NamedDimsArraysAbstractTreesExt = "AbstractTrees"

@@ -1,8 +1,8 @@
-import TensorAlgebra as TA
 using ..NamedDimsArrays: AbstractNamedDimsArray, AbstractNamedUnitRange, LittleSet,
     NamedDimsArrays, dename, denamed, getperm, inds, name, named, nameddimsconstructorof
 using Base.Broadcast: Broadcast as BC, Broadcasted, broadcast_shape, broadcasted,
     check_broadcast_shape, combine_axes
+using TensorAlgebra: TensorAlgebra as TA
 
 abstract type AbstractNamedDimsArrayStyle{N} <: BC.AbstractArrayStyle{N} end
 

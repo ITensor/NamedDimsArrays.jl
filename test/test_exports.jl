@@ -3,7 +3,7 @@ using Test: @test, @testset
 @testset "Test exports" begin
     exports = [
         :NamedDimsArrays, :NamedDimsArray, :aligndims, :dimnametype, :named, :nameddims,
-        :operator,
+        :operator, :similar_operator,
     ]
     publics = [:to_inds, Symbol("@names")]
     if VERSION ≥ v"1.11-"
