@@ -169,6 +169,12 @@ end
 
 Base.copy(a::AbstractNamedDimsArray) = nameddimsof(a, copy(denamed(a)))
 
+# Forward `conj` to the underlying so that graded axes flip their sector arrows.
+# The default `AbstractArray` fallback would broadcast `conj` over elements without
+# touching the axes, which silently changes the contraction convention for tensors
+# with graded (dual-tagged) axes.
+Base.conj(a::AbstractNamedDimsArray) = nameddimsof(a, conj(denamed(a)))
+
 # `LinearAlgebra.normalize` infers result eltype via `typeof(first(a)/nrm)`, which
 # scalar-indexes block-structured storage. `a / norm(a, p)` already preserves names.
 function LinearAlgebra.normalize(a::AbstractNamedDimsArray, p::Real = 2)
