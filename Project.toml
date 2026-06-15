@@ -26,10 +26,6 @@ Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
 Mooncake = "da2b9cff-9c12-43a0-ae48-6db2b0edb7d6"
 
-[sources.TensorAlgebra]
-rev = "mf/gram-eigh-balanced"
-url = "https://github.com/ITensor/TensorAlgebra.jl"
-
 [extensions]
 NamedDimsArraysAbstractTreesExt = "AbstractTrees"
 NamedDimsArraysAdaptExt = "Adapt"
@@ -49,7 +45,7 @@ Mooncake = "0.4.202, 0.5"
 OrderedCollections = "1.6"
 Random = "1.10"
 SimpleTraits = "0.9.4"
-TensorAlgebra = "0.8, 0.9"
+TensorAlgebra = "0.9.5"
 TupleTools = "1.6"
 TypeParameterAccessors = "0.4"
 VectorInterface = "0.5, 0.6"
