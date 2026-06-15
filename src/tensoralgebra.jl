@@ -1,5 +1,5 @@
-import LinearAlgebra as LA
-import TensorAlgebra as TA
+using LinearAlgebra: LinearAlgebra as LA
+using TensorAlgebra: TensorAlgebra as TA
 using TupleTools: TupleTools
 
 # This layer is used to define derivative rules (to skip differentiating `setdiff`).
@@ -354,9 +354,11 @@ end
     TensorAlgebra.gram_eigh_full(a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...) -> x
 
 Gram factorization of a Hermitian positive semi-definite named array `a`,
-returning `x` such that `a ≈ conj(x) * x_dom`, where `x_dom` is `x` with
-its codomain dimension names replaced by the corresponding domain names.
-The new rank dimension is given a fresh name.
+returning `x` such that `a ≈ x * x_cod`, where `x_cod` is `conj(x)` with
+its domain dimension names replaced by the corresponding codomain names.
+`x` carries the domain dimension names of `a` (matching the convention
+that the stored factor labels a vector in `a`'s input space) and a fresh
+trailing rank name.
 
 `kwargs` are forwarded to `TensorAlgebra.gram_eigh_full` on the underlying
 unnamed array (e.g. `atol`, `rtol`).
@@ -376,7 +378,7 @@ julia> a = conj(b) * replacedimnames(b, "i" => "j", "k" => "l");
 
 julia> x = gram_eigh_full(a, (i, k), (j, l));
 
-julia> conj(x) * replacedimnames(x, "i" => "j", "k" => "l") ≈ a
+julia> replacedimnames(x, "j" => "i", "l" => "k") * conj(x) ≈ a
 true
 ```
 """
@@ -392,7 +394,7 @@ function gram_eigh_full_nameddims(
     domain = name.(dimnames_domain)
     x_denamed = TA.gram_eigh_full(denamed(a), dimnames(a), codomain, domain; kwargs...)
     name_x = randname(dimnames(a, 1))
-    dimnames_x = (name_x, codomain...)
+    dimnames_x = (domain..., name_x)
     return nameddims(x_denamed, dimnames_x)
 end
 
@@ -400,10 +402,10 @@ end
     TensorAlgebra.gram_eigh_full_with_pinv(a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...) -> x, y
 
 Like `TensorAlgebra.gram_eigh_full`, but additionally returns a
-named array `y` such that `x * y` projects onto the rank subspace
-(equal to the identity when `a` is full rank). `x` has the rank-name
-first, `y` has it last, both sharing the codomain dimension names of
-`a`.
+named array `y` that is a left inverse of `x`: `y * x ≈ I` on the rank
+subspace (equal to the identity when `a` is full rank). `x` has the
+rank-name last, `y` has it first, both sharing the domain dimension
+names of `a`.
 
 # Examples
 
@@ -422,13 +424,13 @@ julia> a = conj(b) * replacedimnames(b, "i" => "j", "k" => "l");
 
 julia> x, y = gram_eigh_full_with_pinv(a, (i, k), (j, l));
 
-julia> conj(x) * replacedimnames(x, "i" => "j", "k" => "l") ≈ a
+julia> replacedimnames(x, "j" => "i", "l" => "k") * conj(x) ≈ a
 true
 
-julia> rname = only(setdiff(dimnames(x), ("i", "k")));
+julia> rname = only(setdiff(dimnames(x), ("j", "l")));
 
-julia> reshape(dename(x, (rname, "i", "k")), :, 4) *
-       reshape(dename(y, ("i", "k", rname)), 4, :) ≈ I
+julia> reshape(dename(y, (rname, "j", "l")), :, 4) *
+       reshape(dename(x, ("j", "l", rname)), 4, :) ≈ I
 true
 ```
 """
@@ -448,9 +450,51 @@ function gram_eigh_full_with_pinv_nameddims(
         denamed(a), dimnames(a), codomain, domain; kwargs...
     )
     name_xy = randname(dimnames(a, 1))
-    dimnames_x = (name_xy, codomain...)
-    dimnames_y = (codomain..., name_xy)
+    dimnames_x = (domain..., name_xy)
+    dimnames_y = (name_xy, domain...)
     return nameddims(x_denamed, dimnames_x), nameddims(y_denamed, dimnames_y)
+end
+
+"""
+    Base.one(a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain) -> Id
+
+Return an identity-operator-shaped named array sharing `a`'s dimension names,
+codomain/domain partition, and element type. The fused codomain and domain sizes
+must match. `a` is treated as a shape prototype and is not mutated.
+
+The identity acts as the multiplicative identity for `NamedDimsArrays.apply`: it
+contracts on the domain names and renames the resulting codomain names back to
+the domain names, leaving the input unchanged.
+
+# Examples
+
+```jldoctest
+julia> using NamedDimsArrays: apply, namedoneto, operator
+
+julia> i, j, k, l = namedoneto.((2, 3, 2, 3), ("i", "j", "k", "l"));
+
+julia> a = randn(i, j, k, l);
+
+julia> Id = operator(one(a, (i, j), (k, l)), ("i", "j"), ("k", "l"));
+
+julia> v = randn(k, l);
+
+julia> apply(Id, v) ≈ v
+true
+```
+"""
+function Base.one(
+        a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain
+    )
+    return one_nameddims(a, dimnames_codomain, dimnames_domain)
+end
+function one_nameddims(
+        a::AbstractArray, dimnames_codomain, dimnames_domain
+    )
+    codomain = name.(dimnames_codomain)
+    domain = name.(dimnames_domain)
+    raw = TA.one(denamed(a), dimnames(a), codomain, domain)
+    return nameddims(raw, (codomain..., domain...))
 end
 
 const MATRIX_FUNCTIONS = [
