@@ -327,6 +327,16 @@ end
         @test LinearAlgebra.promote_leaf_eltypes(a) ===
             LinearAlgebra.promote_leaf_eltypes(denamed(a))
     end
+    @testset "sum/mapreduce (eltype=$elt)" for elt in TestBasicsUtils.elts
+        # Reductions delegate to the underlying storage. `sum` is routed directly
+        # rather than left to the generic `mapreduce` fallback because some backends
+        # (such as graded arrays) define `Base.sum` without the general `mapreduce`,
+        # so summing the denamed data is the path that works for them.
+        i, j = namedoneto.((2, 3), ("i", "j"))
+        a = randn(elt, i, j)
+        @test sum(a) == sum(denamed(a))
+        @test mapreduce(identity, +, a) == mapreduce(identity, +, denamed(a))
+    end
     @testset "begin/end (eltype=$elt)" for elt in TestBasicsUtils.elts
         i, j = namedoneto.((2, 3), ("i", "j"))
         a = randn(elt, i, j)
