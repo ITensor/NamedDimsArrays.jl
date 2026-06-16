@@ -820,6 +820,14 @@ function Base.mapreduce(f, op, a::AbstractNamedDimsArray; kwargs...)
     return mapreduce(f, op, denamed(a); kwargs...)
 end
 
+# `sum` is routed to the underlying data rather than left to fall back on the
+# `mapreduce` method above because some array types (such as graded arrays) define
+# `Base.sum` directly but not the general `mapreduce`, so the denamed `sum` is the
+# path that works for them.
+function Base.sum(a::AbstractNamedDimsArray; kwargs...)
+    return sum(denamed(a); kwargs...)
+end
+
 function LinearAlgebra.promote_leaf_eltypes(a::AbstractNamedDimsArray)
     return LinearAlgebra.promote_leaf_eltypes(denamed(a))
 end
