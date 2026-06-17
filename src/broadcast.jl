@@ -130,8 +130,11 @@ function Base.copy(bc::Broadcasted{<:AbstractNamedDimsArrayStyle})
     bc_denamed = broadcasted_denamed(bc, inds_dest)
     lb = TA.tryflattenlinear(bc_denamed)
     if isnothing(lb)
+        # Not a linear combination: ordinary fused broadcast.
         dest_denamed = copy(bc_denamed)
     else
+        # Linear: lower to bipermutedimsopadd!. Allocate from an operand so the
+        # result keeps the backend, using the backend's result axes (not `lb`'s).
         dest_axes = denamed.(Tuple(axes(bc)))
         dest_denamed = similar(denamed_prototype(bc), eltype(lb), dest_axes)
         copyto!(dest_denamed, lb)
@@ -145,8 +148,10 @@ function Base.copyto!(dest::AbstractArray, bc::Broadcasted{<:AbstractNamedDimsAr
     bc_denamed = broadcasted_denamed(bc, inds_dest)
     lb = TA.tryflattenlinear(bc_denamed)
     if isnothing(lb)
+        # Not a linear combination: ordinary fused broadcast.
         copyto!(dest_denamed, bc_denamed)
     else
+        # Linear: lower to bipermutedimsopadd! into the existing dest.
         copyto!(dest_denamed, lb)
     end
     return dest
