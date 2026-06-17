@@ -100,6 +100,14 @@ function broadcasted_denamed(bc::Broadcasted, inds)
     return broadcasted(bc.f, Base.Fix2(broadcasted_denamed, inds).(bc.args)...)
 end
 
+# A bare (unnamed) array operand, used as an allocation prototype so a broadcast
+# result inherits the operands' backend (e.g. graded) rather than a lazy permuted
+# wrapper's `similar` (which can drop the backend).
+denamed_prototype(bc::Broadcasted) = denamed_prototype(bc.args...)
+denamed_prototype(arg::AbstractNamedDimsArray, args...) = denamed(arg)
+denamed_prototype(arg::Broadcasted, args...) = denamed_prototype(arg.args..., args...)
+denamed_prototype(arg, args...) = denamed_prototype(args...)
+
 function Base.similar(bc::Broadcasted{<:AbstractNamedDimsArrayStyle}, elt::Type, ax)
     inds_a = name.(ax)
     bc_denamed = broadcasted_denamed(bc, inds_a)
@@ -120,7 +128,14 @@ function Base.copy(bc::Broadcasted{<:AbstractNamedDimsArrayStyle})
     # the output element type at runtime with widening.
     inds_dest = inds(bc)
     bc_denamed = broadcasted_denamed(bc, inds_dest)
-    dest_denamed = copy(bc_denamed)
+    lb = TA.tryflattenlinear(bc_denamed)
+    if isnothing(lb)
+        dest_denamed = copy(bc_denamed)
+    else
+        dest_axes = denamed.(Tuple(axes(bc)))
+        dest_denamed = similar(denamed_prototype(bc), eltype(lb), dest_axes)
+        copyto!(dest_denamed, lb)
+    end
     return nameddimstype(bc.style)(dest_denamed, inds_dest)
 end
 
@@ -128,6 +143,11 @@ function Base.copyto!(dest::AbstractArray, bc::Broadcasted{<:AbstractNamedDimsAr
     dest_denamed = denamed(dest)
     inds_dest = inds(dest)
     bc_denamed = broadcasted_denamed(bc, inds_dest)
-    copyto!(dest_denamed, bc_denamed)
+    lb = TA.tryflattenlinear(bc_denamed)
+    if isnothing(lb)
+        copyto!(dest_denamed, bc_denamed)
+    else
+        copyto!(dest_denamed, lb)
+    end
     return dest
 end

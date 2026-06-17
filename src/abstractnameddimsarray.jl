@@ -1,6 +1,6 @@
-using FunctionImplementations: FunctionImplementations as FI
 using LinearAlgebra: LinearAlgebra
 using Random: Random
+using TensorAlgebra: permuteddims
 using TypeParameterAccessors: unspecify_type_parameters
 
 # Some of the interface is inspired by:
@@ -9,19 +9,10 @@ using TypeParameterAccessors: unspecify_type_parameters
 # https://github.com/mcabbott/NamedPlus.jl
 # https://pytorch.org/docs/stable/named_tensor.html
 
-abstract type AbstractNamedDimsArrayImplementationStyle <:
-FI.AbstractArrayImplementationStyle end
-
-struct NamedDimsArrayImplementationStyle <: AbstractNamedDimsArrayImplementationStyle end
-
 abstract type AbstractNamedDimsArray{T, N} <: AbstractArray{T, N} end
 
 const AbstractNamedDimsVector{T} = AbstractNamedDimsArray{T, 1}
 const AbstractNamedDimsMatrix{T} = AbstractNamedDimsArray{T, 2}
-
-function FI.ImplementationStyle(type::Type{<:AbstractNamedDimsArray})
-    return NamedDimsArrayImplementationStyle()
-end
 
 dimnames(a::AbstractNamedDimsArray) = throw(MethodError(dimnames, a))
 function dimnames(a::AbstractNamedDimsArray, dim::Int)
@@ -54,13 +45,7 @@ dimnametype(type::Type{<:AbstractNamedDimsArray}) = throw(MethodError(dimnametyp
 # Unwrapping the names (`NamedDimsArrays.jl` interface).
 # TODO: Use `IsNamed` trait?
 denamed(a::AbstractNamedDimsArray) = throw(MethodError(denamed, a))
-function denamed(a::AbstractNamedDimsArray, inds)
-    # Skip the lazy `PermutedDimsArray` wrap when the requested order already
-    # matches `a`'s; compare via `Tuple` because `LittleSet ==` is
-    # set-equality and would mask a permutation.
-    Tuple(name.(inds)) == Tuple(dimnames(a)) && return denamed(a)
-    return denamed(aligneddims(a, inds))
-end
+denamed(a::AbstractNamedDimsArray, inds) = denamed(aligneddims(a, inds))
 dename(a::AbstractNamedDimsArray, inds) = denamed(aligndims(a, inds))
 
 # Output the named axes/indices of the named dims array.
@@ -706,7 +691,7 @@ function aligneddims(a::AbstractArray, dims)
         )
     )
     return nameddimsconstructorof(a)(
-        FI.permuteddims(denamed(a), perm), new_dimnames
+        permuteddims(denamed(a), perm), new_dimnames
     )
 end
 
