@@ -127,28 +127,28 @@ using Test: @test, @test_broken, @testset
         i, j, k, l, aux = namedoneto.((2, 2, 2, 2, 5), ("i", "j", "k", "l", "aux"))
         b = randn(elt, aux, i, k)
         # conj(b) * b with the non-conjugated copy's (i, k) relabeled to
-        # (j, l) to form the operator-shaped Hermitian a ≈ X' * X.
+        # (j, l) to form the operator-shaped Hermitian a ≈ X * X'.
         b_dom = replacedimnames(b, "i" => "j", "k" => "l")
         a = conj(b) * b_dom
 
         let X = gram_eigh_full(a, (i, k), (j, l))
-            X_dom = replacedimnames(X, "i" => "j", "k" => "l")
-            @test (i, k) ⊆ inds(X)
-            @test conj(X) * X_dom ≈ a
+            X_cod = replacedimnames(X, "j" => "i", "l" => "k")
+            @test (j, l) ⊆ inds(X)
+            @test X_cod * conj(X) ≈ a
         end
 
         let (X, Y) = gram_eigh_full_with_pinv(a, (i, k), (j, l))
-            rank_name = only(setdiff(dimnames(X), ("i", "k")))
-            @test rank_name == only(setdiff(dimnames(Y), ("i", "k")))
-            X_dom = replacedimnames(X, "i" => "j", "k" => "l")
-            @test conj(X) * X_dom ≈ a
-            # Rename one rank dimension so `X * Y` contracts only on
-            # the shared codomain names `(i, k)` and leaves a
+            rank_name = only(setdiff(dimnames(X), ("j", "l")))
+            @test rank_name == only(setdiff(dimnames(Y), ("j", "l")))
+            X_cod = replacedimnames(X, "j" => "i", "l" => "k")
+            @test X_cod * conj(X) ≈ a
+            # Rename one rank dimension so `Y * X` contracts only on
+            # the shared domain names `(j, l)` and leaves a
             # (rank × rank) named identity.
             fresh_rank = randname(rank_name)
-            Y_fresh = replacedimnames(Y, rank_name => fresh_rank)
-            XYmat = dename(X * Y_fresh, (rank_name, fresh_rank))
-            @test XYmat ≈ LinearAlgebra.I(size(XYmat, 1))
+            X_fresh = replacedimnames(X, rank_name => fresh_rank)
+            YXmat = dename(Y * X_fresh, (rank_name, fresh_rank))
+            @test YXmat ≈ LinearAlgebra.I(size(YXmat, 1))
         end
     end
 end

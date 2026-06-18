@@ -1,4 +1,4 @@
-import LinearAlgebra as LA
+using LinearAlgebra: LinearAlgebra as LA
 
 # We overload `LinearAlgebra.norm` because the LinearAlgebra.jl AbstractArray definition
 # uses scalar indexing:

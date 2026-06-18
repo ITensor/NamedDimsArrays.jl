@@ -1,4 +1,5 @@
 using Combinatorics: Combinatorics
+using LinearAlgebra: LinearAlgebra
 using NamedDimsArrays: @names, AbstractNamedDimsArray, AbstractNamedDimsMatrix, LittleSet,
     Name, NameMismatch, NamedDimsArray, NamedDimsCartesianIndex, NamedDimsCartesianIndices,
     NamedDimsMatrix, aligndims, aligneddims, apply, dename, denamed, denamedtype, dim,
@@ -299,6 +300,42 @@ end
             ## a′[I′...] = zeros(Bool, 2)
             ## @test iszero(a′[2, 2:3, 4])
         end
+    end
+    @testset "conj/fill! (eltype=$elt)" for elt in TestBasicsUtils.elts
+        i, j = namedoneto.((2, 3), ("i", "j"))
+        a = randn(elt, i, j)
+
+        # `conj` forwards to the underlying so that, on graded backends, sector
+        # arrows on the axes flip. For plain ranges the axis-level `conj` is a
+        # no-op and the test reduces to element-wise conjugation.
+        ca = conj(a)
+        @test denamed(ca) == conj(denamed(a))
+        @test dimnames(ca) == dimnames(a)
+
+        # `fill!` forwards to the underlying storage.
+        b = randn(elt, i, j)
+        @test fill!(b, zero(elt)) === b
+        @test all(iszero, denamed(b))
+    end
+    @testset "promote_leaf_eltypes (eltype=$elt)" for elt in TestBasicsUtils.elts
+        # `LinearAlgebra.promote_leaf_eltypes` is called from `isapprox`; the
+        # generic fallback iterates elements, which is expensive (or unsupported)
+        # on block-structured backends. The named-array override delegates to
+        # the underlying storage.
+        i, j = namedoneto.((2, 3), ("i", "j"))
+        a = randn(elt, i, j)
+        @test LinearAlgebra.promote_leaf_eltypes(a) ===
+            LinearAlgebra.promote_leaf_eltypes(denamed(a))
+    end
+    @testset "sum/mapreduce (eltype=$elt)" for elt in TestBasicsUtils.elts
+        # Reductions delegate to the underlying storage. `sum` is routed directly
+        # rather than left to the generic `mapreduce` fallback because some backends
+        # (such as graded arrays) define `Base.sum` without the general `mapreduce`,
+        # so summing the denamed data is the path that works for them.
+        i, j = namedoneto.((2, 3), ("i", "j"))
+        a = randn(elt, i, j)
+        @test sum(a) == sum(denamed(a))
+        @test mapreduce(identity, +, a) == mapreduce(identity, +, denamed(a))
     end
     @testset "begin/end (eltype=$elt)" for elt in TestBasicsUtils.elts
         i, j = namedoneto.((2, 3), ("i", "j"))

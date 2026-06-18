@@ -1,4 +1,6 @@
-import FunctionImplementations as FI
+using LinearAlgebra: LinearAlgebra
+using Random: Random
+using TensorAlgebra: permuteddims
 using TypeParameterAccessors: unspecify_type_parameters
 
 # Some of the interface is inspired by:
@@ -7,19 +9,10 @@ using TypeParameterAccessors: unspecify_type_parameters
 # https://github.com/mcabbott/NamedPlus.jl
 # https://pytorch.org/docs/stable/named_tensor.html
 
-abstract type AbstractNamedDimsArrayImplementationStyle <:
-FI.AbstractArrayImplementationStyle end
-
-struct NamedDimsArrayImplementationStyle <: AbstractNamedDimsArrayImplementationStyle end
-
 abstract type AbstractNamedDimsArray{T, N} <: AbstractArray{T, N} end
 
 const AbstractNamedDimsVector{T} = AbstractNamedDimsArray{T, 1}
 const AbstractNamedDimsMatrix{T} = AbstractNamedDimsArray{T, 2}
-
-function FI.ImplementationStyle(type::Type{<:AbstractNamedDimsArray})
-    return NamedDimsArrayImplementationStyle()
-end
 
 dimnames(a::AbstractNamedDimsArray) = throw(MethodError(dimnames, a))
 function dimnames(a::AbstractNamedDimsArray, dim::Int)
@@ -160,6 +153,29 @@ function checked_indexin(x::AbstractUnitRange, y::AbstractUnitRange)
 end
 
 Base.copy(a::AbstractNamedDimsArray) = nameddimsof(a, copy(denamed(a)))
+
+# Forward `conj` to the underlying so that graded axes flip their sector arrows.
+# The default `AbstractArray` fallback would broadcast `conj` over elements without
+# touching the axes, which silently changes the contraction convention for tensors
+# with graded (dual-tagged) axes.
+Base.conj(a::AbstractNamedDimsArray) = nameddimsof(a, conj(denamed(a)))
+
+# `LinearAlgebra.normalize` infers result eltype via `typeof(first(a)/nrm)`, which
+# scalar-indexes block-structured storage. `a / norm(a, p)` already preserves names.
+function LinearAlgebra.normalize(a::AbstractNamedDimsArray, p::Real = 2)
+    return a / LinearAlgebra.norm(a, p)
+end
+
+# Forward `Random.randn!` / `Random.rand!` to the concrete storage so they
+# see the runtime eltype.
+function Random.randn!(rng::Random.AbstractRNG, a::AbstractNamedDimsArray)
+    Random.randn!(rng, denamed(a))
+    return a
+end
+function Random.rand!(rng::Random.AbstractRNG, a::AbstractNamedDimsArray)
+    Random.rand!(rng, denamed(a))
+    return a
+end
 
 function Base.copyto!(a_dest::AbstractNamedDimsArray, a_src::AbstractNamedDimsArray)
     a′_dest = denamed(a_dest)
@@ -675,7 +691,7 @@ function aligneddims(a::AbstractArray, dims)
         )
     )
     return nameddimsconstructorof(a)(
-        FI.permuteddims(denamed(a), perm), new_dimnames
+        permuteddims(denamed(a), perm), new_dimnames
     )
 end
 
@@ -766,6 +782,11 @@ for dimtype in [:AbstractNamedInteger, :AbstractNamedUnitRange]
     end
 end
 
+function Base.fill!(a::AbstractNamedDimsArray, v)
+    fill!(denamed(a), v)
+    return a
+end
+
 function Base.map!(f, a_dest::AbstractNamedDimsArray, a_srcs::AbstractNamedDimsArray...)
     a′_dest = denamed(a_dest)
     # TODO: Use `denamed` to do the permutations lazily.
@@ -782,6 +803,18 @@ end
 
 function Base.mapreduce(f, op, a::AbstractNamedDimsArray; kwargs...)
     return mapreduce(f, op, denamed(a); kwargs...)
+end
+
+# `sum` is routed to the underlying data rather than left to fall back on the
+# `mapreduce` method above because some array types (such as graded arrays) define
+# `Base.sum` directly but not the general `mapreduce`, so the denamed `sum` is the
+# path that works for them.
+function Base.sum(a::AbstractNamedDimsArray; kwargs...)
+    return sum(denamed(a); kwargs...)
+end
+
+function LinearAlgebra.promote_leaf_eltypes(a::AbstractNamedDimsArray)
+    return LinearAlgebra.promote_leaf_eltypes(denamed(a))
 end
 
 # Printing
