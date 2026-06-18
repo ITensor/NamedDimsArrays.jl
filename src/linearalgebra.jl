@@ -34,8 +34,5 @@ end
 # https://github.com/JuliaLang/LinearAlgebra.jl/blob/3a4fdad7f608928ecb4b41e76b1e9ecacd058444/src/generic.jl#L919-L1009
 # which isn't friendly for NamedDimsArrays wrapping GPU arrays.
 function LA.dot(a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray)
-    # TODO: Should we define:
-    # `TensorAlgebra.permdot(denamed(a1), denamed(a2), genperm(dimnames(a1), dimnames(a2)))`
-    # in TensorAlgebra.jl and use that here?
-    return LA.dot(denamed(a1), denamed(a2, dimnames(a1)))
+    return (conj(a1) * a2)[]
 end

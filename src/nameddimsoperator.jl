@@ -117,6 +117,16 @@ Base.:*(a::AbstractNamedDimsOperator, b::AbstractNamedDimsOperator) = state(a) *
 Base.:*(a::AbstractNamedDimsOperator, b::AbstractNamedDimsArray) = state(a) * state(b)
 Base.:*(a::AbstractNamedDimsArray, b::AbstractNamedDimsOperator) = state(a) * state(b)
 
+# Broadcasting peels an operator to its `state` before the broadcast style is
+# computed. This covers the array operations that lower to broadcasting too (`+`,
+# `-`, scalar multiplication), and avoids the generic style path reading `ndims`
+# off the type, which throws for a dynamically-ranked parent such as an `ITensor`.
+# As a shortcut the result is a bare state, dropping the operator wrapper, matching
+# `*`; keeping it an operator (carrying the codomain/domain bijection) is future
+# work that first needs the mixed cases settled (`state + operator`, and
+# `operator + operator` where names match but the codomain/domain split does not).
+Base.broadcastable(a::AbstractNamedDimsOperator) = state(a)
+
 for f in MATRIX_FUNCTIONS
     @eval begin
         function Base.$f(a::AbstractNamedDimsOperator)
