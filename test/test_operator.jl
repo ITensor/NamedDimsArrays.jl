@@ -109,6 +109,31 @@ end
     @test all(0 .≤ denamed(state(op)) .≤ 1)
 end
 
+@testset "operator linear algebra peels to state" begin
+    # `+`, `-`, and scalar multiplication lower to broadcasting, which peels an
+    # operator to its underlying state (via `broadcastable`), so the result drops
+    # the operator wrapper, matching `*`. Without that, the generic broadcast path
+    # reads `ndims` off the type and throws for a dynamically-ranked parent such as
+    # an `ITensor`. A future version may keep the result an operator instead; this
+    # pins the current contract.
+    o = operator(randn(2, 2), ("i'",), ("i",))
+    s = state(o)
+    nms = ("i'", "i")
+
+    for r in (o + o, o - o, -o, 2 * o, o * 2, 2 .* o, o .* 2)
+        @test r isa NamedDimsArray
+        @test !(r isa NamedDimsOperator)
+    end
+
+    @test dename(o + o, nms) ≈ 2 .* dename(s, nms)
+    @test all(iszero, dename(o - o, nms))
+    @test dename(-o, nms) ≈ -dename(s, nms)
+    @test dename(2 * o, nms) ≈ 2 .* dename(s, nms)
+    @test dename(o * 2, nms) ≈ 2 .* dename(s, nms)
+    @test dename(2 .* o, nms) ≈ 2 .* dename(s, nms)
+    @test dename(o .* 2, nms) ≈ 2 .* dename(s, nms)
+end
+
 @testset "gram_eigh_full on AbstractNamedDimsOperator" begin
     n = 5
     B = randn(n, n)
